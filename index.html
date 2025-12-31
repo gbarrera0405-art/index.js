@@ -1,0 +1,3015 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* --- RESET & BASICS --- */
+  /* --- RESET & BASICS --- */
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { margin: 0; padding: 0; background: #f3f4f6; color: #1e293b; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* --- HEADER --- */
+  .header {
+    height: 64px;
+    background: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex: 0 0 64px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 600;
+    position: relative; /* ✅ z-index works */
+  }
+  .hLeft { display: flex; align-items: center; gap: 16px; }
+  .hTitle { font-size: 18px; font-weight: 700; color: #fff; margin: 0; letter-spacing: -0.3px; }
+  .metaGroup { display: flex; gap: 8px; align-items: center; }
+  .pill { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pill.off { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .pill.on { background: rgba(34,197,94,0.2); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+  .pill.tz { background: rgba(255,255,255,0.1); color: #94a3b8; }
+  .hRight { display: flex; align-items: center; gap: 16px; }
+  .seg { background: rgba(0,0,0,0.3); padding: 4px; border-radius: 8px; display: flex; gap: 2px; }
+  .segBtn { background: transparent; border: none; color: #94a3b8; padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .segBtn:hover { color: #fff; }
+  .segBtn.active { background: #3b82f6; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+  .iconBtn {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color: #e2e8f0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    position: relative;
+    pointer-events: auto;
+  }
+  .iconBtn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .iconBtn svg { width: 20px; height: 20px; fill: currentColor; }
+
+  #notifCount {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 2px solid #1e293b;
+    pointer-events: none; /* ✅ badge won't block clicking */
+  }
+
+  /* ✅ Missing style in your file (you use class="action-btn") */
+  .action-btn{
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-color: #cbd5e1;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .action-btn:hover{
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+
+  /* --- FILTER STYLES --- */
+  .filter-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+  .filter-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: 800; margin-bottom: 8px; }
+  .btn-pill { background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; border-radius: 15px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .btn-pill:hover { border-color: #cbd5e1; background: #f1f5f9; }
+  .navGroup { display: flex; align-items: center; gap: 4px; margin-right: 16px; border-right: 1px solid #e2e8f0; padding-right: 16px; }
+  .navBtn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+  .navBtn:hover { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+  .navBtn svg { width: 18px; height: 18px; fill: currentColor; }
+  .pickerList { flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+  .pRow { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.1s; justify-content: flex-start; }
+  .pRow:hover { background: #f8fafc; border-color: #e2e8f0; }
+  .pRow input { margin: 0; width: 16px; height: 16px; cursor: pointer; }
+  .chip { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #475569; background: #f1f5f9; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+  .chip:hover { background: #e2e8f0; }
+  .chip.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+  .skel-wrapper { display: flex; gap: 16px; height: 100%; overflow: hidden; padding-bottom: 8px; }
+  .skel-col { min-width: 320px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .skel-anim { background: #f1f5f9; background-image: linear-gradient(to right, #f1f5f9 0%, #e2e8f0 20%, #f1f5f9 40%, #f1f5f9 100%); background-repeat: no-repeat; background-size: 800px 100%; animation: shimmer 1.5s infinite linear forwards; border-radius: 8px; }
+  @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+  .skel-head { height: 30px; width: 60%; margin-bottom: 10px; }
+  .skel-card { height: 80px; width: 100%; }
+
+  .main { flex: 1; display: flex; overflow: hidden; position: relative; }
+  .content { flex: 1; overflow: hidden; padding: 20px; position: relative; }
+  .calGrid { display: flex; gap: 16px; height: 100%; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+  .calGrid::-webkit-scrollbar { display: none; }
+  .dayCol { min-width: 320px; max-width: 320px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; display: flex; flex-direction: column; height: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden; }
+  .dayHead { padding: 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-weight: 800; font-size: 15px; color: #0f172a; background: #fff; }
+  .dayCol.today .dayHead { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .dayCol.today { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(59,130,246,0.15); }
+  .dayBody { padding: 10px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scrollbar-width: none; }
+  .dayBody::-webkit-scrollbar { display: none; }
+
+  .listGrid { display: flex; flex-direction: column; gap: 20px; overflow-y: auto; height: 100%; padding-right: 8px; }
+  .listGroup { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+  .listHead { font-weight: 700; font-size: 15px; margin-bottom: 14px; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; display: flex; justify-content: space-between; }
+  .listRow { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .shift { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; cursor: pointer; transition: all 0.15s; position: relative; min-width: 240px; display: flex; flex-direction: column; gap: 4px; }
+  .shift:hover { transform: translateY(-2px); box-shadow: 0 4px 12px -2px rgba(0,0,0,0.08); z-index: 5; border-color: #cbd5e1; }
+  .sRow { display: flex; justify-content: space-between; align-items: center; }
+  .sTime { font-size: 13px; font-weight: 800; color: #334155; }
+  .sName { font-size: 13px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sRole { font-size: 11px; color: #64748b; font-weight: 500; }
+
+  .t-livechat { background: #f0fdf4; border-color: #86efac; } .t-livechat .sTime, .t-livechat .sName { color: #14532d; }
+  .t-emailfloater { background: #fefce8; border-color: #fef08a; } .t-emailfloater .sTime, .t-emailfloater .sName { color: #713f12; }
+  .t-phonesupport { background: #eff6ff; border-color: #93c5fd; } .t-phonesupport .sTime, .t-phonesupport .sName { color: #1e3a8a; }
+  .t-socials { background: #e0f2fe; border-color: #7dd3fc; }
+  /* Darker orange for Disputes as requested */
+  .t-disputes { background: #ffedd5; border-color: #fdba74; } .t-disputes .sTime, .t-disputes .sName { color: #9a3412; }
+  .t-mdsupport { background: #fae8ff; border-color: #e879f9; }
+  .t-other { background: #f8fafc; border-color: #e2e8f0; }
+
+  .shift.selected { outline: 2px solid #3b82f6; z-index: 10; }
+  .shift.dropTarget { background: #f0f9ff; border: 2px dashed #3b82f6; }
+  .selBox { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; background: #fff; border: 1px solid #cbd5e1; border-radius: 5px; display: none; align-items: center; justify-content: center; font-size: 14px; color: #0f172a; }
+  .shift.selected .selBox { display: flex; background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+  .drawer { position: fixed; top: 64px; right: -320px; bottom: 0; width: 320px; background: #fff; border-left: 1px solid #e2e8f0; box-shadow: -4px 0 24px rgba(0,0,0,0.05); transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 40; display: flex; flex-direction: column; }
+  .drawer.open { right: 0; }
+  .drawerHead { padding: 20px; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+  .drawerBody { flex: 1; overflow-y: auto; padding: 20px; }
+
+  .qrSearch { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 16px; background: #f8fafc; font-size: 13px; }
+  .qrItem { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; cursor: grab; transition: background 0.1s; border: 1px solid transparent; }
+  .qrItem:hover { background: #f1f5f9; border-color: #e2e8f0; }
+  .qrAvatar { width: 32px; height: 32px; border-radius: 50%; background: #cbd5e1; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .qrPerson.unavailable { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
+
+  .metricsWrap { display:flex; gap:16px; height:100%; }
+  .metricsLeft { flex: 1; background:#fff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .metricsTop { padding:14px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; gap:12px; align-items:center; justify-content:space-between; }
+  .metricsTop input { max-width: 260px; margin:0; }
+  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  .metricsRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:12px; cursor:pointer; transition: all 0.15s; }
+  .metricsRow:hover { background:#f8fafc; border-color:#cbd5e1; }
+  .metricsRow .left { display:flex; align-items:center; gap:10px; min-width:0; }
+  .metricsRow .avatar { width:34px; height:34px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex: 0 0 auto; }
+  .metricsRow .name { font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .metricsRow .sub { font-size:11px; color:#64748b; }
+
+  .metricsDrawer { width: 0; overflow:hidden; background:#fff; border:1px solid #e2e8f0; border-radius:16px; transition: width 0.25s ease; }
+  .metricsDrawer.open { width: 420px; }
+  .metricsDrawerHead { padding:14px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:space-between; }
+  .metricsDrawerBody { padding:16px; overflow-y:auto; height: calc(100% - 56px); }
+
+  .tGroup { margin-bottom: 12px; background: transparent; }
+  .tGroupHeader { padding: 4px 0; background: transparent; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; margin-bottom: 6px; }
+  .tGroupHeader:hover { background: #e2e8f0; color: #1e293b; }
+  .tGroupBody { display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+  .tGroupBody::-webkit-scrollbar { display: none; }
+  .tGroup.collapsed .tGroupBody { display: none; }
+  .tCount { background: #cbd5e1; color: #fff; border-radius: 10px; padding: 2px 6px; font-size: 10px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 10000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal { background: #fff; width: 440px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; animation: popIn 0.2s; }
+  @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .mHead { padding: 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+  .mTitle { font-weight: 800; font-size: 16px; color: #0f172a; }
+  .mBody { padding: 24px; }
+  .mFoot { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; }
+
+  label { display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  textarea, select, input { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; font-size: 14px; outline: none; background: #fff; }
+  textarea:focus, select:focus, input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px #bfdbfe; } /* ✅ valid ring */
+
+  .btn { padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; }
+  .btn.primary { background: #1e293b; color: #fff; } .btn.primary:hover { background: #0f172a; }
+  .btn.ghost { background: #fff; border: 1px solid #e2e8f0; color: #334155; } .btn.ghost:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+  #toastHost { 
+    position: fixed; 
+    bottom: 24px; 
+    right: 24px; 
+    z-index: 10040;
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    transition: bottom 0.3s; 
+  }
+
+  /* When the selection bar is open, push toasts up (note: only works if toastHost is after selection bar) */
+  .selection-bar.visible ~ #toastHost { bottom: 80px; }
+
+  .toast { background: #1e293b; color: #fff; padding: 14px 18px; border-radius: 12px; font-size: 13px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 16px; min-width: 320px; justify-content: space-between; }
+  .hidden { display: none !important; }
+
+  body.agent-mode .hRight .seg { display: none; }
+  body.agent-mode #teamChips { display: none !important; }
+  body.agent-mode #drawerToggle { display: none !important; }
+  body.agent-mode .content { padding: 20px; }
+  body.agent-mode .tGroupHeader { pointer-events: none; border-bottom: 2px solid #e2e8f0; }
+  body.agent-mode .selBox { display: none !important; }
+
+  /* --- NEW SELECTION BAR STYLES --- */
+  .selection-bar {
+    position: fixed;
+    bottom: -100px;
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    color: white;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  }
+  .selection-bar.visible { bottom: 0; }
+  .sb-left { display: flex; align-items: center; gap: 16px; }
+  .sb-count { font-weight: 800; font-size: 16px; color: #fff; }
+  .sb-actions { display: flex; gap: 10px; }
+  .sb-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sb-btn:hover { background: rgba(255,255,255,0.2); }
+  .sb-btn.primary { background: #3b82f6; border-color: #3b82f6; }
+  .sb-btn.primary:hover { background: #2563eb; }
+  .sb-btn.danger { background: #ef4444; border-color: #ef4444; }
+  .sb-btn.danger:hover { background: #dc2626; }
+
+  /* New Styles for Audit Table */
+  .audit-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .audit-table th { text-align: left; padding: 8px; background: #f1f5f9; color: #64748b; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
+  .audit-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+  .audit-table tr:hover { background: #f8fafc; }
+  .audit-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 9px; text-transform: uppercase; }
+  .ab-red { background: #fee2e2; color: #991b1b; }
+  .ab-blue { background: #dbeafe; color: #1e40af; }
+
+  /* --- NEW MASTER VIEW STYLES --- */
+  .mst-day-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  .mst-day-header {
+    background: #f8fafc;
+    padding: 12px 16px;
+    font-weight: 800;
+    color: #334155;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mst-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 16px;
+    transition: background 0.1s;
+  }
+  .mst-row:hover { background: #f8fafc; }
+  .mst-row.selected { background: #eff6ff; }
+
+  .mst-person-info { width: 200px; flex-shrink: 0; }
+  .mst-name { font-weight: 700; color: #0f172a; font-size: 14px; }
+  .mst-role { font-size: 11px; color: #64748b; font-weight: 500; }
+
+  .mst-shifts-area { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .shift-chip {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .shift-chip:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  }
+  .shift-chip.add-btn {
+    border-style: dashed;
+    color: #94a3b8;
+    background: transparent;
+    box-shadow: none;
+  }
+  .shift-chip.add-btn:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #3b82f6;
+  }
+
+  /* SweetAlert2 Overrides to match your theme */
+  div:where(.swal2-container) { z-index: 12000 !important; }
+  div:where(.swal2-popup) { border-radius: 16px !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
+  div:where(.swal2-title) { font-weight: 800 !important; color: #0f172a !important; }
+
+  .hClose { cursor: pointer; font-size: 20px; color: #64748b; padding: 5px; }
+  .hClose:hover { color: #ef4444; }
+
+  /* ===========================
+     ✅ NOTIFICATION PANEL FIXES
+     =========================== */
+  #notifPanel{
+    position: fixed !important;
+    top: 70px !important;
+    right: 20px !important;
+    width: 360px !important;
+    display: none; 
+
+    background:#fff !important;
+    border:1px solid #e2e8f0 !important;
+    box-shadow:0 10px 25px rgba(0,0,0,0.1) !important;
+    border-radius:16px !important;
+
+    z-index: 10050 !important;
+    overflow:hidden !important;
+    pointer-events: auto !important;
+  }
+  #notifPanel.open { display: block; }
+  
+</style>
+
+</head>
+<!-- ✅ COPY/PASTE: Replace your entire current <body> ... </body> says with this cleaned version.
+     It keeps all your IDs/structure, fixes the broken nesting + removes the duplicate adminOverlay,
+     and puts notifPanel in the right place (not trapped inside another div/overlay). -->
+
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="hLeft">
+      <div class="hTitle">Scheduling Manager</div>
+      <div class="metaGroup">
+        <div id="autoPill" class="pill off">OFF</div>
+        <div class="pill tz">PST</div>
+        <div id="managerContextPill" class="pill" style="display:none; background:#7e22ce; color:#fff; border-color:#6b21a8;">Loading...</div>
+      </div>
+    </div>
+
+    <div class="hRight">
+      <div class="seg">
+        <button class="segBtn active" id="btnList" onclick="setView('list')">List</button>
+        <button class="segBtn" id="btnCal" onclick="setView('calendar')">Calendar</button>
+        <button class="segBtn" id="btnMetrics" onclick="setView('metrics')">Metrics</button>
+      </div>
+
+      <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
+
+      <button id="btnNotif" class="iconBtn" type="button" title="Notifications">
+  <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+  <span id="notifCount" class="hidden">0</span>
+</button>
+
+      <button id="btnAgentToggle" class="btn ghost" style="display:none; font-size:12px; border:1px solid #cbd5e1; margin-right:10px;" onclick="toggleAgentView()">Show Team</button>
+
+      <button id="btnAdmin" type="button" class="iconBtn" title="Admin Settings" onclick="openAdminModal()">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+
+      <button type="button" class="iconBtn" title="Refresh" onclick="load(true)">
+        <svg viewBox="0 0 24 24">
+          <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+      </button>
+
+      <button class="iconBtn" id="drawerToggle" title="Tools" onclick="toggleDrawer()">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-6h14v6zm0-8H5V5h14v6z"/></svg>
+      </button>
+
+      <button id="btnMasterMode" class="action-btn" onclick="toggleMasterMode()">Edit Master Schedule</button>
+    </div>
+  </div>
+
+  <!-- NAV (below header like your UI) -->
+  <div class="navGroup">
+    <button class="navBtn" onclick="scrollCal(-300)"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+    <div style="position:relative; overflow:hidden; width:32px; height:32px;">
+      <input type="date" id="navDatePicker" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer;" onchange="handleDateJump(this.value)">
+      <button class="navBtn" style="pointer-events:none;"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/></svg></button>
+    </div>
+    <button class="navBtn" onclick="scrollCal(340)"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="content">
+      <div id="listView" class="listGrid"></div>
+
+      <div id="calViewWrapper" style="display:none; height:100%; position:relative;">
+        <div id="calView" class="calGrid"></div>
+      </div>
+
+      <div id="metricsView" style="display:none; height:100%;">
+        <div class="metricsWrap">
+          <div class="metricsLeft">
+            <div class="metricsTop">
+              <div style="font-weight:800; color:#0f172a;">Agent Metrics</div>
+              <input id="metricsSearch" class="qrSearch" placeholder="Search agent..." oninput="renderMetricsList()" />
+            </div>
+            <div id="metricsList" class="metricsList"></div>
+          </div>
+
+          <div id="metricsDrawer" class="metricsDrawer">
+            <div class="metricsDrawerHead">
+              <div style="font-weight:800;">Profile</div>
+              <button type="button" class="btn ghost" style="padding:6px 10px;" onclick="closeMetricsDrawer()">✕</button>
+            </div>
+
+            <div class="metricsDrawerBody">
+              <div id="mProfLoader" style="color:#64748b; font-size:13px; padding:10px 0;">Select an agent to load metrics.</div>
+
+              <div id="mProfContent" style="display:none; text-align:center;">
+                <img id="mAvatar" src="" style="width:72px; height:72px; border-radius:50%; background:#e2e8f0; margin:10px auto 10px; border:3px solid #fff; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <div id="mName" style="font-size:18px; font-weight:900; color:#0f172a;"></div>
+                <div id="mEmail" style="font-size:12px; color:#64748b; margin-bottom:14px;"></div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; text-align:left; margin: 0 auto; max-width: 360px;">
+                  <div style="background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd;">
+                    <div style="font-size:10px; font-weight:800; color:#0369a1;">OPEN</div>
+                    <div id="mOpen" style="font-size:18px; font-weight:900; color:#0284c7;">--</div>
+                  </div>
+                  <div style="background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
+                    <div style="font-size:10px; font-weight:800; color:#15803d;">SOLVED (7d)</div>
+                    <div id="mSolved" style="font-size:18px; font-weight:900; color:#16a34a;">--</div>
+                  </div>
+                  <div style="background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #fed7aa;">
+                    <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (60d)</div>
+                    <div id="mCSAT" style="font-size:18px; font-weight:900; color:#ea580c;">--</div>
+                  </div>
+                </div>
+
+                <div style="margin:14px auto 0; max-width: 360px; text-align:left;">
+                  <div style="background:#fdf2f8; padding:12px; border-radius:12px; border:1px solid #fbcfe8;">
+                    <div style="font-size:10px; font-weight:900; color:#be185d; text-transform:uppercase;">Role</div>
+                    <div id="mRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:6px;">--</div>
+                  </div>
+
+                  <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
+
+                  <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <a id="mOpenTicketsLink" class="btn ghost" target="_blank" style="text-decoration:none;">View Open Tickets</a>
+                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
+                  </div>
+
+                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="skeletonView" class="skel-wrapper" style="display:none;">
+        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
+        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
+        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
+        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT DRAWER -->
+    <div id="rightDrawer" class="drawer">
+      <div class="drawerHead" style="height: auto; flex-direction: column; gap: 10px; padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span>Tools</span>
+          <div class="seg">
+            <button class="segBtn active" id="btnModeQuick" onclick="setMode('quick')">Quick</button>
+            <button class="segBtn" id="btnModeTeam" onclick="setMode('team')">Team</button>
+          </div>
+        </div>
+
+        <div id="loginContainer" style="width: 100%; display: flex; justify-content: center; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+          <div id="g_id_onload"
+               data-client_id="63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com"
+               data-callback="handleSignIn"></div>
+          <div class="g_id_signin" data-type="standard" data-width="220"></div>
+        </div>
+      </div>
+
+      <div class="drawerBody" id="drawerQuick">
+        <div class="filter-card">
+          <div class="filter-header">⚡ Quick Filters</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-pill" onclick="filterToday()">Today</button>
+            <button class="btn-pill" style="background:#fef2f2; color:#ef4444;" onclick="resetAllFilters()">Reset</button>
+          </div>
+        </div>
+
+        <div class="filter-card" style="border-left: 4px solid #3b82f6;">
+          <div class="filter-header">👥 Team View</div>
+          <select id="teamDropdown" onchange="updateTeamAgentList()" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1; margin-bottom:12px;">
+            <option value="">Select Team...</option>
+          </select>
+          <div id="teamAgentList" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+        </div>
+
+        <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:16px;">
+          <label style="font-size:11px; color:#94a3b8; font-weight:700;">SEARCH ALL PEOPLE</label>
+          <input class="qrSearch" id="qrSearch" placeholder="Search name..." oninput="renderQuickRail()" />
+          <div id="qrList" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+      </div>
+
+      <div class="drawerBody hidden" id="drawerTeam">
+        <p style="font-size:13px; color:#64748b; margin-bottom:16px;">Select shifts in the calendar, then apply bulk changes.</p>
+        <div style="margin-bottom:8px; font-size:12px; font-weight:700; color:#0f172a;">SELECTED: <span id="tpCount" style="color:#3b82f6;">0</span></div>
+        <div style="margin-bottom:16px;">
+          <label>Assign To</label>
+          <select id="tpPerson"></select>
+        </div>
+        <button class="btn primary" style="width:100%;" onclick="applyBatch()">Apply Changes</button>
+        <button class="btn ghost" style="width:100%; margin-top:12px;" onclick="clearTeamSelection()">Clear Selection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECTION BAR -->
+  <div id="selectionBar" class="selection-bar">
+    <div class="sb-left">
+      <div class="sb-count"><span id="sbCount">0</span> selected</div>
+      <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.2);"></div>
+      <button class="sb-btn" id="btnSelectSimilar" onclick="selectSimilarVisible()">Select All Visible for this Person</button>
+    </div>
+    <div class="sb-actions">
+      <button class="sb-btn" onclick="clearTeamSelection()">Cancel</button>
+      <button class="sb-btn primary" onclick="openBatchEditModal()">Edit / Move</button>
+      <button class="sb-btn danger" onclick="batchMarkOff()">Mark OFF</button>
+    </div>
+  </div>
+
+  <!-- EDIT SHIFT MODAL -->
+  <div id="editShiftModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; padding:20px; border-radius:8px; width:300px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <h3 style="margin-top:0; color:#333;">Edit Shift</h3>
+
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:12px; color:#666; margin-bottom:5px;">Employee</label>
+        <input type="text" id="modalEmployee" disabled style="width:100%; padding:8px; border:1px solid #eee; background:#f9f9f9; border-radius:4px;">
+      </div>
+
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:12px; color:#666; margin-bottom:5px;">Day</label>
+        <input type="text" id="modalDay" disabled style="width:100%; padding:8px; border:1px solid #eee; background:#f9f9f9; border-radius:4px;">
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <div style="flex:1;">
+          <label style="display:block; font-size:12px; color:#666; margin-bottom:5px;">Start</label>
+          <input type="time" id="modalStart" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+        </div>
+        <div style="flex:1;">
+          <label style="display:block; font-size:12px; color:#666; margin-bottom:5px;">End</label>
+          <input type="time" id="modalEnd" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+        </div>
+      </div>
+
+      <input type="hidden" id="modalOrigStart">
+      <input type="hidden" id="modalOrigEnd">
+
+      <div style="margin-bottom:15px; margin-top:10px;">
+        <label style="display:block; font-size:12px; color:#666; margin-bottom:5px;">Team</label>
+        <select id="modalTeam" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; background:#fff;"></select>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; margin-top:10px;">
+        <button type="button" onclick="deleteShift()" style="background:#ffebee; color:#c62828; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Delete</button>
+        <div style="display:flex; gap:10px;">
+          <button type="button" onclick="closeModal()" style="background:#f5f5f5; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Cancel</button>
+          <button type="button" onclick="saveShift()" style="background:#1967d2; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAYS -->
+  <div id="modalOverlay" class="overlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+      <div class="mHead">
+        <span class="mTitle">Replace Coverage</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeModal()">✕</button>
+      </div>
+      <div class="mBody">
+        <div style="margin-bottom:16px; font-size:13px; color:#64748b;" id="mSub"></div>
+        <label>Replace With</label>
+        <select id="mNewPerson" style="margin-bottom:16px;"></select>
+        <label>Notification</label>
+        <select id="mNotify" style="margin-bottom:16px;">
+          <option value="defer">Defer (Pending)</option>
+          <option value="send">Send Bot Notification</option>
+        </select>
+        <label>Notes</label>
+        <textarea id="mNotes"></textarea>
+      </div>
+      <div class="mFoot" style="justify-content: space-between;">
+        <button id="actionBtn" class="btn ghost" style="color:#ef4444; border-color:#fecaca; background:#fef2f2;" onclick="handleSaveClick()">⛔ Mark Off</button>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn primary" id="mSave" onclick="saveReplace()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileOverlay" class="overlay" onclick="if(event.target===this) closeProfile()">
+    <div class="modal" style="width: 400px;">
+      <div class="mHead" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+        <span class="mTitle">Agent Profile</span>
+        <button type="button" class="btn ghost" style="padding:4px 8px;" onclick="closeProfile()">✕</button>
+      </div>
+      <div class="mBody" style="text-align: center; padding: 30px;">
+        <div id="profLoader" style="color: #64748b; font-size: 13px;"><div>Fetching live metrics from Zendesk...</div></div>
+        <div id="profContent" style="display:none;">
+          <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: #e2e8f0; margin-bottom: 15px; border: 3px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: #0f172a;">Name</h2>
+          <div id="pEmail" style="font-size: 12px; color: #64748b; margin-bottom: 20px;">email@example.com</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: left;">
+            <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+              <div style="font-size: 10px; font-weight: 700; color: #0369a1;">OPEN</div>
+              <div id="pTickets" style="font-size: 20px; font-weight: 800; color: #0284c7;">--</div>
+            </div>
+            <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
+              <div style="font-size: 10px; font-weight: 700; color: #15803d;">SOLVED (7d)</div>
+              <div id="pSolved" style="font-size: 20px; font-weight: 800; color: #16a34a;">--</div>
+            </div>
+            <div style="background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px solid #fed7aa;">
+              <div style="font-size: 10px; font-weight: 700; color: #c2410c;">CSAT (60d)</div>
+              <div id="pCSAT" style="font-size: 20px; font-weight: 800; color: #ea580c;">--</div>
+            </div>
+          </div>
+          <div style="margin-top: 20px; font-size: 11px; color: #94a3b8;">Last Login: <span id="pLogin">--</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="masterOverlay" class="overlay" onclick="if(event.target===this) closeMasterModal()">
+    <div class="modal">
+      <div class="mHead">
+        <span class="mTitle">Edit Master Template</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeMasterModal()">✕</button>
+      </div>
+      <div class="mBody">
+        <div style="margin-bottom:16px; font-size:13px; color:#64748b;" id="mstSub"></div>
+        <input type="hidden" id="mstPerson">
+        <input type="hidden" id="mstDay">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div><label>Start Time (PST)</label><input id="mstStart" placeholder="e.g. 8:00 AM"></div>
+          <div><label>End Time (PST)</label><input id="mstEnd" placeholder="e.g. 5:00 PM"></div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div><label>Team</label><select id="mstTeam"></select></div>
+          <div><label>Role</label><select id="mstRole"></select></div>
+        </div>
+        <div style="background:#f0f9ff; padding:12px; border-radius:8px; border:1px solid #bae6fd; font-size:12px; color:#0369a1; display:flex; gap:10px; align-items:start;">
+          <input type="checkbox" id="mstSync" style="width:auto; margin-top:2px;">
+          <span><b>Sync to LIVE Schedule?</b><br>Check this to update all future shifts starting <b>tomorrow</b>. Leave unchecked to only update the template for new generations.</span>
+        </div>
+      </div>
+      <div class="mFoot">
+        <button class="btn ghost" onclick="closeMasterModal()">Cancel</button>
+        <button class="btn primary" onclick="saveMasterEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pickerOverlay" class="overlay" onclick="if(event.target===this) closePicker()">
+    <div class="modal" style="width: 500px; height: 600px; display:flex; flex-direction:column;">
+      <div class="mHead">
+        <span class="mTitle">Filter People</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closePicker()">✕</button>
+      </div>
+      <div style="padding:16px; border-bottom:1px solid #e2e8f0; display:flex; gap:12px;">
+        <input id="pickerSearch" placeholder="Search..." oninput="renderPickerList()" style="flex:1;">
+        <button class="btn ghost" onclick="pickerToggleAll(true)">All</button>
+        <button class="btn ghost" onclick="pickerToggleAll(false)">None</button>
+      </div>
+      <div id="pickerList" class="pickerList" style="flex:1; overflow-y:auto; padding:8px;"></div>
+      <div class="mFoot"><button class="btn primary" onclick="applyPicker()">Apply Filter</button></div>
+    </div>
+  </div>
+
+  <!-- ✅ Admin Overlay (ONLY ONCE) -->
+  <div id="adminOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAdminModal()">
+    <div class="modal" style="width: 500px;">
+      <div class="mHead">
+        <span class="mTitle">Admin Tools</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAdminModal()">✕</button>
+      </div>
+
+      <div class="mBody">
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <label style="margin:0; color:#0f172a; font-weight:800;">Management Audit Log</label>
+              <p style="font-size:11px; color:#64748b; margin-top:4px;">Track every shift change and the manager responsible.</p>
+            </div>
+            <button type="button" class="btn primary" style="font-size:12px; padding:8px 16px;" onclick="openAuditLog()">View History 📜</button>
+          </div>
+        </div>
+
+        <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; display:block;">Generation Tools</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+          <button type="button" class="btn ghost" style="border-color:#3b82f6; color:#3b82f6;" onclick="runGenerate()">Generate 14 Days</button>
+          <button type="button" class="btn ghost" onclick="runArchive()">Archive Old Data</button>
+          <button type="button" class="btn ghost" style="grid-column: span 2;" onclick="runBoth()">Full Sync (Gen + Archive)</button>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px; border-radius:10px;">
+          <span style="font-size:13px; font-weight:700; color:#334155;">Daily Automation</span>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn" id="btnEnable" style="padding:6px 12px; font-size:11px;">Enable</button>
+            <button type="button" class="btn" id="btnDisable" style="padding:6px 12px; font-size:11px;">Disable</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Audit Overlay (sibling, not nested) -->
+  <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()">
+    <div class="modal" style="width: 700px; max-width: 90vw; height: 80vh; display:flex; flex-direction:column;">
+      <div class="mHead">
+        <span class="mTitle">Audit History</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAuditModal()">✕</button>
+      </div>
+      <div class="mBody" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
+        <div style="background:#fff; border-bottom:1px solid #e2e8f0; padding:10px 16px; font-size:12px; color:#64748b;">
+          Showing last 50 actions. Newest first.
+        </div>
+        <div style="flex:1; overflow-y:auto;">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th style="width:140px;">Time</th>
+                <th style="width:120px;">Manager</th>
+                <th style="width:100px;">Action</th>
+                <th style="width:120px;">Target</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditList">
+              <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Loading history...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Master Context -->
+  <div id="masterContextOverlay" class="overlay" style="display:none; z-index:200;">
+    <div class="modal" style="width: 400px;">
+      <div class="mHead"><span class="mTitle">Select Manager Context</span></div>
+      <div class="mBody">
+        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+          You are logged in as <b>Master Admin</b>.<br>
+          Please select which Manager's schedule you wish to view/manage.
+        </p>
+        <label>Available Managers</label>
+        <select id="masterManagerDropdown" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+          <option value="" disabled selected>Loading...</option>
+        </select>
+      </div>
+      <div class="mFoot" style="justify-content:flex-end;">
+        <button type="button" class="btn primary" id="btnConfirmManager" onclick="confirmManagerSelection()">Load Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Notifications Panel (NOT inside any overlay/div) -->
+  <div id="notifPanel"
+       style="display:none; position:fixed; top:74px; right:20px; width:360px; background:#fff; border:1px solid #e2e8f0; box-shadow:0 10px 25px rgba(0,0,0,0.1); border-radius:16px; z-index:3001; overflow:hidden;"
+       onclick="event.stopPropagation()">
+    <div class="mHead">
+      <span class="mTitle">Notifications</span>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn ghost" style="padding:4px 8px; font-size:11px;" onclick="clearNotifications()">Clear</button>
+        <button type="button" class="btn primary" style="padding:4px 8px; font-size:11px;" onclick="sendAllPending()">Send</button>
+      </div>
+    </div>
+    <div id="notifList" style="max-height:300px; overflow-y:auto; padding:10px;"></div>
+  </div>
+
+  <div id="toastHost"></div>
+  <div id="loader" class="hidden"></div>
+
+  <!-- Agent Overlay -->
+  <div id="agentOverlay" class="overlay" style="display:none;">
+    <div class="modal">
+      <div class="mHead">
+        <div class="hTitle">Manage Shift</div>
+        <div class="hClose" onclick="closeAgentModal()">✕</div>
+      </div>
+
+      <div class="mBody">
+        <div id="agShiftDetails" style="font-weight:600; margin-bottom:15px; color:#334155;"></div>
+
+        <div id="agActionSelect">
+          <button class="btn ghost full" onclick="showAgentForm('swap')">🔄 Swap / Give Away</button>
+          <div style="height:10px;"></div>
+          <button class="btn ghost full red" onclick="showAgentForm('timeoff')">⛔ Request Time Off</button>
+        </div>
+
+        <div id="agFormSwap" style="display:none;">
+          <label class="label">Swap with / Give to:</label>
+          <select id="agSwapPerson" class="input"></select>
+
+          <label class="label">Note (Optional)</label>
+          <input type="text" id="agSwapNote" class="input" placeholder="e.g. I owe you one!">
+
+          <div class="mFoot">
+            <button class="btn ghost" onclick="resetAgentModal()">Back</button>
+            <button class="btn primary" onclick="submitSwap()">Send Request</button>
+          </div>
+        </div>
+
+        <div id="agFormTimeOff" style="display:none;">
+          <label class="label">Reason for absence</label>
+          <input type="text" id="agToReason" class="input" placeholder="e.g. Sick, Emergency...">
+
+          <div class="mFoot">
+            <button class="btn ghost" onclick="resetAgentModal()">Back</button>
+            <button class="btn primary red" onclick="submitTimeOff()">Submit Request</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const PST_TZ = "America/Los_Angeles";
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const TZ = "America/Los_Angeles";
+
+  // --- CLOUD RUN BRIDGE START ---
+  // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
+  
+  // --- CLOUD RUN BRIDGE START ---
+  // --- CLOUD RUN BRIDGE START ---
+  const google = {
+    script: {
+      // We return a proxy to handle 'run' so we can create a fresh chain for every request
+      run: {
+        withSuccessHandler: function(success) {
+          // Create a NEW object for this specific request chain
+          const chain = {
+            _success: success,
+            _fail: null,
+            
+            withFailureHandler: function(failure) {
+              this._fail = failure;
+              return this;
+            },
+
+            // --- 1. AUTO-GEN ---
+            checkAndAutoGenerate: function() {
+               console.log("Bridge: Auto-gen check.");
+               setTimeout(() => { if(this._success) this._success({ generated: false }); }, 10);
+            },
+
+            // --- 3. MASTER SCHEDULE ---
+            uiGetBaseData: async function() {
+                try {
+                    const res = await fetch('./?action=base-schedule');
+                    if(!res.ok) throw new Error("Failed to load master");
+                    const json = await res.json();
+                    if(this._success) this._success(json);
+                } catch(err) { 
+                    if(this._fail) this._fail(err); 
+                }
+            },
+
+            // --- 4. CONFIGURATION ---
+            uiGetConfig: function() {
+               setTimeout(() => {
+                 if(this._success) this._success({
+                   isManager: true, role: 'MASTER', automationEnabled: true,
+                   allManagers: [{name: "Admin", email: "admin@musely.com"}],
+                   currentUser: "Admin", matchedPerson: "Admin"
+                 });
+               }, 50);
+            },
+
+            uiReplaceAssignment: async function(payload) {
+  try {
+    console.log("uiReplaceAssignment payload:", payload);
+
+    if (!payload?.docId || !payload?.assignmentId || !payload?.newPerson) {
+      throw new Error("Missing docId, assignmentId, or newPerson (client)");
+    }
+
+    const res = await fetch("./?action=assignment/replace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const text = await res.text();
+    let json = {};
+    try { json = JSON.parse(text); } catch {}
+
+    if (!res.ok) {
+      throw new Error(json.error || json.message || text || `HTTP ${res.status}`);
+    }
+
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._fail) this._fail(String(e.message || e));
+  }
+},
+
+
+            // --- 5. SYSTEM DATA (TEAMS & PEOPLE) ---
+            uiGetManagerData: async function() {
+               console.log("Bridge: Fetching People & Teams...");
+               try {
+                 const ts = Date.now();
+                 // 1. Teams
+                 const tReq = await fetch(`./?action=teams&_t=${ts}`);
+                 const tRes = await tReq.json();
+                 const teams = (tRes.teams || []).map(t => t.id);
+
+                 // 2. People
+                 const pReq = await fetch(`./?action=people&_t=${ts}`);
+                 const pRes = await pReq.json();
+                 const peopleList = (pRes.people || []).map(p => p.name || p.id);
+
+                 console.log(`Bridge: Loaded ${peopleList.length} people.`);
+                 if(this._success) this._success({ people: peopleList, teams: teams, timeOff: [] });
+               } catch(e) {
+                 console.error("Bridge Error (System Data):", e);
+                 const fallback = ["Adam", "Baylie", "Brandi", "Elizabeth", "Gisenia", "Kelsey"];
+                 if(this._success) this._success({ people: fallback, teams: [], timeOff: [] });
+               }
+            },
+
+            // --- 6. ZENDESK ---
+            uiGetZendeskMetricsSnapshot: function() {
+               setTimeout(() => { if(this._success) this._success([]); }, 50);
+            },
+
+            // --- 8. OTHER WRITE OPERATIONS ---
+            uiSetTimeOff: async function(docId, assignmentId, enforce) {
+  try {
+    const res = await fetch(`./?action=assignment/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        docId,
+        assignmentId,
+        patch: { notes: "[OFF]" },
+        enforce: !!enforce
+      })
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || json.message || "Update failed");
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._fail) this._fail(e.message || String(e));
+  }
+},
+
+uiRestoreAssignment: async function(docId, assignmentId) {
+  try {
+    const res = await fetch(`./?action=assignment/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        docId,
+        assignmentId,
+        patch: { notes: "" }
+      })
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || json.message || "Restore failed");
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._fail) this._fail(e.message || String(e));
+  }
+},
+
+uiGetAuditLogs: async function() {
+  try {
+    const res = await fetch("./?action=audit/logs");
+    const json = await res.json().catch(() => ([]));
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._success) this._success([]); // fail soft
+  }
+},
+
+uiGetStaffingRules: async function() {
+  try {
+    const res = await fetch("./?action=staffing/rules");
+    const json = await res.json().catch(() => ([]));
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._success) this._success([]);
+  }
+},
+
+uiSaveStaffingRule: async function(rule) {
+  try {
+    const res = await fetch("./?action=staffing/rules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rule || {})
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "Save failed");
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._fail) this._fail(e.message || String(e));
+  }
+},
+
+uiDeleteStaffingRule: async function(idx) {
+  try {
+    const res = await fetch("./?action=staffing/rules/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idx })
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "Delete failed");
+    if (this._success) this._success(json);
+  } catch (e) {
+    if (this._fail) this._fail(e.message || String(e));
+  }
+},
+
+runGenerate: async function() {
+  try {
+    const res = await fetch("./?action=generate", { method: "POST" });
+    const json = await res.json().catch(() => ({}));
+    if (this._success) this._success(json);
+  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
+},
+runArchive: async function() {
+  try {
+    const res = await fetch("./?action=archive", { method: "POST" });
+    const json = await res.json().catch(() => ({}));
+    if (this._success) this._success(json);
+  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
+},
+runBoth: async function() {
+  try {
+    const res = await fetch("./?action=sync", { method: "POST" });
+    const json = await res.json().catch(() => ({}));
+    if (this._success) this._success(json);
+  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
+},
+
+
+uiRestoreAssignment: async function(id) {
+                console.log("Bridge: Restore", id);
+                if(this._success) this._success({ ok: true });
+            },
+
+            handleMasterScheduleEdit: async function(payload) {
+                console.log("Bridge: Master Edit Request", payload);
+                try {
+                    const res = await fetch('./?action=update-master-schedule', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!res.ok) throw new Error("Network request failed");
+                    
+                    const json = await res.json();
+                    if (json.status === "error") throw new Error(json.message);
+                    
+                    if(this._success) this._success(json);
+                } catch(err) {
+                    console.error("Bridge Error:", err);
+                    if(this._fail) this._fail(err.message);
+                }
+            }, // <--- COMMA HERE IS IMPORTANT
+
+            // --- 10. ZENDESK PROFILE ---
+            getZendeskProfile: async function(name) {
+                console.log("Bridge: Fetching Zendesk Profile for", name);
+                try {
+                    const res = await fetch('./?action=agent-profile', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ name: name })
+                    });
+
+                    if (!res.ok) throw new Error("Network request failed");
+                    const json = await res.json();
+                    
+                    if(this._success) this._success(json);
+                } catch(err) {
+                    console.error("Profile Fetch Error:", err);
+                    if(this._fail) this._fail(err.message);
+                }
+            }
+          }; 
+
+          return chain;
+        }
+      },
+      
+      // Group B: URL handling
+      url: {
+          getLocation: function(cb) { cb({ hash: window.location.hash || "" }); }
+      }
+    }
+  };
+  // --- CLOUD RUN BRIDGE END ---
+
+  
+
+  function fatal_(title, detail) {
+    console.error("FATAL:", title, detail);
+    if ($("skeletonView")) $("skeletonView").style.display = "none";
+    if ($("loader")) $("loader").classList.add("hidden");
+    const host = $("listView") || document.body;
+    host.innerHTML = `<div style="padding:20px; color:red; font-weight:bold;">${title}<br><span style="font-weight:normal; font-size:12px; color:#333;">${detail}</span></div>`;
+  }
+
+  // --- 2. GLOBAL VARIABLES ---
+  let _allData=[], _filteredData=[], _people=[], _teams=[], _roles=[], _timeOff=new Set();
+  let _view="list", _mode="quick", _activeTeam="", _selectedPeople=new Set(), _teamSelected=new Set();
+  let _editing=null, _dragPerson=null, _drawerOpen=false, _lastUndo=null, _notifQueue=[];
+  let _zendeskMetricsList = [], _zendeskMetricsByName = new Map(), _zendeskSnapshotLoaded = false;
+  let _selectedManagerEmail = "", _currentManagerName = "";
+  let _isMasterMode = false;
+  let _activeProfileRequest = "";
+  let _activeMetricsRequest = "";
+  
+  // NEW: To track the logged in user's Real Name (not just email)
+  let _myName = ""; 
+  let _masterSelected=new Set(), _masterRawData=[]; // Moved here for safety
+  let _lastSelectedPerson = null;
+
+  // --- 3. HELPERS (FORMATTING) ---
+  function formatCsatDisplay(val) {
+    if (val === null || val === undefined || val === "" || val === "--") return "--";
+    if (String(val).includes("%")) return val;
+    const n = Number(val);
+    if (isNaN(n)) return "--";
+    if (n <= 1 && n !== 0) return Math.round(n * 100) + "%";
+    return Math.round(n) + "%";
+  }
+
+  function getTeamClass(t) { 
+    const l = (t || "").toLowerCase(); 
+    if (l.includes("live")) return "t-livechat";
+    if (l.includes("email")) return "t-emailfloater";
+    if (l.includes("phone")) return "t-phonesupport";
+    if (l.includes("dispute")) return "t-disputes";
+    if (l.includes("md") || l.includes("medical")) return "t-mdsupport";
+    if (l.includes("social")) return "t-socials";
+    return "t-other"; 
+  }
+
+  function _formatTime(val) { 
+    if(!val) return ""; 
+    if (val instanceof Date) { return val.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); } 
+    return val; 
+  }
+
+  // --- 4. LOAD SEQUENCE ---
+  window.onload = function() {
+    try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
+  };
+
+  function load(force, targetEmail) {
+    // 1. Gatekeeper: Stop if no identity is present yet
+    if (!window._myName && !window._myEmail) {
+      console.log("No identity found. Skipping data load until sign-in.");
+      if ($("skeletonView")) $("skeletonView").style.display = "none";
+      return; 
+    }
+
+    // 2. Show loading state
+    if ($("skeletonView")) $("skeletonView").style.display = "flex";
+    if ($("listView")) $("listView").style.display = "none";
+    if ($("calViewWrapper")) $("calViewWrapper").style.display = "none";
+    if (targetEmail) _selectedManagerEmail = targetEmail;
+
+    const isManager = window._isManager;
+    const myName = window._myName;
+
+    // 3. UI Adjustments based on Role
+    if (isManager) {
+       if($("btnAdmin")) $("btnAdmin").style.display = "flex";
+       if($("btnAgentToggle")) $("btnAgentToggle").style.display = "none";
+       document.body.classList.remove("agent-mode");
+    } else {
+       if($("btnAdmin")) $("btnAdmin").style.display = "none";
+       document.body.classList.add("agent-mode");
+       if($("btnAgentToggle")) $("btnAgentToggle").style.display = "block";
+       
+       if (myName) {
+          _selectedPeople.clear(); 
+          _selectedPeople.add(myName);
+       }
+    }
+
+    // 4. Trigger fetch
+    loadSystemData();
+    checkUrlNotifs();
+  }
+
+  // If value is a pure YYYY-MM-DD (date-only), do NOT convert timezones.
+function dayKeyPST(value) {
+  if (!value) return "";
+
+  // 1) If backend already sends YYYY-MM-DD, keep it as-is
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  // 2) If it's a Date (or parseable), decide if it’s "date-only" at UTC midnight
+  const d = (value instanceof Date) ? value : new Date(value);
+  if (isNaN(d)) return "";
+
+  // If it looks like a date-only stored at 00:00:00Z, keep its UTC day
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  }
+
+  // Otherwise it's a real timestamp -> format by PST
+  return formatDatePST(d); // uses Intl + America/Los_Angeles
+}
+
+function displayDayLabel(dayKey) {
+  if (!dayKey) return "";
+  // Defensive: if it's already a label, just return it
+  if (typeof dayKey !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return String(dayKey);
+
+  const [y, m, d] = dayKey.split("-").map(Number);
+  const anchor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0)); // noon UTC anchor
+
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: PST_TZ,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(anchor); // -> "Tue, Dec 30"
+}
+
+function pstParts(d) {
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt)) return null;
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PST_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(dt);
+
+  const out = {};
+  for (const p of parts) if (p.type !== "literal") out[p.type] = p.value;
+  return out;
+}
+
+// YYYY-MM-DD in Pacific Time (best for keys/grouping)
+function formatDatePST(d) {
+  const p = pstParts(d);
+  if (!p) return "";
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+// HH:MM in Pacific Time (useful for display)
+function formatTimePST(d) {
+  const p = pstParts(d);
+  if (!p) return "";
+  return `${p.hour}:${p.minute}`;
+}
+
+// If anything calls these from inline handlers, ensure global:
+window.formatDatePST = formatDatePST;
+window.formatTimePST = formatTimePST;
+
+  async function loadSystemData() {
+    console.log("Fetching system data from Cloud Run...");
+
+    try {
+      // 1. Fetch Metrics & Metadata (Zendesk, People, Teams)
+      const metaRes = await fetch('/getmetadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isManager: window._isManager, action: 'getMetadata' })
+      });
+      const meta = await metaRes.json();
+
+      // Update local variables
+      _people = (meta.people || []).map(p => p.name || p.id).filter(Boolean);
+    _teams  = (meta.teams || []).map(t => t.id || t.name).filter(Boolean);
+      _zendeskMetricsList = meta.zendeskMetrics || [];
+      _zendeskMetricsByName = new Map();
+      _zendeskMetricsList.forEach(r => { if(r && r.agentName) _zendeskMetricsByName.set(String(r.agentName), r); });
+      
+      _timeOff.clear(); 
+      (meta.timeOff || []).forEach(t => _timeOff.add(`${t.person}|${t.dateISO}`));
+
+      // Update UI elements
+      renderTeamChips(); 
+      fillSelect("tpPerson", _people); 
+      fillSelect("mNewPerson", _people); 
+      renderQuickRail(); 
+      initFilters();
+
+      // 2. Fetch the actual Shifts (Assignments)
+      const payload = {
+        daysForward: 14,
+        targetEmail: _selectedManagerEmail,
+        isManager: window._isManager, // Tells backend whether to filter or show all
+        agentName: window._myName      // Used by backend for "Agent View" filtering
+      };
+
+      // Explicitly send the current date in the query string
+      const today = pstISODate();
+const shiftRes = await fetch(`/initdashboard?start=${today}`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ ...payload, action: "initdashboard" })
+});
+      
+      const shifts = await shiftRes.json();
+      if (shifts && shifts.schedule && shifts.schedule.results) {
+          _allData = [];
+          shifts.schedule.results.forEach(day => {
+              if (day.assignments) {
+                  day.assignments.forEach(a => {
+  const docId = String(day.id || "");
+  const teamName = (docId.includes("__") ? docId.split("__")[1] : "") || day.team || "General";
+
+  // ✅ normalize assignmentId from any possible backend key
+  const assignmentId =
+    a.assignmentId ?? a.id ?? a.assignment_id ?? a.assignmentID ?? "";
+
+  const dayKey = dayKeyPST(day.date); // "YYYY-MM-DD"
+
+  _allData.push({
+    ...a,
+
+    // ✅ REQUIRED for replace endpoint
+    docId,
+    assignmentId,
+
+    // ✅ Dates
+    date: day.date,
+    dateISO: dayKey,       // <-- use the dayKey consistently
+    dayKey,                // optional but nice to have
+    dateLabel: dayKey,     // your grouping key
+
+    // ✅ Display/other
+    team: teamName,
+    startLabel: a.startLabel,
+    endLabel: a.endLabel,
+  });
+});
+              }
+          });
+      }
+
+      // 3. Finalize View
+      applyLocalFilters();
+      if ($("skeletonView")) $("skeletonView").style.display = "none";
+      if (_allData.length > 0) renderView();
+
+    } catch (e) {
+      console.error("System Data Load Failed:", e);
+      fatal_("Data Load Failed", e);
+    }
+  }
+
+  // --- 5. VIEW RENDERING ---
+  function setView(v) {
+    _view = v;
+    $("btnList").className = v === "list" ? "segBtn active" : "segBtn";
+    $("btnCal").className = v === "calendar" ? "segBtn active" : "segBtn";
+    $("btnMetrics").className = v === "metrics" ? "segBtn active" : "segBtn";
+    renderView();
+  }
+
+  async function handleSignIn(response) {
+    const loginBox = document.getElementById("loginContainer");
+    toast("Verifying identity...");
+
+    try {
+      const res = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      
+      // FIX: Check if the response is actually JSON before parsing
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+          const text = await res.text();
+          console.error("Server returned non-JSON:", text);
+          throw new Error("Server error: Check Cloud Run Logs");
+      }
+
+      const config = await res.json();
+      
+      if (config.error) {
+          toast(config.error);
+          return;
+      }
+
+      window._currentUser = config.userEmail;
+      window._myName = config.matchedPerson;
+      window._isManager = config.isManager;
+
+      if (loginBox) loginBox.style.display = "none";
+      toast(`Welcome, ${window._myName}`);
+      load(); 
+
+    } catch (e) {
+      console.error("Login process failed:", e);
+      toast("Login failed. Check console for details.");
+    }
+  }
+
+  function renderView() {
+    if (_view === "list") renderListView();
+    else if (_view === "calendar") renderCalView();
+    else renderMetricsView();
+  }
+
+  function saveShift() {
+    const person = document.getElementById("modalEmployee").value;
+    const day = document.getElementById("modalDay").value;
+    const newStart = document.getElementById("modalStart").value;
+    const newEnd = document.getElementById("modalEnd").value;
+    const newTeam = document.getElementById("modalTeam").value;
+    const origStart = document.getElementById("modalOrigStart").value;
+    const origEnd = document.getElementById("modalOrigEnd").value;
+    const isAdding = origStart === "NEW";
+    const actionType = isAdding ? "ADD" : "EDIT";
+
+    if(!newStart || !newEnd) {
+        alert("Please enter both start and end times.");
+        return;
+    }
+
+    // --- 1. UPDATE LOCAL DATA (Immediate UI Refresh) ---
+    const dayData = _masterRawData[day] || [];
+    if (isAdding) {
+        dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
+        _masterRawData[day] = dayData;
+    } else {
+        const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
+        if (shiftToUpdate) {
+            shiftToUpdate.start = newStart;
+            shiftToUpdate.end = newEnd;
+            shiftToUpdate.team = newTeam;
+        }
+    }
+
+    renderMasterView(_masterRawData);
+    closeModal();
+    toast(isAdding ? "Adding new shift..." : "Saving changes...");
+    
+    // VISUAL CUE: Tell user we are working on it
+    toast("Saving changes...");
+
+    // --- 2. SEND TO BACKEND ---
+    const payload = {
+        action: actionType,
+        person: person,
+        day: day,
+        oldStart: isAdding ? "" : origStart, 
+        oldEnd: isAdding ? "" : origEnd,
+        newStart: newStart,
+        newEnd: newEnd,
+        newTeam: newTeam
+    };
+
+    google.script.run
+        .withSuccessHandler(() => {
+            console.log("Saved to database successfully");
+            // VISUAL CUE: Confirm success
+            toast("Success! Schedule updated.");
+        })
+        .withFailureHandler((err) => {
+            console.error(err);
+            alert("Error saving to database: " + err);
+        })
+        .handleMasterScheduleEdit(payload); 
+}
+
+function deleteShift() {
+    const person = document.getElementById("modalEmployee").value;
+    const day = document.getElementById("modalDay").value;
+    const origStart = document.getElementById("modalOrigStart").value;
+    const origEnd = document.getElementById("modalOrigEnd").value;
+    
+    if(!confirm("Are you sure you want to remove this shift?")) return;
+
+    // --- 1. REMOVE FROM LOCAL DATA ---
+    const dayData = _masterRawData[day];
+    if (dayData) {
+        // Filter out the shift we want to delete
+        const index = dayData.findIndex(s => s.person === person && s.start === origStart && s.end === origEnd);
+        if (index > -1) {
+            dayData.splice(index, 1); // Remove it from the array
+        }
+    }
+
+    renderMasterView(_masterRawData);
+    closeModal();
+
+    // --- 2. SEND TO BACKEND ---
+    const payload = {
+        action: "DELETE",
+        person: person,
+        day: day,
+        oldStart: origStart,
+        oldEnd: origEnd
+    };
+
+    google.script.run
+        .withFailureHandler((err) => alert("Error deleting from database: " + err))
+        .handleMasterScheduleEdit(payload);
+}
+
+function checkTimeMatch(targetTime, compareTime) {
+  const normalize = (t) => {
+    if (!t) return "";
+    // Standard JS way to handle Date objects instead of Apps Script
+    if (t instanceof Date) {
+      return t.getHours().toString().padStart(2, '0') + ":" + 
+             t.getMinutes().toString().padStart(2, '0');
+    }
+    return String(t).trim().substring(0, 5);
+  };
+  return normalize(targetTime) === normalize(compareTime);
+}
+
+  function renderListView() {
+    $("listView").style.display = "flex"; $("calViewWrapper").style.display = "none"; $("metricsView").style.display = "none";
+    const host = $("listView"); host.innerHTML = "";
+    const groups = groupShifts(_filteredData);
+    if (groups.size === 0) { host.innerHTML = `<div style="padding:40px; text-align:center; color:#94a3b8;">No shifts found.</div>`; return; }
+    
+    for (const [dateLabel, rows] of groups) {
+  const group = mkDiv("listGroup");
+
+  const pretty = displayDayLabel(dateLabel); // ✅ use dateLabel (it’s your YYYY-MM-DD key)
+
+  group.innerHTML = `
+    <div class="listHead">
+      <span>${pretty}</span>
+      <span style="font-weight:400;color:#64748b;">${rows.length} shifts</span>
+    </div>
+  `;
+
+  const rowDiv = mkDiv("listRow");
+  rows.forEach(it => rowDiv.appendChild(renderShiftCard(it, "list")));
+  group.appendChild(rowDiv);
+  host.appendChild(group);
+}
+  }
+
+  function toAmPm(timeString) {
+    if (!timeString) return "";
+    // Handle "07:00:00" or "07:00"
+    const parts = timeString.split(":");
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+    
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12; // Convert "0" or "12" to 12
+    
+    return `${hours}:${minutes} ${suffix}`;
+}
+
+  function renderCalView() {
+    $("listView").style.display = "none"; $("calViewWrapper").style.display = "block"; $("metricsView").style.display = "none";
+    const host = $("calView"); host.innerHTML = "";
+    const groups = groupShifts(_filteredData);
+    const todayISO = pstISODate();
+
+    for (const [dateLabel, rows] of groups) {
+       const isToday = dayKeyPST(rows[0]?.dateISO || rows[0]?.date) === todayISO;
+       const col = mkDiv(isToday ? "dayCol today" : "dayCol");
+       const pretty = displayDayLabel(dateLabel);
+col.innerHTML = `<div class="dayHead"><span>${pretty}</span></div>`;
+       const body = mkDiv("dayBody");
+       
+       const teamMap = new Map();
+       rows.forEach(r => { const t = r.team || "Other"; if(!teamMap.has(t)) teamMap.set(t,[]); teamMap.get(t).push(r); });
+
+       Array.from(teamMap.keys()).sort().forEach(tName => {
+           const grp = mkDiv("tGroup");
+           const head = mkDiv("tGroupHeader");
+           head.innerHTML = `<span>${tName}</span> <span class="tCount">${teamMap.get(tName).length}</span>`;
+           head.onclick = () => grp.classList.toggle("collapsed");
+           const gBody = mkDiv("tGroupBody");
+           teamMap.get(tName).sort((a,b) => a.startMinutes - b.startMinutes).forEach(it => gBody.appendChild(renderShiftCard(it, "cal")));
+           grp.append(head, gBody);
+           body.appendChild(grp);
+       });
+       col.appendChild(body);
+       host.appendChild(col);
+    }
+  }
+
+  function renderMetricsView() {
+    $("listView").style.display = "none"; $("calViewWrapper").style.display = "none"; $("metricsView").style.display = "block";
+    renderMetricsList();
+  }
+
+  function renderShiftCard(it, mode) {
+    const card = mkDiv(`shift ${getTeamClass(it.team)}`);
+    
+    // Check selection
+    if (_teamSelected.has(String(it.assignmentId))) card.classList.add("selected");
+    
+    // Check Time Off logic
+    if (_timeOff.has(`${it.person}|${it.dateISO}`) || (it.notes && it.notes.includes("[OFF]"))) { 
+        card.style.border = "2px solid #f87171"; 
+        card.style.background = "#fef2f2"; 
+        card.style.opacity = "0.9";
+    }
+    
+    let metaIcon = "";
+    if (it.notes && it.notes.length > 0) metaIcon = `<span style="font-size:10px; margin-left:6px; cursor:help;" title="Notes: ${it.notes}">📝</span>`;
+
+    card.innerHTML = `
+        <div class="sRow" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span class="sTime" style="font-weight:800; font-size:11px;">${it.startLabel}-${it.endLabel}</span>
+            <span style="font-size:10px; background:rgba(0,0,0,0.05); padding:2px 4px; border-radius:4px; font-weight:700; color:#475569;">${it.team}</span>
+            ${metaIcon}
+        </div>
+        <div class="sName" title="${it.person}" style="font-weight:600;">${it.person}</div>
+    `;
+    
+    const sel = mkDiv("selBox"); sel.textContent = "✓"; card.appendChild(sel);
+    if (mode === "list") card.style.width = "220px";
+    
+    // --- UPDATED CLICK LOGIC ---
+    // Fix: We now check against the stored NAME (window._myName) if available, otherwise check email as fallback
+    const isMe = (window._myName && it.person === window._myName) || (it.person === window._currentUser);
+    
+    if (window._isManager || isMe) {
+       card.style.cursor = "pointer";
+       
+       card.onclick = (e) => { 
+           // If Manager: Standard logic
+           if (window._isManager) {
+               if(_mode==="team" || _teamSelected.size > 0 || e.shiftKey) { 
+                   toggleTeamSelect(it, card); 
+               } else { 
+                   openReplaceModal(it); 
+               } 
+           } 
+           // If Agent: Open Agent Actions
+           else if (isMe) {
+               console.log("Clicked own shift:", it); // Debug Log
+               openAgentActionModal(it);
+           }
+       };
+
+       // Only Managers can drag/drop
+       if (window._isManager) {
+           card.draggable = true;
+           card.ondragstart = (e) => { e.preventDefault(); }; 
+           card.ondragover = (e) => { if(_mode==="quick") { e.preventDefault(); card.classList.add("dropTarget"); } };
+           card.ondragleave = () => card.classList.remove("dropTarget");
+           card.ondrop = (e) => { e.preventDefault(); card.classList.remove("dropTarget"); if(_dragPerson && _dragPerson !== it.person) { _editing = it; openReplaceModal(it); setTimeout(() => $("mNewPerson").value = _dragPerson, 50); } };
+       }
+    }
+    return card;
+  }
+
+  // --- 6. AGENT ACTIONS (MOVED TO GLOBAL SCOPE) ---
+  // These functions are now accessible by the HTML buttons
+
+  function openAgentActionModal(it) {
+    _editing = it; 
+    
+    const title = `${it.dateLabel} • ${it.startLabel} - ${it.endLabel}`;
+    if($("agShiftDetails")) $("agShiftDetails").innerText = title;
+    
+    resetAgentModal();
+    fillSelect("agSwapPerson", _people.filter(p => p !== window._myName), false);
+    
+    if($("agentOverlay")) $("agentOverlay").style.display = "flex";
+    else console.error("ERROR: agentOverlay HTML is missing!");
+  }
+
+  function closeAgentModal() {
+    if($("agentOverlay")) $("agentOverlay").style.display = "none";
+  }
+
+  function showAgentForm(type) {
+    if($("agActionSelect")) $("agActionSelect").style.display = "none";
+    if (type === 'timeoff') {
+        if($("agFormTimeOff")) $("agFormTimeOff").style.display = "block";
+        if($("agToReason")) {
+            $("agToReason").value = "";
+            $("agToReason").focus();
+        }
+    } else {
+        if($("agFormSwap")) $("agFormSwap").style.display = "block";
+        if($("agSwapNote")) $("agSwapNote").value = "";
+    }
+  }
+
+  function resetAgentModal() {
+    if($("agActionSelect")) $("agActionSelect").style.display = "block";
+    if($("agFormTimeOff")) $("agFormTimeOff").style.display = "none";
+    if($("agFormSwap")) $("agFormSwap").style.display = "none";
+  }
+
+  function submitTimeOff() {
+    const reason = $("agToReason") ? $("agToReason").value : "";
+    if (!reason) return toast("Please enter a reason");
+    
+    closeAgentModal();
+    toast("Request Sent to Manager");
+    // Connect to backend here if needed
+  }
+
+  function submitSwap() {
+    const targetPerson = $("agSwapPerson") ? $("agSwapPerson").value : "";
+    const note = $("agSwapNote") ? $("agSwapNote").value : "";
+    if (!targetPerson) return toast("Select a co-worker");
+
+    closeAgentModal();
+    toast(`Swap request sent to ${targetPerson}`);
+    // Connect to backend here if needed
+  }
+
+
+  // --- 7. INTERACTIONS (Manager) ---
+  function openReplaceModal(it) {
+      _editing = it;
+      $("mSub").textContent = `${it.dateLabel} • ${it.startLabel} • ${it.person}`;
+      $("mNotes").value = it.notes || "";
+      
+      // Check for current "OFF" status
+      const isOff = it.notes && it.notes.includes("[OFF]");
+      const btn = $("actionBtn");
+
+      if (isOff) { 
+          // VISUAL: Green "Restore" state
+          btn.innerHTML = "♻️ Restore Shift"; 
+          btn.style.color = "#15803d"; 
+          btn.style.borderColor = "#bbf7d0"; 
+          btn.style.background = "#f0fdf4";
+          // Change the function it calls
+          btn.onclick = restoreShift; 
+      } else { 
+          // VISUAL: Red "Mark Off" state
+          btn.innerHTML = "⛔ Mark Off"; 
+          btn.style.color = "#ef4444"; 
+          btn.style.borderColor = "#fecaca"; 
+          btn.style.background = "#fef2f2";
+          // Change the function it calls
+          btn.onclick = markTimeOff; 
+      }
+
+      $("modalOverlay").style.display = "flex";
+      fillSelect("mNewPerson", _people.filter(p => p !== it.person), false);
+  }
+
+  function saveReplace() {
+  if (!_editing) return;
+
+  const newP = document.getElementById("mNewPerson").value;
+  if (!newP) return toast("Select person");
+
+  const notes = document.getElementById("mNotes").value;
+  const notifyMode = document.getElementById("mNotify").value;
+  const originalPerson = _editing.person;
+  const originalNotes = _editing.notes || "";
+
+  // Find the real local record (sometimes _editing is a filtered copy)
+  const local = _allData.find(x =>
+    String(x.assignmentId) === String(_editing.assignmentId) &&
+    String(x.docId) === String(_editing.docId)
+  ) || _editing;
+
+  // Close modal + optimistic UI update
+  document.getElementById("modalOverlay").style.display = "none";
+  toast("Updating...");
+
+  local.person = newP;
+  local.notes = notes;
+  renderView();
+
+  const payload = {
+    docId: _editing.docId,
+    assignmentId: _editing.assignmentId,
+    newPerson: newP,
+    notes: notes,
+    notifyMode: notifyMode
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      // ✅ only queue notifs if the server actually succeeded
+      if (res?.notifyStatus === "Pending" || notifyMode === "defer") {
+        playNotificationSound();
+        _notifQueue.push({
+          person: newP,
+          message: `Change: ${newP} replaced ${originalPerson} (${local.dateLabel} ${local.startLabel})`,
+          undoData: {
+            docId: _editing.docId,
+            assignmentId: _editing.assignmentId,
+            newPerson: originalPerson,
+            notes: originalNotes
+          }
+        });
+        renderNotifList();
+        toast("Added to Send Queue");
+      } else {
+        playSendSound();
+        toast("Saved");
+      }
+    })
+    .withFailureHandler(err => {
+      // 🔥 rollback UI so you can trust what you see
+      local.person = originalPerson;
+      local.notes = originalNotes;
+      renderView();
+      toast(`Replace failed: ${err}`);
+      console.error("Replace failed:", err, payload);
+    })
+    .uiReplaceAssignment(payload);
+}
+
+
+  function checkUrlNotifs() {
+    google.script.url.getLocation(function(location) {
+        const hash = location.hash;
+        if (hash && hash.includes("notif=")) {
+            const rawMsg = hash.split("notif=")[1];
+            const msg = decodeURIComponent(rawMsg);
+            Swal.fire({
+                title: 'Schedule Update',
+                html: msg,
+                icon: 'info',
+                confirmButtonText: 'Got it',
+                confirmButtonColor: '#1e293b'
+            });
+            try { history.replaceState(null, null, ' '); } catch(e) {}
+        }
+    });
+  }
+
+  function handleSaveClick() {
+     if(!_editing) return;
+     const isOff = _editing.notes && _editing.notes.includes("[OFF]");
+     if(isOff) restoreShift(); else markTimeOff();
+  }
+
+  function markTimeOff(force) {
+  if(!_editing) return;
+
+  const doIt = () => {
+    // optimistic UI
+    _timeOff.add(`${_editing.person}|${_editing.dateISO}`);
+    _editing.notes = ((_editing.notes || "").replace(/\s*\[OFF\]\s*/g, " ").trim() + " [OFF]").trim();
+    renderView();
+    closeModal();
+    toast("Marking person OFF...");
+
+    google.script.run
+      .withSuccessHandler(res => {
+        // optional: staffing rule confirm
+        if (res && res.requireConfirm && !force) {
+          Swal.fire({
+            title: "Staffing Alert",
+            text: res.message,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Mark Off Anyway",
+            confirmButtonColor: "#ef4444"
+          }).then((r) => { if (r.isConfirmed) markTimeOff(true); });
+          return;
+        }
+        toast("Success: Marked OFF");
+      })
+      .withFailureHandler(err => {
+        toast(`Failed: ${err}`);
+        console.error("uiSetTimeOff failed:", err);
+        // rollback UI
+        _timeOff.delete(`${_editing.person}|${_editing.dateISO}`);
+        _editing.notes = (_editing.notes || "").replace(/\s*\[OFF\]\s*/g, " ").trim();
+        renderView();
+      })
+      .uiSetTimeOff(_editing.docId, _editing.assignmentId, true); // 3rd arg can be "enforce" on backend
+  };
+
+  if (force) return doIt();
+
+  Swal.fire({
+    title: "Mark OFF?",
+    text: `Are you sure you want to mark ${_editing.person} OFF for this shift?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, Mark OFF",
+    confirmButtonColor: "#ef4444",
+    cancelButtonColor: "#cbd5e1"
+  }).then((r) => { if (r.isConfirmed) doIt(); });
+}
+
+  function restoreShift() {
+  if (!_editing) return;
+
+  const doIt = () => {
+    // optimistic UI
+    _timeOff.delete(`${_editing.person}|${_editing.dateISO}`);
+    _editing.notes = (_editing.notes || "").replace(/\s*\[OFF\]\s*/g, " ").trim();
+    renderView();
+    closeModal();
+    toast("Restoring shift...");
+
+    google.script.run
+      .withSuccessHandler(() => toast("Success: Shift Restored"))
+      .withFailureHandler((e) => {
+        toast(`Restore failed: ${e}`);
+        console.error("uiRestoreAssignment failed:", e);
+      })
+      .uiRestoreAssignment(_editing.docId, _editing.assignmentId);
+  };
+
+  Swal.fire({
+    title: "Restore Shift?",
+    text: `Remove the OFF status and restore ${_editing.person}'s shift?`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Yes, Restore",
+    confirmButtonColor: "#15803d",
+    cancelButtonColor: "#cbd5e1"
+  }).then((r) => { if (r.isConfirmed) doIt(); });
+}
+
+  
+  function runUndo() { if(_lastUndo) google.script.run.withSuccessHandler(()=>{ _lastUndo=null; loadSystemData(); }).uiReplaceAssignment({ assignmentId:_lastUndo.id, newPerson:_lastUndo.oldP, notes:_lastUndo.notes }); }
+  function closeModal() {
+    // Hide the Master Schedule Edit modal
+    const editModal = document.getElementById("editShiftModal");
+    if (editModal) editModal.style.display = "none";
+
+    // Hide the Replace Coverage modal
+    const replaceModal = document.getElementById("modalOverlay");
+    if (replaceModal) replaceModal.style.display = "none";
+    
+    // Clear the editing reference
+    _editing = null;
+  }
+
+  // --- 8. PROFILES & METRICS ---
+  function openProfile(name) {
+     _activeProfileRequest = name;
+     $("profileOverlay").style.display = "flex"; $("profContent").style.display = "none"; $("profLoader").style.display = "block";
+     $("pName").innerText = name; $("profLoader").innerText = "Loading...";
+     const cached = _zendeskMetricsByName.get(String(name));
+     if(cached) { renderProfileCached(cached); }
+     google.script.run.withSuccessHandler(data => {
+         if(data.name !== _activeProfileRequest) return;
+         renderProfileData(data);
+     }).getZendeskProfile(name);
+  }
+
+  function renderProfileData(data) {
+     $("profLoader").style.display = "none";
+     if(data.error) { $("profLoader").style.display = "block"; $("profLoader").innerText = data.error; return; }
+     $("profContent").style.display = "block";
+     
+     $("pName").innerText = data.name; $("pEmail").innerText = data.email; $("pRole").innerText = data.role;
+     $("pSolved").innerText = data.solvedWeek ?? "--"; 
+     $("pCSAT").innerText = formatCsatDisplay(data.csatScore);
+     
+     const q = "type:ticket status<solved assignee:\"" + data.name + "\"";
+     const url = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(q);
+     const el = $("pTickets"); el.innerHTML = "";
+     const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.innerText = (data.openTickets ?? "--") + " 🔗";
+     el.appendChild(a);
+     
+     $("pAvatar").src = data.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
+     $("pLogin").innerText = data.lastLogin ? new Date(data.lastLogin).toLocaleDateString() : "Never";
+  }
+
+  function renderProfileCached(c) {
+     $("profContent").style.display = "block";
+     $("pName").innerText = c.agentName; $("pEmail").innerText = c.email; 
+     $("pSolved").innerText = c.solvedWeek ?? "--"; 
+     $("pCSAT").innerText = formatCsatDisplay(c.csatPct);
+     
+     $("pTickets").innerText = c.openTickets ?? "--";
+     $("pLogin").innerText = "Cached";
+     if(c.zendeskUserId) {
+        const url = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent("assignee_id:"+c.zendeskUserId);
+        const el = $("pTickets"); el.innerHTML = "";
+        const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.innerText = (c.openTickets ?? "--") + " 🔗";
+        el.appendChild(a);
+     }
+  }
+
+  function renderMetricsList() {
+     const host = $("metricsList"); host.innerHTML = "";
+     const q = ($("metricsSearch").value || "").toLowerCase();
+     _people.filter(p => !q || p.toLowerCase().includes(q)).forEach(p => {
+         const row = mkDiv("metricsRow");
+         row.innerHTML = `<div class="left"><div class="avatar">${p.substring(0,2)}</div><div class="name">${p}</div></div>`;
+         row.onclick = () => openMetricsProfile(p);
+         host.appendChild(row);
+     });
+  }
+
+  function openMetricsProfile(name) {
+    _activeMetricsRequest = name;
+    
+    const d = document.getElementById("metricsDrawer"); 
+    d.classList.add("open");
+    
+    const loader = document.getElementById("mProfLoader");
+    const content = document.getElementById("mProfContent");
+    
+    loader.style.display = "block";
+    loader.innerHTML = `<div style="text-align:center; padding:20px;">
+                          <div class="spinner-border" style="width:20px; height:20px; border:3px solid #cbd5e1; border-top:3px solid #3b82f6; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 10px;"></div>
+                          <div>Fetching data for <b>${name}</b>...</div>
+                          <div style="font-size:10px; color:#94a3b8; margin-top:5px;">This may take a moment...</div>
+                        </div>`;
+    
+    content.style.display = "none";
+
+    google.script.run
+        .withSuccessHandler(renderMetricsProfileData)
+        .withFailureHandler(err => {
+             loader.innerHTML = `<div style="color:red;">System Error: ${err.message}</div>`;
+        })
+        .getZendeskProfile(name);
+
+    setTimeout(() => {
+        if (loader.style.display !== "none" && !loader.innerHTML.includes("Error") && !loader.innerHTML.includes("System Error")) {
+             loader.innerHTML = `<div style="color:#f59e0b; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fcd34d;">
+                                  <strong>Taking longer than usual...</strong><br>
+                                  The server is still processing. Please wait or try again.<br>
+                                  <button class="btn ghost" style="margin-top:8px; font-size:11px;" onclick="openMetricsProfile('${name}')">Retry</button>
+                                </div>`;
+        }
+    }, 30000);
+  }
+
+  function renderMetricsProfileData(data) {
+    const loader = document.getElementById("mProfLoader");
+    const content = document.getElementById("mProfContent");
+
+    if (!data || data.error) {
+        const errorMsg = data ? data.error : "Unknown error from server";
+        loader.style.display = "block";
+        loader.innerHTML = `<div style="color:#ef4444; background:#fef2f2; padding:10px; border-radius:8px; border:1px solid #fecaca;">
+                              <strong>Error:</strong> ${errorMsg}
+                            </div>`;
+        content.style.display = "none";
+        return;
+    }
+
+    loader.style.display = "none";
+    content.style.display = "block";
+
+    if(document.getElementById("mName")) document.getElementById("mName").innerText = data.name || "--";
+    if(document.getElementById("mEmail")) document.getElementById("mEmail").innerText = data.email || "--";
+    if(document.getElementById("mRole")) document.getElementById("mRole").innerText = data.role || "--";
+    
+    if(document.getElementById("mSolved")) document.getElementById("mSolved").innerText = data.solvedWeek ?? "--";
+    if(document.getElementById("mCSAT")) document.getElementById("mCSAT").innerText = formatCsatDisplay(data.csatScore);
+    if(document.getElementById("mOpen")) document.getElementById("mOpen").innerText = data.openTickets ?? "--";
+    
+    if(document.getElementById("mAvatar")) {
+        document.getElementById("mAvatar").src = data.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
+    }
+
+    if(document.getElementById("mLogin")) {
+        if (data.lastLogin) {
+            const dateObj = new Date(data.lastLogin);
+            const nice = dateObj.toLocaleDateString('en-US', { month:'short', day:'numeric' }) + ", " + dateObj.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+            document.getElementById("mLogin").innerText = nice;
+        } else {
+            document.getElementById("mLogin").innerText = "Never";
+        }
+    }
+
+    updateMetricLinks(data);
+  }
+
+  function updateMetricLinks(data) {
+     let openQ = "", badCsatQ = "";
+
+     if (data.zendeskUserId) {
+         openQ = "type:ticket status<solved assignee_id:" + data.zendeskUserId;
+         badCsatQ = "type:ticket satisfaction_rating:bad assignee_id:" + data.zendeskUserId;
+     } else if (data.email) {
+         openQ = "type:ticket status<solved assignee:" + data.email;
+         badCsatQ = "type:ticket satisfaction_rating:bad assignee:" + data.email;
+     } else {
+         openQ = "type:ticket status<solved assignee:\"" + data.name + "\"";
+         badCsatQ = "type:ticket satisfaction_rating:bad assignee:\"" + data.name + "\"";
+     }
+
+     const openUrl = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(openQ);
+     const badUrl  = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(badCsatQ);
+
+     const openA = document.getElementById("mOpenTicketsLink"); if (openA) openA.href = openUrl;
+     const badA = document.getElementById("mBadCsatLink"); if (badA) badA.href = badUrl;
+  }
+
+  function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
+  function closeProfile() { $("profileOverlay").style.display = "none"; }
+
+  // --- 9. AUDIT & MASTER MODES ---
+  function openAuditLog() {
+    $("auditOverlay").style.display = "flex";
+    $("auditList").innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Fetching logs from server...</td></tr>`;
+    google.script.run.withSuccessHandler(renderAuditLog).uiGetAuditLogs();
+  }
+
+  function closeAuditModal() { $("auditOverlay").style.display = "none"; }
+
+  function renderAuditLog(data) {
+    const list = $("auditList");
+    list.innerHTML = "";
+    if (!data || data.length === 0) {
+        list.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No history found.</td></tr>`;
+        return;
+    }
+    data.forEach(row => {
+        const tr = document.createElement("tr");
+        let badgeClass = "ab-blue";
+        if(String(row.action).includes("OFF")) badgeClass = "ab-red";
+        
+        let niceTime = row.timestamp;
+        try { niceTime = new Date(row.timestamp).toLocaleString(); } catch(e){}
+        
+        tr.innerHTML = `
+            <td>${niceTime}</td>
+            <td style="font-weight:600;">${row.manager}</td>
+            <td><span class="audit-badge ${badgeClass}">${row.action}</span></td>
+            <td>${row.target}<br><span style="font-size:9px;color:#94a3b8;">${row.date}</span></td>
+            <td>${row.details}</td>
+        `;
+        list.appendChild(tr);
+    });
+  }
+
+  function toggleMasterMode() {
+    _isMasterMode = !_isMasterMode;
+    const btn = document.getElementById("btnMasterMode");
+    const title = document.querySelector(".hTitle"); 
+    const contextPill = document.getElementById("managerContextPill");
+
+    if (_isMasterMode) {
+        if(btn) { btn.innerText = "Exit Template Editor"; btn.style.backgroundColor = "#7e22ce"; btn.style.color = "white"; }
+        if(title) title.innerText = "MASTER TEMPLATE";
+        if(contextPill) { contextPill.style.display="flex"; contextPill.innerText="EDITING GLOBAL RULES"; contextPill.style.backgroundColor="#ef4444"; contextPill.style.borderColor="#b91c1c"; }
+
+        $("calViewWrapper").style.display = "none";
+        $("listView").style.display = "flex"; 
+        $("listView").innerHTML = "<div style='padding:20px; text-align:center;'><div class='spinner-border text-primary'></div><br>Loading Master Template...</div>";
+        
+        google.script.run
+            .withSuccessHandler(renderMasterView)
+            .withFailureHandler(err => {
+                $("listView").innerHTML = `<div style="color:red;padding:20px;">Error loading template: ${err.message}</div>`;
+            })
+            .uiGetBaseData();
+    } else {
+        if(btn) { btn.innerText = "Edit Master Schedule"; btn.style.backgroundColor = ""; btn.style.color = ""; }
+        if(title) title.innerText = "Scheduling Manager";
+        if(contextPill) {
+            if(_currentManagerName) { contextPill.innerText="Viewing: "+_currentManagerName; contextPill.style.backgroundColor="#7e22ce"; contextPill.style.borderColor="#6b21a8"; }
+            else { contextPill.style.display="none"; }
+        }
+        loadSystemData(); 
+    }
+  }
+
+  function pstISODate(d = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+  function formatDate(iso) {
+  return dayKeyPST(iso);
+}
+
+  // --- 10. UTILS ---
+  function mkDiv(cls) { const d = document.createElement("div"); d.className = cls; return d; }
+
+function groupShifts(data) {
+  const m = new Map();
+  if (!data) return m;
+
+  data.forEach(d => {
+    // Use the fixed global formatDate
+    const label = d.dateLabel || formatDate(d.date || d.dateISO);
+    if (!m.has(label)) m.set(label, []);
+    m.get(label).push(d);
+  });
+  return m;
+}
+  
+  function fillSelect(id, list, bl=true) { const s=$(id); if(!s)return; s.innerHTML=""; if(bl)s.appendChild(new Option("- Select -","")); list.forEach(x=>s.appendChild(new Option(x,x))); }
+  
+  function toggleTeamSelect(it, cardElement) {
+    const id = String(it.assignmentId);
+    if (_teamSelected.has(id)) {
+      _teamSelected.delete(id);
+      if (cardElement) cardElement.classList.remove("selected");
+    } else {
+      _teamSelected.add(id);
+      if (cardElement) cardElement.classList.add("selected");
+      _lastSelectedPerson = it.person; 
+    }
+    updateSelectionBar();
+  }
+
+  function updateSelectionBar() {
+    const bar = document.getElementById("selectionBar");
+    const countSpan = document.getElementById("sbCount");
+    const similarBtn = document.getElementById("btnSelectSimilar");
+    
+    const count = _teamSelected.size;
+    countSpan.innerText = count;
+    
+    if (count > 0) {
+      bar.classList.add("visible");
+      if (_lastSelectedPerson) {
+        similarBtn.style.display = "inline-block";
+        similarBtn.innerText = `Select All "${_lastSelectedPerson}"`;
+      } else {
+        similarBtn.style.display = "none";
+      }
+    } else {
+      bar.classList.remove("visible");
+    }
+    if(document.getElementById("tpCount")) document.getElementById("tpCount").innerText = count;
+  }
+
+  function selectSimilarVisible() {
+    if (!_lastSelectedPerson) return;
+    _filteredData.forEach(item => {
+      if (item.person === _lastSelectedPerson) {
+        _teamSelected.add(String(item.assignmentId));
+      }
+    });
+    document.querySelectorAll('.shift').forEach(card => {
+      const nameDiv = card.querySelector('.sName');
+      if (nameDiv && nameDiv.innerText === _lastSelectedPerson) {
+        card.classList.add('selected');
+      }
+    });
+    updateSelectionBar();
+    toast(`Selected all shifts for ${_lastSelectedPerson}`);
+  }
+
+  async function batchMarkOff() {
+  const ids = Array.from(_teamSelected);
+  if (ids.length === 0) return toast("No shifts selected.");
+
+  const result = await Swal.fire({
+    title: `Mark ${ids.length} shifts as OFF?`,
+    text: "This will highlight them red.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, Mark OFF",
+    confirmButtonColor: "#ef4444",
+    cancelButtonColor: "#cbd5e1"
+  });
+  if (!result.isConfirmed) return;
+
+  toast(`Processing ${ids.length} cancellations...`);
+
+  for (const id of ids) {
+    const item = _allData.find(x => String(x.assignmentId) === String(id));
+    if (!item) continue;
+
+    // optimistic UI
+    _timeOff.add(`${item.person}|${item.dateISO}`);
+    item.notes = ((item.notes || "").replace(/\s*\[OFF\]\s*/g, " ").trim() + " [OFF]").trim();
+
+    google.script.run
+      .withFailureHandler((e) => console.error("Batch OFF failed:", e, item))
+      .uiSetTimeOff(item.docId, item.assignmentId, true);
+  }
+
+  clearTeamSelection();
+  renderView();
+  toast(`Success: ${ids.length} shifts marked OFF.`);
+}
+
+
+  function clearTeamSelection() {
+    _teamSelected.clear();
+    _lastSelectedPerson = null;
+    document.querySelectorAll('.shift.selected').forEach(el => el.classList.remove('selected'));
+    updateSelectionBar();
+  }
+  
+  async function applyBatch() {
+    const newPerson = document.getElementById("tpPerson").value;
+    const ids = Array.from(_teamSelected);
+
+    if (!newPerson) return toast("Please select a person first.");
+    if (ids.length === 0) return toast("No shifts selected.");
+
+    const result = await Swal.fire({
+        title: `Assign ${ids.length} shifts to ${newPerson}?`,
+        text: "Choose how to notify the team.",
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '⚡ Send Bot Now',
+        denyButtonText: '⏳ Add to Pending',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#1e293b', 
+        denyButtonColor: '#f59e0b',    
+    });
+
+    if (!result.isConfirmed && !result.isDenied) return; 
+
+    const notifyMode = result.isConfirmed ? 'send' : 'defer';
+    toast("Processing batch...");
+
+    // Loop through every selected ID and update locally + server-side
+    for (const id of ids) {
+        const item = _allData.find(x => String(x.assignmentId) === String(id));
+        if (item) {
+            const oldPerson = item.person;
+            
+            // 1. Update the local data immediately
+            item.person = newPerson;
+            
+            // 2. Add to the Pending Notification List if requested
+            if (notifyMode === 'defer') {
+                _notifQueue.push({
+                    person: newPerson,
+                    message: `Change: ${newPerson} replaced ${oldPerson} (${item.dateLabel} ${item.startLabel})`,
+                    undoData: { docId: item.docId, assignmentId: id, newPerson: oldPerson, notes: item.notes }
+                });
+            }
+
+            // 3. Send the save request to the server
+            google.script.run.withSuccessHandler(() => {
+                console.log(`Saved shift ${id}`);
+            }).uiReplaceAssignment({
+                docId: item.docId,
+                assignmentId: item.assignmentId,
+                newPerson: newPerson,
+                notes: item.notes || "Batch Update",
+                notifyMode: notifyMode
+            });
+        }
+    }
+
+    // Update the Pending Queue in browser storage
+    if (notifyMode === 'defer') {
+        playNotificationSound(); 
+        localStorage.setItem("musely_notif_queue", JSON.stringify(_notifQueue));
+        renderNotifList(); 
+        toast(`${ids.length} shifts added to Pending Queue`);
+    } else {
+        playSendSound(); 
+        toast(`Success! ${ids.length} shifts updated.`);
+    }
+
+    clearTeamSelection(); 
+    renderView(); // Refresh the UI to show new names       
+  }
+
+  // Admin & Context
+  function promptMasterSelection(list) { $("masterContextOverlay").style.display="flex"; const s=$("masterManagerDropdown"); s.innerHTML=""; list.forEach(m=>s.appendChild(new Option(m.name,m.email))); }
+  function confirmManagerSelection() { _selectedManagerEmail=$("masterManagerDropdown").value; $("masterContextOverlay").style.display="none"; load(true, _selectedManagerEmail); }
+  function openAdminModal() { $("adminOverlay").style.display="flex"; loadRules(); }
+  function closeAdminModal() { $("adminOverlay").style.display="none"; }
+  function loadRules() { google.script.run.withSuccessHandler(r => { $("ruleList").innerHTML=""; r.forEach(x => $("ruleList").innerHTML += `<div>${x.team} | ${x.day} | ${x.min}</div>`); }).uiGetStaffingRules(); }
+  function toast(m) { const h=$("toastHost"); const d=mkDiv("toast"); d.innerHTML=m; h.appendChild(d); setTimeout(()=>d.remove(),3000); }
+  function applyLocalFilters() { _filteredData = _allData.filter(x => (!_activeTeam || x.team===_activeTeam) && (!_selectedPeople.size || _selectedPeople.has(x.person))); renderView(); }
+  function renderTeamChips() { const c=$("teamChips"); if(c) { c.innerHTML=""; _teams.forEach(t=>{ const d=mkDiv("chip"); d.innerText=t; d.onclick=()=>filterTeam(t); c.appendChild(d); }); } }
+  function filterTeam(t) { _activeTeam=t; applyLocalFilters(); }
+  function initFilters() { fillSelect("teamDropdown", _teams); }
+  function renderQuickRail() { 
+    const list = $("qrList");
+    list.innerHTML = ""; 
+    const q = ($("qrSearch").value || "").toLowerCase();
+    _people.filter(p => !q || p.toLowerCase().includes(q)).forEach(p => { 
+        const d = mkDiv("qrItem"); 
+        d.innerText = p; 
+        d.draggable = true; 
+        d.ondragstart = (e) => { 
+           _dragPerson = p; 
+           e.dataTransfer.effectAllowed = "copy";
+        };
+        d.onclick = () => {
+           _selectedPeople.clear();
+           _selectedPeople.add(p);
+           applyLocalFilters();
+        };
+        list.appendChild(d); 
+    }); 
+  }
+  function addRule() { const team = $("ruleTeam").value, day = $("ruleDay").value, min = $("ruleMin").value; if (!team || !min) return toast("Select Team/Min"); $("ruleList").innerHTML += "<div>Saving...</div>"; google.script.run.withSuccessHandler(loadRules).uiSaveStaffingRule({ team, day, min }); $("ruleMin").value = ""; }
+  function deleteRule(idx) { if(!confirm("Delete rule?")) return; google.script.run.withSuccessHandler(loadRules).uiDeleteStaffingRule(idx); }
+
+  // Master Template Logic
+  function renderMasterView(data) {
+    if(!data || data.error) { 
+        $("listView").innerHTML = "<div style='color:red;padding:20px;'>Failed to load master template</div>"; 
+        return; 
+    }
+    
+    _masterRawData = data; 
+
+    const list = document.getElementById("listView");
+    list.innerHTML = "";
+    
+    // --- NEW: Inject specific styles for hover effects dynamically ---
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .mst-person-row:hover { background-color: #fff8e1 !important; transition: background 0.2s; }
+        .shift-chip:hover { background-color: #d2e3fc !important; border-color: #1967d2 !important; }
+        .mst-day-cell:hover { background-color: rgba(0,0,0,0.02); }
+        .add-btn { opacity: 0; transition: opacity 0.2s; }
+        .mst-day-cell:hover .add-btn { opacity: 1; }
+    `;
+    list.appendChild(style);
+    
+    // 1. Pivot Data
+    const roster = {};
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    
+    days.forEach(day => {
+        const dayItems = data[day] || [];
+        dayItems.forEach(item => {
+            const pName = item.person;
+            if (!roster[pName]) roster[pName] = {};
+            if (!roster[pName][day]) roster[pName][day] = [];
+            roster[pName][day].push(item);
+        });
+    });
+
+    list.style.display = "block"; 
+    list.style.overflowX = "auto";
+    list.style.fontFamily = "sans-serif"; 
+
+    // 2. The Header
+    const headerRow = mkDiv("mst-header-row");
+    headerRow.style.display = "grid";
+    headerRow.style.gridTemplateColumns = "180px repeat(7, 1fr)"; 
+    headerRow.style.backgroundColor = "#2c3e50"; 
+    headerRow.style.color = "#ffffff";
+    headerRow.style.fontWeight = "bold";
+    headerRow.style.borderBottom = "2px solid #ddd";
+
+    let headerHtml = `<div style="padding:12px; border-right:1px solid #4a6278;">Employee</div>`;
+    days.forEach((d, i) => { 
+        const borderStyle = i < 6 ? "border-right:1px solid #4a6278;" : ""; 
+        headerHtml += `<div style="padding:12px; text-align:center; ${borderStyle}">${d}</div>`; 
+    });
+    headerRow.innerHTML = headerHtml;
+    list.appendChild(headerRow);
+
+    // 3. The Body
+    const sortedPersons = Object.keys(roster).sort();
+    
+    sortedPersons.forEach((person, index) => {
+        const row = mkDiv("mst-person-row");
+        const bg = index % 2 === 0 ? "#ffffff" : "#f8f9fa"; 
+        row.style.backgroundColor = bg;
+        row.style.display = "grid";
+        row.style.gridTemplateColumns = "180px repeat(7, 1fr)";
+        row.style.borderBottom = "1px solid #e0e0e0";
+        row.style.alignItems = "stretch"; 
+
+        // Name Column
+        let html = `
+            <div class="mst-person-info" style="
+                padding:12px; font-weight:600; color:#333; 
+                border-right:2px solid #e0e0e0; display:flex; align-items:center;">
+                ${person}
+            </div>`;
+
+        // Day Columns
+        days.forEach((day, i) => {
+            const shifts = roster[person][day] || [];
+            const borderStyle = i < 6 ? "border-right:1px solid #eee;" : "";
+
+            // We add an onclick to the CELL itself to allow adding a new shift
+            html += `<div class="mst-day-cell" 
+                        onclick="handleCellClick('${person}', '${day}')"
+                        style="padding:8px; display:flex; flex-direction:column; gap:4px; align-items:center; justify-content:flex-start; cursor:pointer; position:relative; ${borderStyle}">`;
+            
+            if (shifts.length === 0) {
+                 // Show a subtle "+" when hovering empty cells
+                html += `<span class="add-btn" style="color:#ccc; font-size:20px; font-weight:bold;">+</span>`;
+            } else {
+                shifts.forEach(shift => {
+                    // 1. Keep raw values for the logic (Editing needs military time)
+                    const rawStart = shift.start; 
+                    const rawEnd = shift.end;
+
+                    // 2. Create pretty values for the Human Eyes
+                    const displayStart = toAmPm(rawStart);
+                    const displayEnd = toAmPm(rawEnd);
+                    
+                    html += `<div class="shift-chip" 
+                                onclick="event.stopPropagation(); handleShiftEdit('${person}', '${day}', '${rawStart}', '${rawEnd}')"
+                                style="
+                                font-size:11px; padding:4px 8px; 
+                                background:#e8f0fe; color:#1967d2; 
+                                border: 1px solid #d2e3fc;
+                                border-radius:12px; font-weight:500;
+                                white-space:nowrap; cursor:pointer;
+                                box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                ${displayStart} - ${displayEnd}
+                             </div>`;
+                });
+            }
+            html += `</div>`;
+        });
+
+        row.innerHTML = html;
+        list.appendChild(row);
+    });
+}
+
+// Triggered when clicking an existing blue chip
+function handleShiftEdit(person, day, start, end, team) {
+    // Populate the inputs
+    document.getElementById("modalEmployee").value = person;
+    document.getElementById("modalDay").value = day;
+    
+    // Ensure format HH:MM for the time inputs
+    document.getElementById("modalStart").value = start.substring(0,5);
+    document.getElementById("modalEnd").value = end.substring(0,5);
+
+    // Store original times so we know which shift to update later
+    document.getElementById("modalOrigStart").value = start;
+    document.getElementById("modalOrigEnd").value = end;
+
+    // FIX: Populate and Select Team
+    fillSelect("modalTeam", _teams); // Reuse your existing helper
+    document.getElementById("modalTeam").value = team;
+
+    // Show the modal
+    const modal = document.getElementById("editShiftModal");
+    modal.style.display = "flex";
+}
+
+
+function handleCellClick(person, day) {
+    // 1. Prepare the Modal for a New Entry
+    document.getElementById("modalEmployee").value = person;
+    document.getElementById("modalDay").value = day;
+    
+    // Default times for a new shift
+    document.getElementById("modalStart").value = "08:00";
+    document.getElementById("modalEnd").value = "17:00";
+
+    // Clear original times (since this shift doesn't exist yet)
+    document.getElementById("modalOrigStart").value = "NEW";
+    document.getElementById("modalOrigEnd").value = "NEW";
+
+    // Populate and default the Team
+    fillSelect("modalTeam", _teams);
+    
+    // Change UI header to indicate "Adding"
+    document.querySelector("#editShiftModal h3").innerText = "Add New Shift";
+
+    const modal = document.getElementById("editShiftModal");
+    modal.style.display = "flex";
+}
+
+  function toggleMasterPerson(key, dayName) {
+    if (_masterSelected.has(key)) {
+        _masterSelected.delete(key);
+    } else {
+        _masterSelected.add(key);
+    }
+    renderMasterView(JSON.stringify(_masterRawData));
+    updateMasterSelectionBar(); 
+  }
+
+  function openMasterModal(p,d,s,e,t,r) { 
+    fillSelect("mstTeam", _teams); 
+    fillSelect("mstRole", _roles); 
+    
+    $("mstSub").innerText = s ? `Editing ${p} on ${d}` : `Adding Shift for ${p} on ${d}`;
+    $("mstPerson").value = p; 
+    $("mstDay").value = d; 
+    
+    $("mstStart").value = s || ""; 
+    $("mstEnd").value = e || ""; 
+    $("mstTeam").value = t || ""; 
+    $("mstRole").value = r || ""; 
+    
+    $("masterOverlay").style.display = "flex"; 
+  }
+  
+  function updateMasterSelectionBar() {
+    const count = _masterSelected.size;
+    const bar = document.getElementById("selectionBar");
+    const countSpan = document.getElementById("sbCount");
+    
+    if (count > 0) {
+        bar.classList.add("visible");
+        countSpan.innerText = count;
+    } else {
+        bar.classList.remove("visible");
+    }
+  }
+function toggleNotifPanel(e) {
+  try { if (e) { e.preventDefault(); e.stopPropagation(); } } catch {}
+
+  const panel = document.getElementById("notifPanel");
+  if (!panel) {
+    console.warn("notifPanel element not found in DOM.");
+    return;
+  }
+
+  // Ensure it's attached directly to <body> so it can’t be clipped by drawers/containers
+  if (panel.parentElement !== document.body) {
+    document.body.appendChild(panel);
+  }
+
+  const isHidden = (panel.style.display === "none" || panel.style.display === "");
+  if (isHidden) {
+    panel.style.display = "block";
+    panel.style.zIndex = "10050";
+    renderNotifList();
+  } else {
+    panel.style.display = "none";
+  }
+}
+
+// Close when clicking anywhere else
+document.addEventListener("click", (ev) => {
+  const panel = document.getElementById("notifPanel");
+  const btn = document.getElementById("btnNotif");
+  if (!panel || !btn) return;
+
+  const clickedInsidePanel = panel.contains(ev.target);
+  const clickedButton = btn.contains(ev.target);
+
+  if (!clickedInsidePanel && !clickedButton) {
+    panel.style.display = "none";
+  }
+});
+
+// Prevent clicks inside the panel from closing it
+document.addEventListener("DOMContentLoaded", () => {
+  const panel = document.getElementById("notifPanel");
+  if (panel) panel.addEventListener("click", (e) => e.stopPropagation());
+});
+
+
+  function undoNotification(index) {
+    const notif = _notifQueue[index];
+    if (!notif || !notif.undoData) return;
+
+    Swal.fire({
+        title: 'Undo Change?',
+        text: `This will revert the schedule for ${notif.undoData.newPerson} immediately.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#1e293b', 
+        cancelButtonColor: '#cbd5e1',  
+        confirmButtonText: 'Yes, Undo it',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            executeUndo(index, notif);
+        }
+    });
+  }
+
+  function executeUndo(index, notif) {
+    toast("Reverting...");
+    const data = notif.undoData; // Alias for cleaner code
+
+    google.script.run.withSuccessHandler(() => {
+        const local = _allData.find(x => x.assignmentId === data.assignmentId);
+        if(local) { 
+            local.person = data.newPerson; 
+            local.notes = data.notes; 
+        }
+        renderView();
+        _notifQueue.splice(index, 1);
+        renderNotifList();
+        Swal.fire({ title: 'Reverted!', icon: 'success', timer: 1000, showConfirmButton: false });
+    }).uiReplaceAssignment({
+        docId: data.docId, // <--- Ensure this is passed
+        assignmentId: data.assignmentId,
+        newPerson: data.newPerson,
+        notes: data.notes,
+        notifyMode: "silent"
+    });
+  }
+
+  function toggleDrawer() {
+    const drawer = document.getElementById("rightDrawer");
+    const notifPanel = document.getElementById("notifPanel");
+    if (notifPanel && notifPanel.style.display === "block") {
+        notifPanel.style.display = "none";
+    }
+    if (drawer) {
+        drawer.classList.toggle("open");
+    }
+  }
+
+  function setMode(mode) {
+    _mode = mode; 
+    document.getElementById("btnModeQuick").className = mode === "quick" ? "segBtn active" : "segBtn";
+    document.getElementById("btnModeTeam").className = mode === "team" ? "segBtn active" : "segBtn";
+    const quickDiv = document.getElementById("drawerQuick");
+    const teamDiv = document.getElementById("drawerTeam");
+    if (mode === "quick") {
+      quickDiv.classList.remove("hidden");
+      teamDiv.classList.add("hidden");
+    } else {
+      quickDiv.classList.add("hidden");
+      teamDiv.classList.remove("hidden");
+    }
+  }
+
+  function clearNotifications() {
+    _notifQueue = []; 
+    localStorage.removeItem("musely_notif_queue"); 
+    renderNotifList(); 
+    toast("Notifications cleared");
+  }
+
+  function renderNotifList() {
+  const el = document.getElementById("notifList"); // make sure this ID exists in your HTML
+  if (!el) return;
+
+  if (!_notifQueue || !_notifQueue.length) {
+    el.innerHTML = `<div class="notif-empty">No notifications</div>`;
+    return;
+  }
+
+  el.innerHTML = _notifQueue.map((n) => `
+    <div class="notif-item">
+      <div class="notif-title">${escapeHtml(n.title || "Notification")}</div>
+      <div class="notif-msg">${escapeHtml(n.msg || "")}</div>
+      ${n.ts ? `<div class="notif-time">${escapeHtml(new Date(n.ts).toLocaleString())}</div>` : ""}
+    </div>
+  `).join("");
+}
+
+// If your script is type="module" (or you want to be extra safe):
+window.renderNotifList = renderNotifList;
+
+  function sendAllPending() {
+    if (!_notifQueue || _notifQueue.length === 0) return toast("Nothing to send");
+    playSendSound();
+    toast("Sending updates...");
+    setTimeout(() => {
+        _notifQueue = [];
+        localStorage.removeItem("musely_notif_queue"); 
+        renderNotifList();
+        toggleNotifPanel(); 
+        toast("All notifications sent!");
+    }, 1000);
+  }
+
+  // Master helper stubs
+  function toggleMasterCheck(k,d){ if(_masterSelected.has(k)) _masterSelected.delete(k); else _masterSelected.add(k); renderMasterView(JSON.stringify(_masterRawData)); }
+  function saveMasterEdit() { closeMasterModal(); toast("Saving...",false); const p={person:$("mstPerson").value,dayName:$("mstDay").value,newStart:$("mstStart").value,newEnd:$("mstEnd").value,newTeam:$("mstTeam").value,newRole:$("mstRole").value,applyDate:$("mstSync").checked?new Date().toISOString():null}; google.script.run.withSuccessHandler(r=>{toast("Saved!"); toggleMasterMode(); toggleMasterMode();}).uiSaveBaseAndPropagate(p); }
+  function closeMasterModal() { $("masterOverlay").style.display="none"; }
+  
+  function updateTeamAgentList() { 
+    const t = $("teamDropdown").value; 
+    $("teamAgentList").innerHTML = ""; 
+
+    // FIX: Update the global active team filter so the calendar reacts
+    _activeTeam = t; 
+    applyLocalFilters(); 
+
+    if (t) {
+        toast(`Filtering calendar to ${t}`);
+    }
+
+    _allData.filter(x => x.team === t)
+      .map(x => x.person)
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .forEach(p => { 
+        const b = document.createElement("button"); 
+        b.className = "btn-pill"; 
+        b.innerText = p; 
+        b.onclick = () => {
+           _selectedPeople.clear();
+           _selectedPeople.add(p);
+           applyLocalFilters();
+           toast(`Filtered to ${p}`);
+        };
+        $("teamAgentList").appendChild(b); 
+    }); 
+  }
+
+  function escapeHtml(s="") {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+  function filterToday() {
+    const today = pstISODate();
+    _filteredData = _allData.filter(x => x.dateISO === today);
+    if (_activeTeam) {
+        _filteredData = _filteredData.filter(x => x.team === _activeTeam);
+    }
+    if (_selectedPeople.size > 0) {
+        _filteredData = _filteredData.filter(x => _selectedPeople.has(x.person));
+    }
+    renderView();
+    toast("Showing Today Only");
+    if (_view === 'calendar') {
+        setView('list');
+    }
+  }
+
+  function resetAllFilters() {
+    _activeTeam = "";
+    _selectedPeople.clear();
+    const teamDrop = document.getElementById("teamDropdown");
+    if (teamDrop) teamDrop.value = ""; 
+    const teamList = document.getElementById("teamAgentList");
+    if (teamList) teamList.innerHTML = ""; 
+    const search = document.getElementById("qrSearch");
+    if (search) search.value = "";
+    applyLocalFilters();
+    toast("Filters Reset");
+  }
+
+  function handleDateJump(val) { toast("Jump to date not active in this view"); }
+  function scrollCal(px) { const el=$("calView"); if(el) el.scrollBy({left:px,behavior:"smooth"}); }
+
+  // --- NOTIFICATION SOUND ---
+  function playNotificationSound() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(800, now); 
+    gain1.gain.setValueAtTime(0.1, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    osc1.start(now);
+    osc1.stop(now + 0.3);
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(600, now + 0.1); 
+    gain2.gain.setValueAtTime(0.1, now + 0.1);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6); 
+    osc2.start(now + 0.1);
+    osc2.stop(now + 0.6);
+  }
+
+  function playSendSound() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const playTone = (freq, delay) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "triangle"; 
+        osc.frequency.setValueAtTime(freq, now + delay);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + delay + 0.4);
+        gain.gain.setValueAtTime(0, now + delay);
+        gain.gain.linearRampToValueAtTime(0.15, now + delay + 0.05); 
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.4); 
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.5);
+    };
+    playTone(440, 0);   
+    playTone(659, 0.05); 
+  }
+
+  // Final check to ensure listeners don't trap functions
+  document.addEventListener('DOMContentLoaded', function() {
+       console.log("Musely Scheduler: Loaded");
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnNotif");
+  if (btn) {
+    btn.style.pointerEvents = "auto";
+    btn.style.cursor = "pointer";
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleNotifPanel();
+    });
+  }
+
+  (function initNotifUI(){
+  function ready(fn){
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else fn();
+  }
+
+  ready(() => {
+    const btn = document.getElementById("btnNotif");
+    const panel = document.getElementById("notifPanel");
+
+    if (!btn) { console.warn("btnNotif not found"); return; }
+    if (!panel) { console.warn("notifPanel not found"); return; }
+
+    // Force notifPanel to be a direct child of <body> so it cannot be trapped under layouts
+    if (panel.parentElement !== document.body) document.body.appendChild(panel);
+
+    // Ensure hidden by default
+    panel.style.display = "none";
+
+    // Reliable click binding
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleNotifPanel();
+    }, true);
+
+    // Click-away close
+    document.addEventListener("click", (e) => {
+      if (panel.style.display !== "block") return;
+      if (e.target.closest("#btnNotif") || e.target.closest("#notifPanel")) return;
+      toggleNotifPanel(false);
+    }, true);
+  });
+})();
+
+});
+</script>
+</body>
+</html>
