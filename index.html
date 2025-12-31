@@ -881,7 +881,7 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
-
+  
   const PST_TZ = "America/Los_Angeles";
   const pad2 = (n) => String(n).padStart(2, "0");
   const TZ = "America/Los_Angeles";
@@ -1438,6 +1438,8 @@ const shiftRes = await fetch(`/initdashboard?start=${today}`, {
     $("btnMetrics").className = v === "metrics" ? "segBtn active" : "segBtn";
     renderView();
   }
+
+  
 
   async function handleSignIn(response) {
     const loginBox = document.getElementById("loginContainer");
@@ -2443,7 +2445,23 @@ function groupShifts(data) {
   function openAdminModal() { $("adminOverlay").style.display="flex"; loadRules(); }
   function closeAdminModal() { $("adminOverlay").style.display="none"; }
   function loadRules() { google.script.run.withSuccessHandler(r => { $("ruleList").innerHTML=""; r.forEach(x => $("ruleList").innerHTML += `<div>${x.team} | ${x.day} | ${x.min}</div>`); }).uiGetStaffingRules(); }
-  function toast(m) { const h=$("toastHost"); const d=mkDiv("toast"); d.innerHTML=m; h.appendChild(d); setTimeout(()=>d.remove(),3000); }
+  // Helper: show toast notification
+function toast(message, type = "info") {
+  const host = $("toastHost");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = message;
+  
+  if (type === "success") toast.style.background = "#16a34a";
+  if (type === "error") toast.style.background = "#ef4444";
+  
+  host.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
   function applyLocalFilters() { _filteredData = _allData.filter(x => (!_activeTeam || x.team===_activeTeam) && (!_selectedPeople.size || _selectedPeople.has(x.person))); renderView(); }
   function renderTeamChips() { const c=$("teamChips"); if(c) { c.innerHTML=""; _teams.forEach(t=>{ const d=mkDiv("chip"); d.innerText=t; d.onclick=()=>filterTeam(t); c.appendChild(d); }); } }
   function filterTeam(t) { _activeTeam=t; applyLocalFilters(); }
@@ -2678,49 +2696,225 @@ function handleCellClick(person, day) {
         bar.classList.remove("visible");
     }
   }
-function toggleNotifPanel(e) {
-  try { if (e) { e.preventDefault(); e.stopPropagation(); } } catch {}
+// ============================================
+// NOTIFICATION SYSTEM
+// ============================================
 
-  const panel = document.getElementById("notifPanel");
-  if (!panel) {
-    console.warn("notifPanel element not found in DOM.");
-    return;
+let pendingNotifications = [];
+
+// Toggle notification panel open/closed
+function toggleNotifPanel() {
+  const panel = $("notifPanel");
+  panel.classList.toggle("open");
+  
+  if (panel.classList.contains("open")) {
+    loadPendingNotifications();
   }
-
-  // Ensure it's attached directly to <body> so it can’t be clipped by drawers/containers
-  if (panel.parentElement !== document.body) {
-    document.body.appendChild(panel);
-  }
-
-  const isHidden = (panel.style.display === "none" || panel.style.display === "");
-  if (isHidden) {
-    panel.style.display = "block";
-    panel.style.zIndex = "10050";
-    renderNotifList();
-  } else {
-    panel.style.display = "none";
+}
+// Load pending notifications from backend
+async function loadPendingNotifications() {
+  const listEl = $("notifList");
+  listEl.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px;">Loading... </div>';
+  
+  try {
+    const res = await fetch(". /? action=notifications/pending");
+    const data = await res.json();
+    
+    if (! data.ok) throw new Error(data.error || "Failed to load");
+    
+    pendingNotifications = data.notifications || [];
+    renderNotifications();
+    updateNotifBadge();
+    
+  } catch (err) {
+    console.error("Load notifications error:", err);
+    listEl.innerHTML = `<div style="text-align: center; color:#ef4444; padding:20px;">Error:  ${err.message}</div>`;
   }
 }
 
-// Close when clicking anywhere else
-document.addEventListener("click", (ev) => {
-  const panel = document.getElementById("notifPanel");
-  const btn = document.getElementById("btnNotif");
-  if (!panel || !btn) return;
-
-  const clickedInsidePanel = panel.contains(ev.target);
-  const clickedButton = btn.contains(ev.target);
-
-  if (!clickedInsidePanel && !clickedButton) {
-    panel.style.display = "none";
+// Render notifications in the panel
+function renderNotifications() {
+  const listEl = $("notifList");
+  
+  if (pendingNotifications. length === 0) {
+    listEl.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px;">No pending notifications 🎉</div>';
+    return;
   }
-});
+  
+  let html = "";
+  
+  pendingNotifications.forEach((n, idx) => {
+    html += `
+      <div class="notif-item" data-idx="${idx}" style="
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius:  10px;
+        padding: 12px;
+        margin-bottom:  10px;
+      ">
+        <div style="display: flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700; color:#0f172a; font-size:14px;">${escapeHtml(n.person)}</div>
+            <div style="font-size:11px; color:#64748b;">${escapeHtml(n. date)} • ${escapeHtml(n.team)}</div>
+          </div>
+          <span style="background:#fef3c7; color:#92400e; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px;">PENDING</span>
+        </div>
+        <div style="font-size:12px; color:#334155; margin-bottom:10px;">
+          🕐 ${escapeHtml(n.start)} – ${escapeHtml(n. end)}<br>
+          📋 ${escapeHtml(n.role || "No role specified")}
+        </div>
+        ${n.notes ? `<div style="font-size:11px; color:#64748b; font-style:italic; margin-bottom:10px;">"${escapeHtml(n. notes)}"</div>` : ""}
+        <div style="display:flex; gap:8px;">
+          <button onclick="sendSingleNotification(${idx})" style="
+            flex: 1; background:#3b82f6; color:#fff; border:none; padding:6px 10px; 
+            border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;
+          ">📤 Send Now</button>
+          <button onclick="dismissNotification(${idx})" style="
+            flex:1; background:#fff; color:#64748b; border:1px solid #e2e8f0; padding:6px 10px; 
+            border-radius:6px; font-size:11px; font-weight:600; cursor: pointer;
+          ">✕ Dismiss</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  listEl.innerHTML = html;
+}
 
-// Prevent clicks inside the panel from closing it
-document.addEventListener("DOMContentLoaded", () => {
-  const panel = document.getElementById("notifPanel");
-  if (panel) panel.addEventListener("click", (e) => e.stopPropagation());
-});
+// Update the red badge count
+function updateNotifBadge() {
+  const badge = $("notifCount");
+  const count = pendingNotifications.length;
+  
+  if (count > 0) {
+    badge.textContent = count > 99 ? "99+" : count;
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
+}
+
+/ Update the red badge count
+function updateNotifBadge() {
+  const badge = $("notifCount");
+  const count = pendingNotifications.length;
+  
+  if (count > 0) {
+    badge.textContent = count > 99 ? "99+" : count;
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
+}
+
+// Send a single notification
+async function sendSingleNotification(idx) {
+  const n = pendingNotifications[idx];
+  if (!n) return;
+  
+  try {
+    const res = await fetch("./?action=notifications/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        notifications: [{ docId: n.docId, assignmentId: n.assignmentId }]
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (data.ok && data.sent > 0) {
+      toast(`✅ Notification sent to ${n.person}!`, "success");
+      pendingNotifications.splice(idx, 1);
+      renderNotifications();
+      updateNotifBadge();
+    } else {
+      const errMsg = data.results? .[0]?.error || "Failed to send";
+      toast(`❌ Failed:  ${errMsg}`, "error");
+    }
+    
+  } catch (err) {
+    console.error("Send notification error:", err);
+    toast(`❌ Error: ${err.message}`, "error");
+  }
+}
+
+// Dismiss a notification (don't send, just clear it)
+async function dismissNotification(idx) {
+  const n = pendingNotifications[idx];
+  if (!n) return;
+  
+  try {
+    const res = await fetch("./?action=notifications/dismiss", {
+      method: "POST",
+      headers:  { "Content-Type": "application/json" },
+      body:  JSON.stringify({
+        docId: n.docId,
+        assignmentId: n.assignmentId
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (data.ok) {
+      toast(`Notification dismissed`, "info");
+      pendingNotifications. splice(idx, 1);
+      renderNotifications();
+      updateNotifBadge();
+    } else {
+      toast(`❌ Failed to dismiss`, "error");
+    }
+    
+  } catch (err) {
+    console.error("Dismiss error:", err);
+    toast(`❌ Error: ${err. message}`, "error");
+  }
+}
+
+// Send ALL pending notifications
+async function sendAllPending() {
+  if (pendingNotifications.length === 0) {
+    toast("No pending notifications to send", "info");
+    return;
+  }
+  
+  const confirmed = await Swal.fire({
+    title: "Send All Notifications?",
+    text: `This will send ${pendingNotifications.length} notification(s) via Google Chat. `,
+    icon: "question",
+    showCancelButton:  true,
+    confirmButtonText:  "Yes, Send All",
+    cancelButtonText: "Cancel"
+  });
+  
+  if (!confirmed. isConfirmed) return;
+  
+  try {
+    const payload = pendingNotifications.map(n => ({
+      docId: n. docId,
+      assignmentId: n.assignmentId
+    }));
+    
+    const res = await fetch("./?action=notifications/send", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notifications: payload })
+    });
+    
+    const data = await res.json();
+    
+    if (data.ok) {
+      toast(`✅ Sent ${data.sent} of ${data.total} notifications`, "success");
+      await loadPendingNotifications(); // Refresh the list
+    } else {
+      toast(`❌ Error sending notifications`, "error");
+    }
+    
+  } catch (err) {
+    console.error("Send all error:", err);
+    toast(`❌ Error: ${err.message}`, "error");
+  }
+}
 
 
   function undoNotification(index) {
@@ -2792,12 +2986,43 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function clearNotifications() {
-    _notifQueue = []; 
-    localStorage.removeItem("musely_notif_queue"); 
-    renderNotifList(); 
-    toast("Notifications cleared");
+  // Clear all notifications (dismiss all)
+async function clearNotifications() {
+  if (pendingNotifications.length === 0) {
+    toast("No notifications to clear", "info");
+    return;
   }
+  
+  const confirmed = await Swal.fire({
+    title: "Clear All Notifications?",
+    text: "This will dismiss all pending notifications without sending them.",
+    icon: "warning",
+    showCancelButton:  true,
+    confirmButtonText:  "Yes, Clear All",
+    confirmButtonColor: "#ef4444",
+    cancelButtonText: "Cancel"
+  });
+  
+  if (!confirmed.isConfirmed) return;
+  
+  // Dismiss each one
+  for (const n of pendingNotifications) {
+    try {
+      await fetch("./?action=notifications/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docId: n.docId, assignmentId: n.assignmentId })
+      });
+    } catch (e) {
+      console.error("Clear error:", e);
+    }
+  }
+  
+  pendingNotifications = [];
+  renderNotifications();
+  updateNotifBadge();
+  toast("All notifications cleared", "info");
+}
 
   function renderNotifList() {
   const el = document.getElementById("notifList"); // make sure this ID exists in your HTML
@@ -2867,13 +3092,14 @@ window.renderNotifList = renderNotifList;
     }); 
   }
 
-  function escapeHtml(s="") {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  // Helper:  escape HTML to prevent XSS
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
   function filterToday() {
