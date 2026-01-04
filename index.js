@@ -10,7 +10,7 @@ const client = new OAuth2Client(CLIENT_ID);
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
 // ============================================
-const CHAT_BOT_URL = "https://musely-chat-bot-63798769550.us-central1.run.app";
+const CHAT_BOT_URL = process.env.CHAT_BOT_URL || "https://musely-chat-bot-63798769550.us-central1.run.app";
 
 /**
  * Send a shift notification to an agent via Google Chat
@@ -129,9 +129,9 @@ async function getCachedMetadata() {
 }
 
 const ZD_CONFIG = {
-    subdomain: "musely",
-    adminEmail: "genaro.barrera@trusper.com",
-    apiToken: "bUBkQG96B50GVworY7rxKT6b0qFyfpirLeoKVXGS"
+    subdomain: process.env.ZENDESK_SUBDOMAIN || "musely",
+    adminEmail: process.env.ZENDESK_ADMIN_EMAIL || "genaro.barrera@trusper.com",
+    apiToken: process.env.ZENDESK_API_TOKEN || "bUBkQG96B50GVworY7rxKT6b0qFyfpirLeoKVXGS"
 };
 
 const zdFetch = async (url) => {
@@ -291,6 +291,21 @@ function toIsoNow() {
   return new Date().toISOString();
 }
 
+/**
+ * Structured logging helper with trace ID support
+ */
+function logWithTrace(traceId, level, operation, message, metadata = {}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    traceId,
+    level,
+    operation,
+    message,
+    ...metadata
+  };
+  console.log(JSON.stringify(logEntry));
+}
+
 function sanitizePatch(patch = {}) {
   const out = {};
   const allowed = ["person", "status", "notifyStatus", "notes", "start", "end", "role"];
@@ -429,10 +444,14 @@ function servePublicFile(reqPath, res) {
  * ------------------------ */
 functions.http("helloHttp", async (req, res) => {
   try {
+    // Generate or extract trace ID
+    const traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     // CORS first
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,x-preview-key");
+    res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,x-preview-key,X-Trace-Id");
+    res.set("X-Trace-Id", traceId);
 
     if (req.method === "OPTIONS") return res.status(204).send("");
 
@@ -501,7 +520,9 @@ functions.http("helloHttp", async (req, res) => {
       "/swap/request",
       "/swap/pending",
       "/swap/respond",
-      "/schedule/check-conflict"
+      "/schedule/check-conflict",
+      "/manager/heartbeat",
+      "/manager/presence"
     ].includes(path);
 
     if (!isApi) {
@@ -1181,6 +1202,8 @@ if (path === "/audit/logs" && req.method === "GET") {
 
     // assignment replace (with Chat notification)
     if (path === "/assignment/replace" && req.method === "POST") {
+      logWithTrace(traceId, 'info', 'assignment/replace', 'Processing assignment replacement');
+      
       const body = readJsonBody(req);
 
       const docId = String(body.docId || "").trim();
@@ -1190,7 +1213,14 @@ if (path === "/audit/logs" && req.method === "GET") {
       const notifyMode = String(body.notifyMode || "defer").trim(); // "defer" | "send"
 
       if (!docId || !assignmentId || !newPerson) {
+        logWithTrace(traceId, 'error', 'assignment/replace', 'Missing required fields', { docId, assignmentId, newPerson });
         return res.status(400).json({ error: "Missing docId, assignmentId, or newPerson" });
+      }
+      
+      // Validate notifyMode
+      if (!["defer", "send"].includes(notifyMode)) {
+        logWithTrace(traceId, 'error', 'assignment/replace', 'Invalid notifyMode', { notifyMode });
+        return res.status(400).json({ error: "notifyMode must be 'defer' or 'send'" });
       }
 
       const docRef = db.collection("scheduleDays").doc(docId);
@@ -1227,10 +1257,18 @@ if (path === "/audit/logs" && req.method === "GET") {
 
           const now = toIsoNow();
           const next = assignments.slice();
-          next[idx] = { ...old, person: newPerson, notes, notifyStatus, updatedAt: now };
+          next[idx] = { ...old, person: newPerson, notes, notifyStatus, notifyError: null, updatedAt: now };
 
           tx.update(docRef, { assignments: next, updatedAt: now });
           return next[idx];
+        });
+
+        logWithTrace(traceId, 'info', 'assignment/replace', 'Assignment replaced', {
+          docId,
+          assignmentId,
+          oldPerson,
+          newPerson,
+          notifyMode
         });
 
         // 🔔 SEND NOTIFICATION TO NEW PERSON
@@ -1250,12 +1288,50 @@ if (path === "/audit/logs" && req.method === "GET") {
               recipient: newPerson,
               error: result.error 
             };
+            
+            // If send failed, update the assignment to store the error
+            if (!result.success) {
+              const snap = await docRef.get();
+              const data = snap.data() || {};
+              const assignments = data.assignments || [];
+              const idx = assignments.findIndex((a) => String(a.id || "").trim() === assignmentId);
+              if (idx !== -1) {
+                assignments[idx].notifyStatus = "Pending";
+                assignments[idx].notifyError = result.error;
+                await docRef.update({ assignments, updatedAt: toIsoNow() });
+              }
+              
+              logWithTrace(traceId, 'warn', 'assignment/replace', 'Notification send failed', {
+                docId,
+                assignmentId,
+                recipient: newPerson,
+                error: result.error
+              });
+            }
           } else {
+            const error = `Could not find email for ${newPerson}`;
             notificationResult = { 
               sent: false, 
               recipient: newPerson,
-              error: `Could not find email for ${newPerson}` 
+              error 
             };
+            
+            // Store error in assignment
+            const snap = await docRef.get();
+            const data = snap.data() || {};
+            const assignments = data.assignments || [];
+            const idx = assignments.findIndex((a) => String(a.id || "").trim() === assignmentId);
+            if (idx !== -1) {
+              assignments[idx].notifyStatus = "Pending";
+              assignments[idx].notifyError = error;
+              await docRef.update({ assignments, updatedAt: toIsoNow() });
+            }
+            
+            logWithTrace(traceId, 'warn', 'assignment/replace', 'Could not find agent email', {
+              docId,
+              assignmentId,
+              recipient: newPerson
+            });
           }
         }
 
@@ -1268,15 +1344,25 @@ if (path === "/audit/logs" && req.method === "GET") {
         });
 
       } catch (e) {
-        console.error("replace error:", e);
+        logWithTrace(traceId, 'error', 'assignment/replace', 'Error replacing assignment', {
+          error: e.message,
+          stack: e.stack
+        });
         return res.status(500).json({ error: e.message || "Replace failed" });
       }
     }
 
     // Send pending notifications manually
     if (path === "/notifications/send" && req.method === "POST") {
+      logWithTrace(traceId, 'info', 'notifications/send', 'Processing notification send request');
+      
       const body = readJsonBody(req);
       const notifications = body.notifications || []; // Array of {docId, assignmentId}
+      
+      if (!Array.isArray(notifications) || notifications.length === 0) {
+        logWithTrace(traceId, 'error', 'notifications/send', 'Invalid notifications array');
+        return res.status(400).json({ error: "Invalid notifications array" });
+      }
       
       const results = [];
       
@@ -1311,7 +1397,17 @@ if (path === "/audit/logs" && req.method === "GET") {
           const agentEmail = await getAgentEmailByName(assignment.person);
           
           if (!agentEmail) {
-            results.push({ docId, assignmentId, success: false, error: `No email for ${assignment.person}` });
+            const error = `No email for ${assignment.person}`;
+            results.push({ docId, assignmentId, success: false, error });
+            
+            // Keep status as Pending and store error
+            const idx = assignments.findIndex(a => String(a.id || "").trim() === assignmentId);
+            if (idx !== -1) {
+              assignments[idx].notifyStatus = "Pending";
+              assignments[idx].notifyError = error;
+              assignments[idx].updatedAt = toIsoNow();
+              await docRef.update({ assignments, updatedAt: toIsoNow() });
+            }
             continue;
           }
           
@@ -1326,14 +1422,33 @@ if (path === "/audit/logs" && req.method === "GET") {
           
           const sendResult = await sendShiftNotification(agentEmail, shiftData);
           
-          // Update notifyStatus to "Sent" if successful
-          if (sendResult.success) {
-            const idx = assignments.findIndex(a => String(a.id || "").trim() === assignmentId);
-            if (idx !== -1) {
+          // Update assignment based on send result
+          const idx = assignments.findIndex(a => String(a.id || "").trim() === assignmentId);
+          if (idx !== -1) {
+            if (sendResult.success) {
               assignments[idx].notifyStatus = "Sent";
+              assignments[idx].notifyError = null; // Clear any previous error
               assignments[idx].updatedAt = toIsoNow();
-              await docRef.update({ assignments, updatedAt: toIsoNow() });
+              
+              logWithTrace(traceId, 'info', 'notifications/send', 'Notification sent successfully', {
+                docId,
+                assignmentId,
+                person: assignment.person
+              });
+            } else {
+              // Keep as Pending with error stored
+              assignments[idx].notifyStatus = "Pending";
+              assignments[idx].notifyError = sendResult.error || "Unknown error";
+              assignments[idx].updatedAt = toIsoNow();
+              
+              logWithTrace(traceId, 'warn', 'notifications/send', 'Notification send failed', {
+                docId,
+                assignmentId,
+                person: assignment.person,
+                error: sendResult.error
+              });
             }
+            await docRef.update({ assignments, updatedAt: toIsoNow() });
           }
           
           results.push({ 
@@ -1341,18 +1456,39 @@ if (path === "/audit/logs" && req.method === "GET") {
             assignmentId, 
             person: assignment.person,
             success: sendResult.success, 
-            error: sendResult.error 
+            error: sendResult.error,
+            retryable: !sendResult.success // Mark as retryable if failed
           });
           
         } catch (err) {
-          results.push({ docId: notif.docId, assignmentId: notif.assignmentId, success: false, error: err.message });
+          logWithTrace(traceId, 'error', 'notifications/send', 'Exception during notification send', {
+            docId: notif.docId,
+            assignmentId: notif.assignmentId,
+            error: err.message
+          });
+          results.push({ 
+            docId: notif.docId, 
+            assignmentId: notif.assignmentId, 
+            success: false, 
+            error: err.message,
+            retryable: true
+          });
         }
       }
       
       const successCount = results.filter(r => r.success).length;
+      const failedCount = results.filter(r => !r.success).length;
+      
+      logWithTrace(traceId, 'info', 'notifications/send', 'Notification send completed', {
+        total: results.length,
+        success: successCount,
+        failed: failedCount
+      });
+      
       return res.status(200).json({ 
         ok: true, 
-        sent: successCount, 
+        sent: successCount,
+        failed: failedCount,
         total: results.length,
         results 
       });
@@ -1809,10 +1945,13 @@ if (path === "/audit/logs" && req.method === "GET") {
     // Respond to a swap request (accept/decline)
     if (path === "/swap/respond" && req.method === "POST") {
       try {
+        logWithTrace(traceId, 'info', 'swap/respond', 'Processing swap response');
+        
         const body = readJsonBody(req);
         const { swapId, response, responderName } = body; // response: "accepted" or "declined"
         
         if (!swapId || !response) {
+          logWithTrace(traceId, 'error', 'swap/respond', 'Missing required fields', { swapId, response });
           return res.status(400).json({ error: "Missing swapId or response" });
         }
         
@@ -1820,6 +1959,7 @@ if (path === "/audit/logs" && req.method === "GET") {
         const swapDoc = await swapRef.get();
         
         if (!swapDoc.exists) {
+          logWithTrace(traceId, 'error', 'swap/respond', 'Swap request not found', { swapId });
           return res.status(404).json({ error: "Swap request not found" });
         }
         
@@ -1859,6 +1999,13 @@ if (path === "/audit/logs" && req.method === "GET") {
                 assignments: updatedAssignments,
                 updatedAt: new Date().toISOString()
               });
+              
+              logWithTrace(traceId, 'info', 'swap/respond', 'Swap executed in schedule', {
+                swapId,
+                docId: swapData.docId,
+                fromPerson: swapData.fromPerson,
+                toPerson: swapData.toPerson
+              });
             }
           }
         }
@@ -1876,12 +2023,94 @@ if (path === "/audit/logs" && req.method === "GET") {
           read: false
         });
         
-        console.log(`🔄 Swap ${response}: ${swapData.fromPerson} <-> ${swapData.toPerson}`);
+        logWithTrace(traceId, 'info', 'swap/respond', 'Swap response processed', {
+          swapId,
+          response,
+          fromPerson: swapData.fromPerson,
+          toPerson: swapData.toPerson
+        });
         
         return res.status(200).json({ ok: true });
         
       } catch (err) {
-        console.error("Swap respond error:", err);
+        logWithTrace(traceId, 'error', 'swap/respond', 'Error processing swap response', {
+          error: err.message,
+          stack: err.stack
+        });
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // ============================================
+    // MANAGER PRESENCE TRACKING
+    // ============================================
+    
+    // POST /manager/heartbeat - Record manager activity
+    if (path === "/manager/heartbeat" && req.method === "POST") {
+      try {
+        logWithTrace(traceId, 'info', 'manager/heartbeat', 'Recording manager heartbeat');
+        
+        const body = readJsonBody(req);
+        const { managerName, view, area } = body; // view: "Master Template" | "Daily Schedule" | etc, area: team name or date
+        
+        if (!managerName) {
+          return res.status(400).json({ error: "Missing managerName" });
+        }
+        
+        const now = new Date().toISOString();
+        const presenceDocId = managerName.replace(/\s+/g, '_').toLowerCase();
+        
+        await db.collection("manager_presence").doc(presenceDocId).set({
+          managerName,
+          view: view || "Unknown",
+          area: area || "",
+          lastHeartbeat: now,
+          updatedAt: now
+        }, { merge: true });
+        
+        logWithTrace(traceId, 'info', 'manager/heartbeat', 'Heartbeat recorded', {
+          managerName,
+          view,
+          area
+        });
+        
+        return res.status(200).json({ ok: true });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'manager/heartbeat', 'Error recording heartbeat', {
+          error: err.message
+        });
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // GET /manager/presence - Get active manager presence
+    if (path === "/manager/presence" && req.method === "GET") {
+      try {
+        // Consider managers active if heartbeat within last 2 minutes
+        const cutoffTime = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        
+        const snap = await db.collection("manager_presence")
+          .where("lastHeartbeat", ">=", cutoffTime)
+          .get();
+        
+        const activeManagers = [];
+        snap.forEach(doc => {
+          const data = doc.data();
+          activeManagers.push({
+            managerName: data.managerName,
+            view: data.view,
+            area: data.area,
+            lastHeartbeat: data.lastHeartbeat
+          });
+        });
+        
+        return res.status(200).json({ ok: true, activeManagers });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
+          error: err.message
+        });
         return res.status(500).json({ error: err.message });
       }
     }
@@ -1891,10 +2120,13 @@ if (path === "/audit/logs" && req.method === "GET") {
     // ============================================
     if (path === "/schedule/check-conflict" && req.method === "POST") {
       try {
+        logWithTrace(traceId, 'info', 'schedule/check-conflict', 'Checking for scheduling conflicts');
+        
         const body = readJsonBody(req);
         const { personName, date, startTime, endTime, excludeAssignmentId } = body;
         
         if (!personName || !date || !startTime || !endTime) {
+          logWithTrace(traceId, 'error', 'schedule/check-conflict', 'Missing required fields');
           return res.status(400).json({ error: "Missing required fields" });
         }
         
@@ -1907,6 +2139,13 @@ if (path === "/audit/logs" && req.method === "GET") {
           excludeAssignmentId
         );
         
+        logWithTrace(traceId, 'info', 'schedule/check-conflict', 'Conflict check completed', {
+          personName,
+          date,
+          hasConflict: conflicts.length > 0,
+          conflictCount: conflicts.length
+        });
+        
         return res.status(200).json({ 
           ok: true, 
           hasConflict: conflicts.length > 0,
@@ -1914,7 +2153,10 @@ if (path === "/audit/logs" && req.method === "GET") {
         });
         
       } catch (err) {
-        console.error("Conflict check error:", err);
+        logWithTrace(traceId, 'error', 'schedule/check-conflict', 'Error checking conflicts', {
+          error: err.message,
+          stack: err.stack
+        });
         return res.status(500).json({ error: err.message });
       }
     }
@@ -2036,27 +2278,39 @@ if (path === "/audit/logs" && req.method === "GET") {
     // [index.js] - 2. Resolve Request (Approve/Deny) AND Sync to Schedule
     if (path === "/timeoff/resolve" && req.method === "POST") {
       try {
+        logWithTrace(traceId, 'info', 'timeoff/resolve', 'Processing time-off resolution request');
+        
         const body = readJsonBody(req);
         const { id, decision, manager } = body; 
 
-        if (!id || !decision) return res.status(400).json({ error: "Missing fields" });
+        if (!id || !decision) {
+          logWithTrace(traceId, 'error', 'timeoff/resolve', 'Missing required fields', { id, decision });
+          return res.status(400).json({ error: "Missing fields" });
+        }
 
         const docRef = db.collection("time_off_requests").doc(id);
         
         await db.runTransaction(async (t) => {
             // --- READS FIRST ---
             const doc = await t.get(docRef);
-            if (!doc.exists) throw new Error("Request not found");
+            if (!doc.exists) {
+              logWithTrace(traceId, 'error', 'timeoff/resolve', 'Request not found', { id });
+              throw new Error("Request not found");
+            }
             
             const data = doc.data();
+            const typeKey = data.typeKey || normalizeTimeOffType(data.type || "pto");
+            const isMakeUp = typeKey === "make_up";
+            const requestedAmount = data.requestedHours || data.hours || null;
+            
             let balanceRef = null;
             let currentPto = 0;
             let shouldDeduct = false;
             let scheduleDocRef = null;
             let scheduleData = null;
 
-            // 1. Prepare Balance Read
-            if (decision === "approved" && requestedDeduct && !isMakeUp && data.person) {
+            // 1. Prepare Balance Read - only deduct for PTO, not make-up
+            if (decision === "approved" && !isMakeUp && data.person) {
                 balanceRef = db.collection("accrued_hours").doc(data.person);
                 const balSnap = await t.get(balanceRef);
                 if (balSnap.exists) {
@@ -2089,25 +2343,38 @@ if (path === "/audit/logs" && req.method === "GET") {
                 resolvedAt: new Date().toISOString()
             });
 
-            // 4. Deduct Hours
+            // 4. Deduct Hours (only for PTO, not make-up)
             if (shouldDeduct && balanceRef) {
                 let deduction = 0;
-                if (requestedAmount !== null && !Number.isNaN(requestedAmount)) {
-                    deduction = requestedAmount;
+                if (requestedAmount !== null && requestedAmount !== undefined && !Number.isNaN(requestedAmount)) {
+                    deduction = parseFloat(requestedAmount);
                 } else if (data.duration === 'full_day') {
                     deduction = 8;
                 } else {
-                    const start = parseTimeDecimal(data.shiftStart);
-                    const end = parseTimeDecimal(data.shiftEnd);
-                    if (start > 0 && end > 0) {
-                        deduction = end - start;
-                        if (deduction < 0) deduction += 24; 
+                    // Try to calculate from shift times if available
+                    if (data.shiftStart && data.shiftEnd) {
+                        const start = parseTimeDecimal(data.shiftStart);
+                        const end = parseTimeDecimal(data.shiftEnd);
+                        if (start > 0 && end > 0) {
+                            deduction = end - start;
+                            if (deduction < 0) deduction += 24; 
+                        } else {
+                           deduction = 4; // default partial day
+                        }
                     } else {
-                       deduction = 4; 
+                        deduction = 4; // default partial day when times missing
                     }
                 }
                 deduction = Math.round(deduction * 100) / 100;
                 const nextPto = Math.max(0, (currentPto || 0) - deduction);
+                
+                logWithTrace(traceId, 'info', 'timeoff/resolve', 'Deducting PTO hours', {
+                  person: data.person,
+                  currentPto,
+                  deduction,
+                  nextPto
+                });
+                
                 t.update(balanceRef, { pto: nextPto, lastUpdated: new Date().toISOString() });
             }
 
@@ -2133,8 +2400,9 @@ const idx = assignments.findIndex(a => {
                     const entry = assignments[idx];
                     // Append [OFF] if not already there
                     if (!entry.notes || !entry.notes.includes("[OFF]")) {
-                        const offLabel = (typeKey === "make_up") ? "Make Up Approved" : "PTO Approved";
-                        const newNotes = (entry.notes ? entry.notes + " " : "") + `[OFF] - ${offLabel}`;
+                        const offLabel = isMakeUp ? "Make Up Approved" : "PTO Approved";
+                        const managerNote = manager ? ` by ${manager}` : "";
+                        const newNotes = (entry.notes ? entry.notes + " " : "") + `[OFF] - ${offLabel}${managerNote}`;
                         
                         // Copy array to modify
                         const nextAssignments = [...assignments];
@@ -2143,6 +2411,12 @@ const idx = assignments.findIndex(a => {
                         t.update(scheduleDocRef, { 
                             assignments: nextAssignments, 
                             updatedAt: new Date().toISOString() 
+                        });
+                        
+                        logWithTrace(traceId, 'info', 'timeoff/resolve', 'Marked shift as OFF', {
+                          person: data.person,
+                          date: data.date,
+                          team: data.team
                         });
                     }
                 }
@@ -2169,11 +2443,17 @@ const idx = assignments.findIndex(a => {
         };
         
         await db.collection("agent_notifications").add(notifData);
-        console.log(`📬 Notification created for ${resolvedData.person}: ${decision}`);
+        logWithTrace(traceId, 'info', 'timeoff/resolve', 'Created agent notification', {
+          person: resolvedData.person,
+          decision
+        });
 
         return res.status(200).json({ ok: true });
       } catch (err) {
-        console.error("Resolve Error:", err);
+        logWithTrace(traceId, 'error', 'timeoff/resolve', 'Error resolving time-off request', {
+          error: err.message,
+          stack: err.stack
+        });
         return res.status(500).json({ error: err.message });
       }
     }
