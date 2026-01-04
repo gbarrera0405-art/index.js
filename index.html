@@ -3423,6 +3423,25 @@ function updateCacheIndicator(fromCache) {
     indicator.id = 'cacheIndicator';
     indicator.className = 'pill cache';
     indicator.style.display = 'none';
+    indicator.style.cursor = 'pointer';
+    indicator.style.transition = 'all 0.2s';
+    
+    // Add click handler to refresh
+    indicator.onclick = function() {
+      clearScheduleCache();
+      load(); // Reload fresh data
+      toast('♻️ Refreshing data...', 'info');
+    };
+    
+    // Add hover effect
+    indicator.onmouseenter = function() {
+      this.style.transform = 'scale(1.05)';
+      this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+    };
+    indicator.onmouseleave = function() {
+      this.style.transform = 'scale(1)';
+      this.style.boxShadow = 'none';
+    };
     
     const metaGroup = document.querySelector('.metaGroup');
     if (metaGroup) {
@@ -3431,9 +3450,13 @@ function updateCacheIndicator(fromCache) {
   }
   
   if (fromCache && !window._isManager) {
-    indicator.textContent = '📦 CACHED';
-    indicator.title = 'Showing cached data. Click refresh for latest.';
+    indicator.textContent = '📦 CACHED - Click to Refresh';
+    indicator.title = 'Showing cached data. Click to reload latest schedule.';
     indicator.style.display = 'inline-block';
+    indicator.style.background = 'rgba(251, 191, 36, 0.2)';
+    indicator.style.color = '#f59e0b';
+    indicator.style.border = '1px solid #fbbf24';
+    indicator.style.fontWeight = '700';
   } else {
     indicator.style.display = 'none';
   }
@@ -4764,7 +4787,26 @@ function updateTypeSelection() {
   const dateEl = document.getElementById("agMakeUpDate");
   if (wrap) wrap.style.display = isMakeUp ? "block" : "none";
   if (!isMakeUp && dateEl) dateEl.value = "";
-
+  
+  // ✅ Show PTO balance warnings based on selection
+  if (!isMakeUp) {
+    const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
+    const currentPto = parseFloat(balance.pto) || 0;
+    
+    // Update PTO display with warning color
+    const ptoEl = document.getElementById("agPtoHours");
+    if (ptoEl) {
+      if (currentPto <= 0) {
+        ptoEl.style.color = "#ef4444"; // Red if zero
+        ptoEl.parentElement.style.borderColor = "#fca5a5";
+        ptoEl.parentElement.style.background = "#fee2e2";
+      } else if (currentPto < 8) {
+        ptoEl.style.color = "#f59e0b"; // Orange if low
+        ptoEl.parentElement.style.borderColor = "#fbbf24";
+        ptoEl.parentElement.style.background = "#fef3c7";
+      }
+    }
+  }
 }
 
 function showToast(message, type = 'info') {
@@ -4848,6 +4890,55 @@ function closeStaffingModal() {
     const durationSelected = document.querySelector('input[name="timeOffDuration"]:checked');
     const durationVal = durationSelected ? durationSelected.value : "shift";
 
+    // ✅ VALIDATE PTO BALANCE
+    if (timeOffType === "PTO") {
+      const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
+      const currentPto = parseFloat(balance.pto) || 0;
+      
+      // Calculate hours needed (rough estimate)
+      let hoursNeeded = durationVal === "full_day" ? 8 : 4;
+      
+      if (currentPto < hoursNeeded) {
+        const result = await Swal.fire({
+          title: '⚠️ Insufficient PTO Balance',
+          html: `
+            <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+              <p><strong>Current PTO Balance:</strong> ${currentPto} hours</p>
+              <p><strong>Estimated Needed:</strong> ${hoursNeeded} hours</p>
+              <p style="color: #dc2626; font-weight: 600;">You do not have enough PTO for this request.</p>
+              <p style="margin-top: 12px; padding: 12px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px;">
+                💡 <strong>Consider using "Make Up" instead:</strong> Work at another time without using PTO hours.
+              </p>
+            </div>
+          `,
+          icon: 'warning',
+          showCancelButton: false,
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#dc2626'
+        });
+        return; // Block the request
+      } else if (currentPto < hoursNeeded + 4) {
+        // Warn if balance would be low after request
+        const result = await Swal.fire({
+          title: '⚠️ Low PTO Balance Warning',
+          html: `
+            <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+              <p><strong>Current PTO Balance:</strong> ${currentPto} hours</p>
+              <p><strong>Estimated After Request:</strong> ~${Math.max(0, currentPto - hoursNeeded)} hours</p>
+              <p style="color: #f59e0b; font-weight: 600;">Your PTO balance will be low after this request.</p>
+              <p style="margin-top: 12px;">Do you want to continue?</p>
+            </div>
+          `,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Continue',
+          cancelButtonText: 'Cancel',
+          confirmButtonColor: '#f59e0b'
+        });
+        if (!result.isConfirmed) return;
+      }
+    }
+
     const btn = event.currentTarget;
     const originalText = btn.innerText;
     btn.innerText = "Sending...";
@@ -4875,12 +4966,30 @@ function closeStaffingModal() {
 
     if (data.ok) {
       closeAgentModal(); // This calls the function to close the window
-      Swal.fire({
-        title: 'Request Sent!',
-        text: 'Your manager has been notified.',
-        icon: 'success',
-        confirmButtonColor: '#3b82f6'
-      });
+      
+      // Show different messages for Make Up vs PTO
+      if (timeOffType === "Make Up") {
+        Swal.fire({
+          title: 'Make-Up Request Sent!',
+          html: `
+            <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+              <p>Your manager has been notified.</p>
+              <p style="margin-top: 12px; padding: 12px; background: #dbeafe; border-left: 3px solid #3b82f6; border-radius: 4px;">
+                📌 <strong>Remember:</strong> You must work on <strong>${makeUpDate}</strong> to make up this time.
+              </p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonColor: '#3b82f6'
+        });
+      } else {
+        Swal.fire({
+          title: 'PTO Request Sent!',
+          text: 'Your manager has been notified.',
+          icon: 'success',
+          confirmButtonColor: '#3b82f6'
+        });
+      }
       $("agToReason").value = "";
     } else {
       throw new Error(data.error || "Server rejected request");
@@ -6659,6 +6768,7 @@ function renderNotifications() {
     const isLocal = n.source === 'local';
     const hasUndo = isLocal && n.undoData && n.undoData.newPerson;
     const originalIdx = n.idx;
+    const hasError = n.notifyError || n.error;
     
     // Determine what info to show
     const personName = n.person || n.undoData?.newPerson || 'Unknown';
@@ -6674,8 +6784,8 @@ function renderNotifications() {
     
     html += `
       <div class="notif-item" data-idx="${displayIdx}" style="
-        background: ${isLocal ? '#fffbeb' : '#f8fafc'};
-        border: 1px solid ${isLocal ? '#fcd34d' : '#e2e8f0'};
+        background: ${hasError ? '#fef2f2' : (isLocal ? '#fffbeb' : '#f8fafc')};
+        border: 1px solid ${hasError ? '#fca5a5' : (isLocal ? '#fcd34d' : '#e2e8f0')};
         border-radius: 10px;
         padding: 12px;
         margin-bottom:  10px;
@@ -6688,8 +6798,8 @@ function renderNotifications() {
               ${teamStr ? `<span style="background: ${channelConfig.color}; color: ${channelConfig.text}; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:4px;">${escapeHtml(channelDisplay)}</span>` : ''}
             </div>
           </div>
-          <span style="background:${isLocal ? '#fef3c7' : '#dbeafe'}; color: ${isLocal ? '#92400e' : '#1e40af'}; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px;">
-            ${isLocal ? 'QUEUED' : 'PENDING'}
+          <span style="background:${hasError ? '#fee2e2' : (isLocal ? '#fef3c7' : '#dbeafe')}; color: ${hasError ? '#dc2626' : (isLocal ? '#92400e' : '#1e40af')}; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px;">
+            ${hasError ? 'FAILED' : (isLocal ? 'QUEUED' : 'PENDING')}
           </span>
         </div>
         
@@ -6700,6 +6810,12 @@ function renderNotifications() {
         ` : ''}
         
         ${notesStr ? `<div style="font-size:11px; color:#64748b; font-style:italic; margin-bottom:10px; padding:8px; background:rgba(0,0,0,0.03); border-radius:6px;">"${escapeHtml(notesStr)}"</div>` : ''}
+        
+        ${hasError ? `
+        <div style="font-size:11px; color:#dc2626; background:#fee2e2; padding:8px; border-radius:6px; margin-bottom:10px; font-weight:500;">
+          ⚠️ Error: ${escapeHtml(hasError)}
+        </div>
+        ` : ''}
         
         <div style="display: flex; gap:6px; flex-wrap:wrap;">
           ${isLocal ?  `
@@ -6721,11 +6837,18 @@ function renderNotifications() {
               border-radius:6px; font-size:11px; font-weight:600; cursor: pointer;
             ">✕</button>
           ` : `
-            <!-- Backend pending buttons - REMOVED redundant "Send Now" -->
+            <!-- Backend pending buttons -->
+            ${hasError ? `
+            <button onclick="sendSingleNotification(${originalIdx})" style="
+              flex:1; min-width:80px; background:#f59e0b; color:#fff; border: none; padding:8px 10px; 
+              border-radius:6px; font-size: 11px; font-weight:600; cursor:pointer;
+            ">🔄 Retry</button>
+            ` : `
             <button onclick="sendSingleNotification(${originalIdx})" style="
               flex:1; min-width:80px; background:#3b82f6; color:#fff; border: none; padding:8px 10px; 
               border-radius:6px; font-size: 11px; font-weight:600; cursor:pointer;
             ">📤 Send</button>
+            `}
             
             <button onclick="dismissNotification(${originalIdx})" style="
               flex:1; min-width:60px; background:#fff; color:#64748b; border:1px solid #e2e8f0; padding:8px 10px; 
@@ -7923,6 +8046,133 @@ document.addEventListener("DOMContentLoaded", function() {
     if (e.target.closest("#btnNotif") || e.target.closest("#notifPanel")) return;
     toggleNotifPanel(false);
   }, true);
+  
+  // ============================================
+  // MANAGER PRESENCE TRACKING
+  // ============================================
+  
+  // Send heartbeat if user is a manager
+  function sendManagerHeartbeat() {
+    if (!window._isManager || !window._myName) return;
+    
+    // Determine current view and area
+    let view = "Daily Schedule";
+    let area = "";
+    
+    if (_view === "metrics") {
+      view = "Metrics";
+    } else if (_view === "schedule") {
+      if (_masterMode) {
+        view = "Master Template";
+      } else {
+        view = "Daily Schedule";
+        area = _selectedTeam || "";
+      }
+    }
+    
+    fetch('./?action=manager/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        managerName: window._myName,
+        view: view,
+        area: area
+      })
+    }).catch(err => console.error('Heartbeat error:', err));
+  }
+  
+  // Poll for active managers
+  async function fetchManagerPresence() {
+    if (!window._isManager) return;
+    
+    try {
+      const res = await fetch('./?action=manager/presence');
+      const data = await res.json();
+      
+      if (data.ok && data.activeManagers) {
+        displayManagerPresence(data.activeManagers);
+      }
+    } catch (err) {
+      console.error('Manager presence fetch error:', err);
+    }
+  }
+  
+  // Display manager presence in UI
+  function displayManagerPresence(managers) {
+    if (!managers || managers.length === 0) return;
+    
+    // Filter out current user
+    const otherManagers = managers.filter(m => m.managerName !== window._myName);
+    
+    if (otherManagers.length === 0) return;
+    
+    // Create or update presence indicator
+    let presenceEl = document.getElementById('managerPresenceIndicator');
+    
+    if (!presenceEl) {
+      presenceEl = document.createElement('div');
+      presenceEl.id = 'managerPresenceIndicator';
+      presenceEl.className = 'pill';
+      presenceEl.style.background = 'rgba(139, 92, 246, 0.2)';
+      presenceEl.style.color = '#7c3aed';
+      presenceEl.style.border = '1px solid #a78bfa';
+      presenceEl.style.cursor = 'pointer';
+      presenceEl.style.display = 'inline-block';
+      
+      const metaGroup = document.querySelector('.metaGroup');
+      if (metaGroup) {
+        metaGroup.appendChild(presenceEl);
+      }
+    }
+    
+    // Build display text
+    if (otherManagers.length === 1) {
+      const m = otherManagers[0];
+      presenceEl.textContent = `👤 ${m.managerName} • ${m.view}`;
+      presenceEl.title = `${m.managerName} is viewing ${m.view}${m.area ? ` (${m.area})` : ''}`;
+    } else {
+      presenceEl.textContent = `👥 ${otherManagers.length} managers active`;
+      presenceEl.title = otherManagers.map(m => 
+        `${m.managerName}: ${m.view}${m.area ? ` (${m.area})` : ''}`
+      ).join('\n');
+    }
+    
+    // Add click to show details
+    presenceEl.onclick = function() {
+      Swal.fire({
+        title: '👥 Active Managers',
+        html: `
+          <div style="text-align: left; font-size: 14px;">
+            ${otherManagers.map(m => `
+              <div style="padding: 12px; margin-bottom: 8px; background: #f8fafc; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+                <div style="font-weight: 600; color: #0f172a;">${m.managerName}</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                  📍 ${m.view}${m.area ? ` • ${m.area}` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `,
+        icon: 'info',
+        confirmButtonColor: '#8b5cf6'
+      });
+    };
+    
+    presenceEl.style.display = 'inline-block';
+  }
+  
+  // Start heartbeat and presence polling if manager
+  if (window._isManager) {
+    // Send initial heartbeat
+    setTimeout(sendManagerHeartbeat, 1000);
+    
+    // Send heartbeat every 60 seconds
+    setInterval(sendManagerHeartbeat, 60000);
+    
+    // Poll for other managers every 30 seconds
+    setInterval(fetchManagerPresence, 30000);
+    setTimeout(fetchManagerPresence, 2000);
+  }
 });
 </script>
 
