@@ -3023,10 +3023,35 @@ function getCachedData(key) {
 
 function setCachedData(key, data) {
   try {
+    // ✅ Trim payload to only needed fields for agents
+    let trimmedData = data;
+    if (!window._isManager && key === CACHE_CONFIG.SCHEDULE_KEY && Array.isArray(data)) {
+      // For agents, only keep essential fields to reduce cache size
+      trimmedData = data.map(item => ({
+        // Core schedule fields
+        docId: item.docId,
+        dateISO: item.dateISO,
+        dateLabel: item.dateLabel,
+        dayKey: item.dayKey,
+        team: item.team,
+        person: item.person,
+        start: item.start,
+        end: item.end,
+        startLabel: item.startLabel,
+        endLabel: item.endLabel,
+        role: item.role,
+        notes: item.notes,
+        assignmentId: item.assignmentId,
+        notifyStatus: item.notifyStatus,
+        // Omit large fields like full assignments array, metadata, etc.
+      }));
+      console.log(`📦 Trimmed cache payload from ${JSON.stringify(data).length} to ${JSON.stringify(trimmedData).length} bytes`);
+    }
+    
     const cacheEntry = {
       version: CACHE_CONFIG.VERSION,
       timestamp: Date.now(),
-      data: data
+      data: trimmedData
     };
     localStorage.setItem(key, JSON.stringify(cacheEntry));
     console.log(`💾 Cache SET for ${key}`);
@@ -3782,10 +3807,10 @@ function renderCoverageBanner() {
         const gapText = gaps.length > 2 ? `${gaps.length} Time Gaps` : gaps.join(", ");
         
         chipsHTML += `
-          <div class="coverage-chip gap-alert" title="Missing coverage: ${gaps.join(', ')}">
+          <div class="coverage-chip gap-alert" title="Missing coverage: ${gaps.join(', ')}. Required: ${min} agents minimum. Hours: ${openHour}:00-${closeHour}:00">
             <span class="status-dot"></span>
             <span class="channel-abbrev">${config.abbrev}</span>
-            <span class="coverage-count">⚠️ Low: ${gapText}</span>
+            <span class="coverage-count">⚠️ Low: ${gapText} (min: ${min})</span>
           </div>
         `;
       } 
@@ -3793,10 +3818,10 @@ function renderCoverageBanner() {
       else if (currentHour < closeHour) { 
         const totalAgents = todayShifts.filter(s => s.team === channel).length;
         chipsHTML += `
-          <div class="coverage-chip good">
+          <div class="coverage-chip good" title="Coverage meets requirement. Min: ${min} agents. Hours: ${openHour}:00-${closeHour}:00">
             <span class="status-dot"></span>
             <span class="channel-abbrev">${config.abbrev}</span>
-            <span class="coverage-count">Safe (${totalAgents})</span>
+            <span class="coverage-count">Safe (${totalAgents}, min: ${min})</span>
           </div>
         `;
       }
