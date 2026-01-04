@@ -3045,7 +3045,10 @@ function setCachedData(key, data) {
         notifyStatus: item.notifyStatus,
         // Omit large fields like full assignments array, metadata, etc.
       }));
-      console.log(`📦 Trimmed cache payload from ${JSON.stringify(data).length} to ${JSON.stringify(trimmedData).length} bytes`);
+      // Only log size difference in development
+      if (window.location.hostname === 'localhost') {
+        console.log(`📦 Trimmed cache payload from ${JSON.stringify(data).length} to ${JSON.stringify(trimmedData).length} bytes`);
+      }
     }
     
     const cacheEntry = {
@@ -7497,7 +7500,7 @@ async function respondToSwap(swapId, response) {
         if (conflictData.ok && conflictData.hasConflict && conflictData.conflicts.length > 0) {
           // Show conflicts and block acceptance
           const conflictsList = conflictData.conflicts.map(c => 
-            `• ${c.team}: ${c.start} - ${c.end}`
+            `• ${escapeHtml(c.team)}: ${escapeHtml(c.start)} - ${escapeHtml(c.end)}`
           ).join('<br>');
           
           Swal.fire({

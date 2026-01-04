@@ -2108,7 +2108,9 @@ if (path === "/audit/logs" && req.method === "GET") {
         return res.status(200).json({ ok: true, activeManagers });
         
       } catch (err) {
-        console.error("Manager presence error:", err);
+        logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
+          error: err.message
+        });
         return res.status(500).json({ error: err.message });
       }
     }
@@ -2118,10 +2120,13 @@ if (path === "/audit/logs" && req.method === "GET") {
     // ============================================
     if (path === "/schedule/check-conflict" && req.method === "POST") {
       try {
+        logWithTrace(traceId, 'info', 'schedule/check-conflict', 'Checking for scheduling conflicts');
+        
         const body = readJsonBody(req);
         const { personName, date, startTime, endTime, excludeAssignmentId } = body;
         
         if (!personName || !date || !startTime || !endTime) {
+          logWithTrace(traceId, 'error', 'schedule/check-conflict', 'Missing required fields');
           return res.status(400).json({ error: "Missing required fields" });
         }
         
@@ -2134,6 +2139,13 @@ if (path === "/audit/logs" && req.method === "GET") {
           excludeAssignmentId
         );
         
+        logWithTrace(traceId, 'info', 'schedule/check-conflict', 'Conflict check completed', {
+          personName,
+          date,
+          hasConflict: conflicts.length > 0,
+          conflictCount: conflicts.length
+        });
+        
         return res.status(200).json({ 
           ok: true, 
           hasConflict: conflicts.length > 0,
@@ -2141,7 +2153,10 @@ if (path === "/audit/logs" && req.method === "GET") {
         });
         
       } catch (err) {
-        console.error("Conflict check error:", err);
+        logWithTrace(traceId, 'error', 'schedule/check-conflict', 'Error checking conflicts', {
+          error: err.message,
+          stack: err.stack
+        });
         return res.status(500).json({ error: err.message });
       }
     }
