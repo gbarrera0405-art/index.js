@@ -120,19 +120,67 @@ async function getCachedMetadata() {
   return { people: metadataCache.people, teams: metadataCache.teams };
 }
 
+// Zendesk Configuration - requires environment variables
 const ZD_CONFIG = {
-    subdomain: process.env.ZENDESK_SUBDOMAIN || "musely",
-    adminEmail: process.env.ZENDESK_ADMIN_EMAIL || "genaro.barrera@trusper.com",
-    apiToken: process.env.ZENDESK_API_TOKEN || "bUBkQG96B50GVworY7rxKT6b0qFyfpirLeoKVXGS"
+    subdomain: process.env.ZENDESK_SUBDOMAIN,
+    adminEmail: process.env.ZENDESK_ADMIN_EMAIL,
+    apiToken: process.env.ZENDESK_API_TOKEN
 };
 
-const zdFetch = async (url) => {
+// Validate Zendesk configuration on startup
+if (!ZD_CONFIG.subdomain || !ZD_CONFIG.adminEmail || !ZD_CONFIG.apiToken) {
+    console.error("⚠️  Missing required Zendesk environment variables: ZENDESK_SUBDOMAIN, ZENDESK_ADMIN_EMAIL, ZENDESK_API_TOKEN");
+}
+
+// Cache for Zendesk user lookups (process lifetime)
+const zendeskUserCache = new Map();
+
+// Improved zdFetch with error logging and clear messages
+const zdFetch = async (url, traceId = null) => {
     const auth = Buffer.from(`${ZD_CONFIG.adminEmail}/token:${ZD_CONFIG.apiToken}`).toString('base64');
+    
+    if (traceId) {
+        logWithTrace(traceId, 'info', 'zendesk', 'Calling Zendesk API', { url });
+    }
+    
     const res = await fetch(url, {
         headers: { 'Authorization': `Basic ${auth}` }
     });
-    if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
-    return res.json();
+    
+    if (!res.ok) {
+        const statusText = res.statusText;
+        let errorBody = "";
+        try {
+            errorBody = await res.text();
+        } catch (e) {
+            errorBody = "(could not read body)";
+        }
+        
+        const errorMsg = `Zendesk API Error: ${res.status} ${statusText}`;
+        
+        if (traceId) {
+            logWithTrace(traceId, 'error', 'zendesk', errorMsg, { 
+                status: res.status, 
+                statusText, 
+                body: errorBody.substring(0, 500) 
+            });
+        } else {
+            console.error(errorMsg, { status: res.status, body: errorBody.substring(0, 500) });
+        }
+        
+        throw new Error(errorMsg);
+    }
+    
+    const data = await res.json();
+    
+    if (traceId) {
+        logWithTrace(traceId, 'info', 'zendesk', 'Zendesk API response received', { 
+            url, 
+            resultCount: data.count || data.users?.length || data.results?.length || 0 
+        });
+    }
+    
+    return data;
 };
 /** ------------------------
  * Helpers
@@ -488,7 +536,8 @@ functions.http("helloHttp", async (req, res) => {
       "/swap/respond",
       "/schedule/check-conflict",
       "/manager/heartbeat",
-      "/manager/presence"
+      "/manager/presence",
+      "/zendesk/check"
     ].includes(path);
 
     if (!isApi) {
@@ -2905,18 +2954,77 @@ if (path === "/holiday/history" && req.method === "POST") {
         return res.status(500).json({ status: "error", message: err.message });
       }
     }
+    // Zendesk diagnostic endpoint
+    if (path === "/zendesk/check" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/check', 'Checking Zendesk configuration');
+        
+        // Check if env vars are configured
+        if (!ZD_CONFIG.subdomain || !ZD_CONFIG.adminEmail || !ZD_CONFIG.apiToken) {
+          logWithTrace(traceId, 'error', 'zendesk/check', 'Missing Zendesk configuration');
+          return res.status(200).json({
+            status: "error",
+            message: "Zendesk is not configured. Missing required environment variables: ZENDESK_SUBDOMAIN, ZENDESK_ADMIN_EMAIL, ZENDESK_API_TOKEN"
+          });
+        }
+        
+        // Attempt lightweight auth check with /users/me.json
+        const checkUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/me.json`;
+        
+        try {
+          const result = await zdFetch(checkUrl, traceId);
+          logWithTrace(traceId, 'info', 'zendesk/check', 'Zendesk check successful', { 
+            user: result.user?.email 
+          });
+          
+          return res.status(200).json({
+            status: "ok",
+            message: "Zendesk connection successful",
+            subdomain: ZD_CONFIG.subdomain,
+            adminEmail: ZD_CONFIG.adminEmail,
+            authenticatedUser: result.user?.email
+          });
+        } catch (zdErr) {
+          logWithTrace(traceId, 'error', 'zendesk/check', 'Zendesk authentication failed', {
+            error: zdErr.message
+          });
+          
+          return res.status(200).json({
+            status: "error",
+            message: `Zendesk authentication failed: ${zdErr.message}`,
+            subdomain: ZD_CONFIG.subdomain,
+            adminEmail: ZD_CONFIG.adminEmail
+          });
+        }
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/check', 'Unexpected error during Zendesk check', {
+          error: err.message
+        });
+        return res.status(500).json({ 
+          status: "error", 
+          message: "Unexpected error: " + err.message 
+        });
+      }
+    }
     if (path === "/agent-profile" && req.method === "POST") {
       try {
+        logWithTrace(traceId, 'info', 'agent-profile', 'Fetching agent profile');
+        
         const { name } = readJsonBody(req);
-        if (!name) return res.status(400).json({ error: "No name provided" });
+        if (!name) {
+          logWithTrace(traceId, 'error', 'agent-profile', 'No name provided');
+          return res.status(400).json({ error: "No name provided" });
+        }
         
         // Check cache first (5 minute TTL)
         const cacheKey = name.toLowerCase().trim();
         const cached = agentProfileCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp < AGENT_PROFILE_TTL)) {
-          console.log(`📦 Agent profile cache hit for ${name}`);
+          logWithTrace(traceId, 'info', 'agent-profile', 'Cache hit', { name });
           return res.status(200).json(cached.data);
         }
+        
+        logWithTrace(traceId, 'info', 'agent-profile', 'Cache miss, fetching fresh data', { name });
         
         // 1. Find the agent's email from Firestore
         const { people } = await getCachedMetadata();
@@ -2930,26 +3038,64 @@ if (path === "/holiday/history" && req.method === "POST") {
             break;
           }
         }
+        
         if (!agentEmail) {
-          throw new Error(`Agent ${name} not found or missing email address.`);
+          const errorMsg = `Agent "${name}" not found in system or missing email address`;
+          logWithTrace(traceId, 'error', 'agent-profile', errorMsg, { name });
+          return res.status(404).json({ error: errorMsg });
         }
         
-        // 2. Lookup User in Zendesk
-        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
-        const userRes = await zdFetch(userSearchUrl);
-        if (!userRes.users?.length) throw new Error("Email not found in Zendesk.");
+        logWithTrace(traceId, 'info', 'agent-profile', 'Found agent email', { name, email: agentEmail });
         
-        const user = userRes.users[0];
-        const zendeskUserId = user.id;
+        // 2. Check Zendesk user cache first
+        let user = null;
+        let zendeskUserId = null;
+        
+        if (zendeskUserCache.has(agentEmail)) {
+          const cachedUser = zendeskUserCache.get(agentEmail);
+          logWithTrace(traceId, 'info', 'agent-profile', 'Zendesk user cache hit', { email: agentEmail });
+          user = cachedUser;
+          zendeskUserId = user.id;
+        } else {
+          // Lookup User in Zendesk
+          logWithTrace(traceId, 'info', 'agent-profile', 'Looking up user in Zendesk', { email: agentEmail });
+          const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
+          
+          try {
+            const userRes = await zdFetch(userSearchUrl, traceId);
+            
+            if (!userRes.users?.length) {
+              const errorMsg = `Email "${agentEmail}" not found in Zendesk`;
+              logWithTrace(traceId, 'error', 'agent-profile', errorMsg, { email: agentEmail });
+              return res.status(404).json({ error: errorMsg });
+            }
+            
+            user = userRes.users[0];
+            zendeskUserId = user.id;
+            
+            // Cache the Zendesk user lookup
+            zendeskUserCache.set(agentEmail, user);
+            logWithTrace(traceId, 'info', 'agent-profile', 'Zendesk user found and cached', { 
+              email: agentEmail, 
+              zendeskUserId 
+            });
+          } catch (zdErr) {
+            const errorMsg = `Zendesk lookup failed for "${agentEmail}": ${zdErr.message}`;
+            logWithTrace(traceId, 'error', 'agent-profile', errorMsg, { email: agentEmail });
+            return res.status(500).json({ error: errorMsg });
+          }
+        }
         
         // 3. Fetch Open Tickets and Solved in parallel
+        logWithTrace(traceId, 'info', 'agent-profile', 'Fetching ticket metrics', { zendeskUserId });
+        
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         const date7 = oneWeekAgo.toISOString().split('T')[0];
         
         const [openRes, solvedRes] = await Promise.all([
-          zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} status<solved`)}`),
-          zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} status:solved solved>${date7}`)}`)
+          zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} status<solved`)}`, traceId),
+          zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} status:solved solved>${date7}`)}`, traceId)
         ]);
         
         // 4. Fetch CSAT using search API (7 days to match solved tickets)
@@ -2962,10 +3108,12 @@ if (path === "/holiday/history" && req.method === "POST") {
         let csatGood = 0;
         let csatBad = 0;
         try {
+          logWithTrace(traceId, 'info', 'agent-profile', 'Fetching CSAT metrics', { zendeskUserId });
+          
           // Fetch good and bad rated tickets in parallel (7 days)
           const [goodRes, badRes] = await Promise.all([
-            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} satisfaction:good solved>${csatStartISO}`)}`),
-            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} satisfaction:bad solved>${csatStartISO}`)}`)
+            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} satisfaction:good solved>${csatStartISO}`)}`, traceId),
+            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} satisfaction:bad solved>${csatStartISO}`)}`, traceId)
           ]);
           
           csatGood = goodRes.count || 0;
@@ -2973,7 +3121,9 @@ if (path === "/holiday/history" && req.method === "POST") {
           const total = csatGood + csatBad;
           csatDisplay = total > 0 ? Math.round((csatGood / total) * 100) + "%" : "--";
         } catch (csatErr) {
-          console.warn("CSAT lookup failed:", csatErr.message);
+          logWithTrace(traceId, 'warn', 'agent-profile', 'CSAT lookup failed', { 
+            error: csatErr.message 
+          });
         }
         
         // 5. Build response
@@ -2996,9 +3146,16 @@ if (path === "/holiday/history" && req.method === "POST") {
         // Cache the result using the proper Map
         agentProfileCache.set(cacheKey, { data: profileData, timestamp: Date.now() });
         
+        logWithTrace(traceId, 'info', 'agent-profile', 'Profile successfully fetched', { 
+          name,
+          zendeskUserId 
+        });
+        
         return res.status(200).json(profileData);
       } catch (error) {
-        console.error("Profile Error:", error);
+        logWithTrace(traceId, 'error', 'agent-profile', 'Unexpected error', { 
+          error: error.message 
+        });
         return res.status(500).json({ error: error.message });
       }
     }
