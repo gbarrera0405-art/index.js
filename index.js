@@ -2981,7 +2981,6 @@ if (path === "/holiday/history" && req.method === "POST") {
             status: "ok",
             message: "Zendesk connection successful",
             subdomain: ZD_CONFIG.subdomain,
-            adminEmail: ZD_CONFIG.adminEmail,
             authenticatedUser: result.user?.email
           });
         } catch (zdErr) {
@@ -2992,8 +2991,7 @@ if (path === "/holiday/history" && req.method === "POST") {
           return res.status(200).json({
             status: "error",
             message: `Zendesk authentication failed: ${zdErr.message}`,
-            subdomain: ZD_CONFIG.subdomain,
-            adminEmail: ZD_CONFIG.adminEmail
+            subdomain: ZD_CONFIG.subdomain
           });
         }
       } catch (err) {

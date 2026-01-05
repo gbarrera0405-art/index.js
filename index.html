@@ -5871,7 +5871,7 @@ function handleDateJump(val) {
           <div style='color: #16a34a; font-weight: 600;'>✅ Connection OK</div>
           <div style='color: #64748b; margin-top: 4px;'>
             Subdomain: ${data.subdomain || 'N/A'}<br>
-            Admin: ${data.adminEmail || 'N/A'}
+            Authenticated as: ${data.authenticatedUser || 'N/A'}
           </div>
         `;
         toast("Zendesk connection is working", "success");
