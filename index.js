@@ -311,6 +311,25 @@ function logWithTrace(traceId, level, operation, message, metadata = {}) {
   console.log(JSON.stringify(logEntry));
 }
 
+/**
+ * Sanitize email for use in Zendesk search queries
+ * Escapes special characters that could break the query
+ */
+function sanitizeZendeskEmail(email) {
+  if (!email) return '';
+  // Escape double quotes and backslashes
+  return String(email).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
+ * Validate and clamp days parameter for Zendesk queries
+ */
+function validateDaysParam(days, defaultValue = 30) {
+  const parsed = parseInt(days || defaultValue, 10);
+  return Math.max(1, Math.min(parsed, 90)); // Clamp between 1-90
+}
+
+
 function sanitizePatch(patch = {}) {
   const out = {};
   const allowed = ["person", "status", "notifyStatus", "notes", "start", "end", "role"];
@@ -2931,18 +2950,18 @@ if (path === "/holiday/history" && req.method === "POST") {
         logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Fetching open tickets');
         
         const email = String(req.query.email || "").trim();
-        const days = parseInt(req.query.days || "30", 10);
         
         if (!email) {
           logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Missing email parameter');
           return res.status(400).json({ error: "Missing email parameter" });
         }
         
-        // Validate days parameter
-        const validDays = Math.max(1, Math.min(days, 90)); // Clamp between 1-90
+        // Validate days parameter and sanitize email
+        const validDays = validateDaysParam(req.query.days, 30);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
         
         // Build Zendesk search query
-        const query = `type:ticket assignee:"${email}" status<solved updated>=-${validDays}days`;
+        const query = `type:ticket assignee:"${sanitizedEmail}" status<solved updated>-${validDays}days`;
         const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Calling Zendesk API', { email, days: validDays });
@@ -2984,18 +3003,18 @@ if (path === "/holiday/history" && req.method === "POST") {
         logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Fetching bad CSAT tickets');
         
         const email = String(req.query.email || "").trim();
-        const days = parseInt(req.query.days || "60", 10);
         
         if (!email) {
           logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Missing email parameter');
           return res.status(400).json({ error: "Missing email parameter" });
         }
         
-        // Validate days parameter
-        const validDays = Math.max(1, Math.min(days, 90)); // Clamp between 1-90
+        // Validate days parameter and sanitize email
+        const validDays = validateDaysParam(req.query.days, 60);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
         
         // Build Zendesk search query
-        const query = `type:ticket assignee:"${email}" satisfaction:bad updated>=-${validDays}days`;
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction:bad updated>-${validDays}days`;
         const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { email, days: validDays });
