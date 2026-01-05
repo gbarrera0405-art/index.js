@@ -6018,7 +6018,7 @@ window.forceRefresh = forceRefresh;
          e.preventDefault();
          try {
              toast("Fetching open tickets...", "info");
-             const res = await fetch(`/?action=zendesk/agent/open&email=${encodeURIComponent(agentEmail)}&days=30`);
+             const res = await fetch(`/zendesk/agent/open?email=${encodeURIComponent(agentEmail)}&days=30`);
              const result = await res.json();
              
              if (result.ok) {
@@ -6036,7 +6036,7 @@ window.forceRefresh = forceRefresh;
          e.preventDefault();
          try {
              toast("Fetching bad CSAT tickets...", "info");
-             const res = await fetch(`/?action=zendesk/agent/badcsat&email=${encodeURIComponent(agentEmail)}&days=60`);
+             const res = await fetch(`/zendesk/agent/badcsat?email=${encodeURIComponent(agentEmail)}&days=60`);
              const result = await res.json();
              
              if (result.ok) {

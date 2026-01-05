@@ -2952,7 +2952,7 @@ if (path === "/holiday/history" && req.method === "POST") {
         // Extract ticket IDs and build UI URL
         const ticketIds = (data.results || []).map(t => t.id);
         const count = data.count || 0;
-        const zendesSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
+        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Open tickets found', { email, count, days: validDays });
         
@@ -2960,7 +2960,7 @@ if (path === "/holiday/history" && req.method === "POST") {
           ok: true,
           count,
           ticketIds,
-          searchUrl: zendesSearchUIUrl,
+          searchUrl: zendeskSearchUIUrl,
           query,
           days: validDays,
           email
@@ -2995,7 +2995,7 @@ if (path === "/holiday/history" && req.method === "POST") {
         const validDays = Math.max(1, Math.min(days, 90)); // Clamp between 1-90
         
         // Build Zendesk search query
-        const query = `type:ticket assignee:"${email}" satisfaction_score:bad updated>=-${validDays}days`;
+        const query = `type:ticket assignee:"${email}" satisfaction:bad updated>=-${validDays}days`;
         const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { email, days: validDays });
