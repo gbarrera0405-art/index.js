@@ -131,7 +131,21 @@ const zdFetch = async (url) => {
     const res = await fetch(url, {
         headers: { 'Authorization': `Basic ${auth}` }
     });
-    if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
+    
+    // Enhanced error handling
+    if (!res.ok) {
+        let errorMsg = `Zendesk API Error: ${res.statusText}`;
+        if (res.status === 401) {
+            errorMsg = 'Zendesk authentication failed. Please check credentials.';
+        } else if (res.status === 403) {
+            errorMsg = 'Access denied to Zendesk resource. Please check permissions.';
+        } else if (res.status === 429) {
+            errorMsg = 'Zendesk rate limit exceeded. Please try again later.';
+        }
+        const error = new Error(errorMsg);
+        error.status = res.status;
+        throw error;
+    }
     return res.json();
 };
 /** ------------------------
@@ -296,6 +310,25 @@ function logWithTrace(traceId, level, operation, message, metadata = {}) {
   };
   console.log(JSON.stringify(logEntry));
 }
+
+/**
+ * Sanitize email for use in Zendesk search queries
+ * Escapes special characters that could break the query
+ */
+function sanitizeZendeskEmail(email) {
+  if (!email) return '';
+  // Escape double quotes and backslashes
+  return String(email).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
+ * Validate and clamp days parameter for Zendesk queries
+ */
+function validateDaysParam(days, defaultValue = 30) {
+  const parsed = parseInt(days || defaultValue, 10);
+  return Math.max(1, Math.min(parsed, 90)); // Clamp between 1-90
+}
+
 
 function sanitizePatch(patch = {}) {
   const out = {};
@@ -488,7 +521,9 @@ functions.http("helloHttp", async (req, res) => {
       "/swap/respond",
       "/schedule/check-conflict",
       "/manager/heartbeat",
-      "/manager/presence"
+      "/manager/presence",
+      "/zendesk/agent/open",
+      "/zendesk/agent/badcsat"
     ].includes(path);
 
     if (!isApi) {
@@ -2905,6 +2940,116 @@ if (path === "/holiday/history" && req.method === "POST") {
         return res.status(500).json({ status: "error", message: err.message });
       }
     }
+    // ============================================
+    // ZENDESK AGENT TICKET SEARCH ENDPOINTS
+    // ============================================
+    
+    // GET /zendesk/agent/open?email=...&days=30
+    if (path === "/zendesk/agent/open" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Fetching open tickets');
+        
+        const email = String(req.query.email || "").trim();
+        
+        if (!email) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Missing email parameter');
+          return res.status(400).json({ error: "Missing email parameter" });
+        }
+        
+        // Validate days parameter and sanitize email
+        const validDays = validateDaysParam(req.query.days, 30);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
+        
+        // Build Zendesk search query
+        const query = `type:ticket assignee:"${sanitizedEmail}" status<solved updated>-${validDays}days`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Calling Zendesk API', { email, days: validDays });
+        
+        const data = await zdFetch(searchUrl);
+        
+        // Extract ticket IDs and build UI URL
+        const ticketIds = (data.results || []).map(t => t.id);
+        const count = data.count || 0;
+        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Open tickets found', { email, count, days: validDays });
+        
+        return res.status(200).json({
+          ok: true,
+          count,
+          ticketIds,
+          searchUrl: zendeskSearchUIUrl,
+          query,
+          days: validDays,
+          email
+        });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Error fetching open tickets', {
+          error: err.message,
+          status: err.status
+        });
+        
+        return res.status(err.status || 500).json({
+          error: err.message || "Failed to fetch open tickets"
+        });
+      }
+    }
+    
+    // GET /zendesk/agent/badcsat?email=...&days=60
+    if (path === "/zendesk/agent/badcsat" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Fetching bad CSAT tickets');
+        
+        const email = String(req.query.email || "").trim();
+        
+        if (!email) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Missing email parameter');
+          return res.status(400).json({ error: "Missing email parameter" });
+        }
+        
+        // Validate days parameter and sanitize email
+        const validDays = validateDaysParam(req.query.days, 60);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
+        
+        // Build Zendesk search query
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction:bad updated>-${validDays}days`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { email, days: validDays });
+        
+        const data = await zdFetch(searchUrl);
+        
+        // Extract ticket IDs and build UI URL
+        const ticketIds = (data.results || []).map(t => t.id);
+        const count = data.count || 0;
+        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Bad CSAT tickets found', { email, count, days: validDays });
+        
+        return res.status(200).json({
+          ok: true,
+          count,
+          ticketIds,
+          searchUrl: zendeskSearchUIUrl,
+          query,
+          days: validDays,
+          email
+        });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Error fetching bad CSAT tickets', {
+          error: err.message,
+          status: err.status
+        });
+        
+        return res.status(err.status || 500).json({
+          error: err.message || "Failed to fetch bad CSAT tickets"
+        });
+      }
+    }
+    
     if (path === "/agent-profile" && req.method === "POST") {
       try {
         const { name } = readJsonBody(req);

@@ -5993,29 +5993,68 @@ window.forceRefresh = forceRefresh;
      
      if (!openA || !badA) return;
      
-     // Build queries based on best available identifier
-     let openQ = "";
-     let badCsatQ = "";
+     // Store the agent data for the click handlers
+     const agentEmail = data.email || null;
      
-     if (data.zendeskUserId || data.id) {
-         const userId = data.zendeskUserId || data.id;
-         openQ = `type:ticket status<solved assignee_id:${userId}`;
-         badCsatQ = `type:ticket satisfaction:bad assignee_id:${userId}`;
-     } else if (data.email) {
-         openQ = `type:ticket status<solved assignee:${data.email}`;
-         badCsatQ = `type:ticket satisfaction:bad assignee:${data.email}`;
-     } else if (data.name) {
-         openQ = `type:ticket status<solved assignee:"${data.name}"`;
-         badCsatQ = `type:ticket satisfaction:bad assignee:"${data.name}"`;
+     if (!agentEmail) {
+         // No email - disable buttons and show warning on click
+         openA.onclick = (e) => {
+             e.preventDefault();
+             toast("⚠️ No email found for this agent", "error");
+         };
+         badA.onclick = (e) => {
+             e.preventDefault();
+             toast("⚠️ No email found for this agent", "error");
+         };
+         openA.style.pointerEvents = "auto";
+         badA.style.pointerEvents = "auto";
+         openA.style.opacity = "0.5";
+         badA.style.opacity = "0.5";
+         return;
      }
      
-     const baseUrl = "https://musely.zendesk.com/agent/search/1?query=";
-     openA.href = baseUrl + encodeURIComponent(openQ);
-     badA.href = baseUrl + encodeURIComponent(badCsatQ);
+     // Email found - wire up the new endpoint calls
+     openA.onclick = async (e) => {
+         e.preventDefault();
+         try {
+             toast("Fetching open tickets...", "info");
+             const res = await fetch(`/zendesk/agent/open?email=${encodeURIComponent(agentEmail)}&days=30`);
+             const result = await res.json();
+             
+             if (result.ok) {
+                 toast(`✅ Found ${result.count} open tickets`, "success");
+                 window.open(result.searchUrl, '_blank');
+             } else {
+                 toast(`❌ Error: ${result.error}`, "error");
+             }
+         } catch (err) {
+             toast(`❌ Failed to fetch tickets: ${err.message}`, "error");
+         }
+     };
      
-     // Make sure links are clickable
+     badA.onclick = async (e) => {
+         e.preventDefault();
+         try {
+             toast("Fetching bad CSAT tickets...", "info");
+             const res = await fetch(`/zendesk/agent/badcsat?email=${encodeURIComponent(agentEmail)}&days=60`);
+             const result = await res.json();
+             
+             if (result.ok) {
+                 toast(`✅ Found ${result.count} bad CSAT tickets`, "success");
+                 window.open(result.searchUrl, '_blank');
+             } else {
+                 toast(`❌ Error: ${result.error}`, "error");
+             }
+         } catch (err) {
+             toast(`❌ Failed to fetch tickets: ${err.message}`, "error");
+         }
+     };
+     
+     // Make sure links are clickable and not faded
      openA.style.pointerEvents = "auto";
      badA.style.pointerEvents = "auto";
+     openA.style.opacity = "1";
+     badA.style.opacity = "1";
   }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
   function closeProfile() { $("profileOverlay").style.display = "none"; }
