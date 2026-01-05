@@ -1785,6 +1785,11 @@ body.agent-mode .pill.balance {
       </div>
       <div class="mBody" style="text-align: center; padding: 30px;">
         <div id="profLoader" style="color: #64748b; font-size: 13px;"><div>Fetching live metrics from Zendesk...</div></div>
+        <div id="profDiagnostic" style="display:none; margin-top: 12px; padding: 10px; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 6px; font-size: 12px;">
+          <div style="margin-bottom: 8px; font-weight: 600; color: #92400e;">Zendesk Connection Issue?</div>
+          <button type="button" class="btn secondary" style="font-size: 11px; padding: 4px 12px;" onclick="checkZendeskConnection()">🔍 Check Zendesk Connection</button>
+          <div id="profDiagnosticResult" style="margin-top: 8px; font-size: 11px; text-align: left;"></div>
+        </div>
         <div id="profContent" style="display:none;">
           <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: #e2e8f0; margin-bottom: 15px; border: 3px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: #0f172a;">Name</h2>
@@ -5777,8 +5782,13 @@ function updateAgentRangeLabel() {
   // --- 8. PROFILES & METRICS ---
   function openProfile(name) {
      _activeProfileRequest = name;
-     $("profileOverlay").style.display = "flex"; $("profContent").style.display = "none"; $("profLoader").style.display = "block";
-     $("pName").innerText = name; $("profLoader").innerText = "Loading...";
+     $("profileOverlay").style.display = "flex"; 
+     $("profContent").style.display = "none"; 
+     $("profLoader").style.display = "block";
+     $("profDiagnostic").style.display = "none";
+     $("pName").innerText = name; 
+     $("profLoader").innerText = "Loading...";
+     
      const cached = _zendeskMetricsByName.get(String(name));
      if(cached) { renderProfileCached(cached); }
      
@@ -5788,18 +5798,28 @@ function updateAgentRangeLabel() {
        headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify({ name: name })
      })
-     .then(res => res.json())
+     .then(res => {
+       // Handle non-ok responses by parsing JSON and showing the error
+       if (!res.ok) {
+         return res.json().then(errData => {
+           throw new Error(errData.error || `Request failed with status ${res.status}`);
+         });
+       }
+       return res.json();
+     })
      .then(data => {
        if(data.name !== _activeProfileRequest) return;
        if(data.error) {
-         $("profLoader").innerText = "Error: " + data.error;
+         $("profLoader").innerHTML = "<div style='color: #dc2626;'>❌ " + data.error + "</div>";
+         $("profDiagnostic").style.display = "block";
          return;
        }
        renderProfileData(data);
      })
      .catch(err => {
        console.error("Profile fetch error:", err);
-       $("profLoader").innerText = "Failed to load profile";
+       $("profLoader").innerHTML = "<div style='color: #dc2626;'>❌ " + (err.message || "Failed to load profile") + "</div>";
+       $("profDiagnostic").style.display = "block";
      });
   }
   // Switch day by offset (-1 or +1)
@@ -5833,6 +5853,48 @@ function handleDateJump(val) {
     renderScheduleView();
     toast(`Jumped to ${val}`);
 }
+  // Check Zendesk connection
+  async function checkZendeskConnection() {
+    const resultDiv = $("profDiagnosticResult");
+    resultDiv.innerHTML = "<div style='color: #64748b;'>⏳ Checking...</div>";
+    
+    try {
+      const res = await fetch('./?action=zendesk/check', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await res.json();
+      
+      if (data.status === "ok") {
+        resultDiv.innerHTML = `
+          <div style='color: #16a34a; font-weight: 600;'>✅ Connection OK</div>
+          <div style='color: #64748b; margin-top: 4px;'>
+            Subdomain: ${data.subdomain || 'N/A'}<br>
+            Authenticated as: ${data.authenticatedUser || 'N/A'}
+          </div>
+        `;
+        toast("Zendesk connection is working", "success");
+      } else {
+        resultDiv.innerHTML = `
+          <div style='color: #dc2626; font-weight: 600;'>❌ Connection Failed</div>
+          <div style='color: #92400e; margin-top: 4px;'>
+            ${data.message || 'Unknown error'}
+          </div>
+        `;
+        toast("Zendesk connection failed", "error");
+      }
+    } catch (err) {
+      console.error("Zendesk check error:", err);
+      resultDiv.innerHTML = `
+        <div style='color: #dc2626; font-weight: 600;'>❌ Check Failed</div>
+        <div style='color: #92400e; margin-top: 4px;'>
+          ${err.message || 'Network error'}
+        </div>
+      `;
+      toast("Failed to check Zendesk connection", "error");
+    }
+  }
   function renderProfileData(data) {
      $("profLoader").style.display = "none";
      if(data.error) { $("profLoader").style.display = "block"; $("profLoader").innerText = data.error; return; }
