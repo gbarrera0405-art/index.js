@@ -3235,7 +3235,7 @@ if (path === "/holiday/history" && req.method === "POST") {
           if (ratingsErr.status === 429) {
             return res.status(429).json({
               error: "Zendesk rate limit exceeded. Please try again later.",
-              retryAfter: ratingsErr.retryAfter || 60
+              retryAfter: 60 // Default retry time since zdFetch doesn't extract Retry-After header
             });
           }
           
