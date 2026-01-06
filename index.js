@@ -523,7 +523,8 @@ functions.http("helloHttp", async (req, res) => {
       "/manager/heartbeat",
       "/manager/presence",
       "/zendesk/agent/open",
-      "/zendesk/agent/badcsat"
+      "/zendesk/agent/badcsat",
+      "/zendesk/agent/goodcsat"
     ].includes(path);
 
     if (!isApi) {
@@ -3056,7 +3057,7 @@ if (path === "/holiday/history" && req.method === "POST") {
         const daysAgoISO = daysAgo.toISOString().split('T')[0];
         
         // Build Zendesk search query - use type:ticket and date filter
-        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:bad created>=${daysAgoISO}`;
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:bad status:solved created>=${daysAgoISO}`;
         const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { 
@@ -3112,6 +3113,92 @@ if (path === "/holiday/history" && req.method === "POST") {
         
         return res.status(err.status || 500).json({
           error: err.message || "Failed to fetch bad CSAT tickets"
+        });
+      }
+    }
+    
+    // GET /zendesk/agent/goodcsat?email=...&days=60
+    if (path === "/zendesk/agent/goodcsat" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/agent/goodcsat', 'Fetching good CSAT tickets');
+        
+        const email = String(req.query.email || "").trim();
+        
+        if (!email) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/goodcsat', 'Missing email parameter');
+          return res.status(400).json({ error: "Missing email parameter" });
+        }
+        
+        // Validate days parameter (default 60, clamp 1-90) and sanitize email
+        const validDays = validateDaysParam(req.query.days, 60);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
+        
+        // Pagination parameters
+        const page = Math.max(1, parseInt(req.query.page || "1", 10));
+        const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || "100", 10)));
+        
+        // Calculate date range for query
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - validDays);
+        const daysAgoISO = daysAgo.toISOString().split('T')[0];
+        
+        // Build Zendesk search query - use type:ticket and date filter
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:good status:solved created>=${daysAgoISO}`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/goodcsat', 'Calling Zendesk API', { 
+          email, 
+          days: validDays,
+          page,
+          perPage,
+          dateFilter: daysAgoISO
+        });
+        
+        const data = await zdFetch(searchUrl);
+        
+        // Extract ticket details and build UI URL
+        const tickets = (data.results || []).map(t => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          satisfaction_rating: t.satisfaction_rating
+        }));
+        const count = data.count || 0;
+        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/goodcsat', 'Good CSAT tickets found', { 
+          email, 
+          count, 
+          days: validDays,
+          page,
+          returned: tickets.length
+        });
+        
+        return res.status(200).json({
+          ok: true,
+          count,
+          tickets,
+          ticketIds: tickets.map(t => t.id),
+          searchUrl: zendeskSearchUIUrl,
+          query,
+          days: validDays,
+          email,
+          page,
+          perPage,
+          hasMore: data.next_page !== null,
+          nextPage: data.next_page
+        });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/agent/goodcsat', 'Error fetching good CSAT tickets', {
+          error: err.message,
+          status: err.status
+        });
+        
+        return res.status(err.status || 500).json({
+          error: err.message || "Failed to fetch good CSAT tickets"
         });
       }
     }
