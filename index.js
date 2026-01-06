@@ -3057,7 +3057,7 @@ if (path === "/holiday/history" && req.method === "POST") {
         const daysAgoISO = daysAgo.toISOString().split('T')[0];
         
         // Build Zendesk search query - use type:ticket and date filter
-        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:bad created>=${daysAgoISO}`;
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:bad status:solved created>=${daysAgoISO}`;
         const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { 
@@ -3143,7 +3143,7 @@ if (path === "/holiday/history" && req.method === "POST") {
         const daysAgoISO = daysAgo.toISOString().split('T')[0];
         
         // Build Zendesk search query - use type:ticket and date filter
-        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:good created>=${daysAgoISO}`;
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:good status:solved created>=${daysAgoISO}`;
         const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/goodcsat', 'Calling Zendesk API', { 
