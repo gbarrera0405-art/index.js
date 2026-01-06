@@ -103,6 +103,10 @@ const AGENT_PROFILE_TTL = 5 * 60 * 1000; // 5 minutes
 // Zendesk CSAT rating pagination safety limit
 const MAX_CSAT_RATINGS_PER_AGENT = 1000;
 
+// Valid CSAT rating scores
+const CSAT_SCORE_GOOD = 'good';
+const CSAT_SCORE_BAD = 'bad';
+
 async function getCachedMetadata() {
   const now = Date.now();
   if (metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
@@ -3184,11 +3188,13 @@ if (path === "/holiday/history" && req.method === "POST") {
           const ratings = ratingsRes.satisfaction_ratings || [];
           
           // Filter ratings for this specific user (assignee_id matches) during collection
-          const userRatings = ratings.filter(rating => rating.assignee_id === userId);
+          // Ensure type-safe comparison by converting both to numbers
+          const userRatings = ratings.filter(rating => Number(rating.assignee_id) === Number(userId));
           allRatings = allRatings.concat(userRatings);
           
-          // Check for next page - stop if end of stream OR no next_page
-          nextUrl = (ratingsRes.end_of_stream || !ratingsRes.next_page) ? null : ratingsRes.next_page;
+          // Check for next page - stop if end of stream OR no next_page (explicit null/undefined check)
+          const hasNextPage = ratingsRes.next_page !== null && ratingsRes.next_page !== undefined && ratingsRes.next_page !== '';
+          nextUrl = (ratingsRes.end_of_stream || !hasNextPage) ? null : ratingsRes.next_page;
           
           // Safety limit: stop after reaching max ratings to prevent excessive queries
           if (allRatings.length >= MAX_CSAT_RATINGS_PER_AGENT) {
@@ -3205,9 +3211,9 @@ if (path === "/holiday/history" && req.method === "POST") {
         let csatBad = 0;
         
         for (const rating of allRatings) {
-          if (rating.score === "good") {
+          if (rating.score === CSAT_SCORE_GOOD) {
             csatGood++;
-          } else if (rating.score === "bad") {
+          } else if (rating.score === CSAT_SCORE_BAD) {
             csatBad++;
           }
           // "offered" and "unoffered" don't count as actual ratings
