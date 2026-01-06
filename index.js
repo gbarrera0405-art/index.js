@@ -100,6 +100,9 @@ const metadataCache = {
 const agentProfileCache = new Map();
 const AGENT_PROFILE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Zendesk CSAT rating pagination safety limit
+const MAX_CSAT_RATINGS_PER_AGENT = 1000;
+
 async function getCachedMetadata() {
   const now = Date.now();
   if (metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
@@ -3180,17 +3183,18 @@ if (path === "/holiday/history" && req.method === "POST") {
           const ratingsRes = await zdFetch(nextUrl);
           const ratings = ratingsRes.satisfaction_ratings || [];
           
-          // Filter ratings for this specific user (assignee_id matches)
+          // Filter ratings for this specific user (assignee_id matches) during collection
           const userRatings = ratings.filter(rating => rating.assignee_id === userId);
           allRatings = allRatings.concat(userRatings);
           
-          // Check for next page
-          nextUrl = ratingsRes.end_of_stream ? null : ratingsRes.next_page;
+          // Check for next page - stop if end of stream OR no next_page
+          nextUrl = (ratingsRes.end_of_stream || !ratingsRes.next_page) ? null : ratingsRes.next_page;
           
-          // Safety limit: stop after 10 pages to prevent infinite loops
-          if (allRatings.length > 1000) {
+          // Safety limit: stop after reaching max ratings to prevent excessive queries
+          if (allRatings.length >= MAX_CSAT_RATINGS_PER_AGENT) {
             logWithTrace(traceId, 'warn', 'zendesk/agent/csat', 'Hit rating limit, stopping pagination', {
-              ratingsCount: allRatings.length
+              ratingsCount: allRatings.length,
+              limit: MAX_CSAT_RATINGS_PER_AGENT
             });
             break;
           }
