@@ -3199,21 +3199,22 @@ if (path === "/holiday/history" && req.method === "POST") {
           // Note: The incremental API already filtered by start_time, so this is efficient
           for (const rating of allRatings) {
             if (rating.assignee_id === zendeskUserId && rating.score) {
-              const score = rating.score;
               ratings.push({
                 id: rating.id,
                 ticket_id: rating.ticket_id,
-                score: score,
+                score: rating.score,
                 created_at: rating.created_at,
                 comment: rating.comment || null
               });
               
-              if (score === "good" || score === "good_with_comment") {
+              // Only count actual feedback (good/bad), not "offered" or "unoffered"
+              if (rating.score === "good" || rating.score === "good_with_comment") {
                 csatGood++;
-              } else if (score === "bad" || score === "bad_with_comment") {
+                totalRatings++;
+              } else if (rating.score === "bad" || rating.score === "bad_with_comment") {
                 csatBad++;
+                totalRatings++;
               }
-              totalRatings++;
             }
           }
           
@@ -3241,8 +3242,8 @@ if (path === "/holiday/history" && req.method === "POST") {
           throw new Error(`Failed to fetch satisfaction ratings: ${ratingsErr.message}`);
         }
         
-        // Calculate CSAT percentage (good ratings / total ratings with feedback)
-        // totalRatings = csatGood + csatBad (only counting actual feedback, not "offered"/"unoffered")
+        // Calculate CSAT percentage (good ratings / total actual feedback)
+        // totalRatings only includes "good" and "bad" scores, excluding "offered"/"unoffered"
         const csatPercentage = totalRatings > 0 
           ? Math.round((csatGood / totalRatings) * 100) 
           : null;
