@@ -3241,14 +3241,16 @@ if (path === "/holiday/history" && req.method === "POST") {
           throw new Error(`Failed to fetch satisfaction ratings: ${ratingsErr.message}`);
         }
         
-        // Calculate CSAT percentage
+        // Calculate CSAT percentage (good ratings / total ratings with feedback)
+        // totalRatings = csatGood + csatBad (only counting actual feedback, not "offered"/"unoffered")
         const csatPercentage = totalRatings > 0 
           ? Math.round((csatGood / totalRatings) * 100) 
           : null;
         
         // Build hardened search link for UI with date range filter for consistency
+        // Note: Using assignee:<email> for search syntax compatibility
         const daysAgoISO = daysAgo.toISOString().split('T')[0];
-        const searchQuery = `type:ticket assignee_id:${zendeskUserId} created>=${daysAgoISO}`;
+        const searchQuery = `type:ticket assignee:"${sanitizedEmail}" created>=${daysAgoISO}`;
         const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(searchQuery)}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'CSAT data compiled', {
