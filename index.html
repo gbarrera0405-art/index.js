@@ -6092,16 +6092,20 @@ window.forceRefresh = forceRefresh;
      
      // Build Zendesk search URLs
      // Per Zendesk docs: assignee can be ID, name, or email
-     // For satisfaction: use "satisfaction:good" or "satisfaction:bad" (not satisfaction_rating)
-     const assigneeFilter = agentEmail ? `assignee:${agentEmail}` : `assignee_id:${userId}`;
+     // For satisfaction: use "satisfaction_score:bad" or "satisfaction_score:good"
+     const assigneeFilter = agentEmail ? `assignee:"${agentEmail}"` : `assignee_id:${userId}`;
+     
+     // Calculate date for 60 days ago (for bad CSAT default filter)
+     const sixtyDaysAgo = new Date();
+     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+     const sixtyDaysAgoISO = sixtyDaysAgo.toISOString().split('T')[0];
      
      // Open tickets = status less than solved
-     const openQuery = `${assigneeFilter} status<solved`;
+     const openQuery = `type:ticket ${assigneeFilter} status<solved`;
      const openUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(openQuery)}`;
      
-     // Bad CSAT tickets - use "satisfaction:bad" per Zendesk search reference
-     // Note: This searches tickets where satisfaction IS bad (includes bad and bad_with_comment)
-     const badQuery = `${assigneeFilter} satisfaction:bad`;
+     // Bad CSAT tickets - use created date filter as per requirement
+     const badQuery = `type:ticket ${assigneeFilter} satisfaction_score:bad status:solved created>=${sixtyDaysAgoISO}`;
      const badUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(badQuery)}`;
      
      // Set as direct links
