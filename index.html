@@ -1570,7 +1570,8 @@ body.agent-mode .pill.balance {
                   <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
                   <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
                     <a id="mOpenTicketsLink" class="btn ghost" target="_blank" style="text-decoration:none;">View Open Tickets</a>
-                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
+                    <a id="mGoodCsatLink" class="btn ghost" target="_blank" style="text-decoration:none; color:#16a34a; border-color:#86efac;">View Good CSAT</a>
+                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none; color:#dc2626; border-color:#fca5a5;">Find Bad CSAT</a>
                   </div>
                   <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
                 </div>
@@ -6074,9 +6075,10 @@ function forceRefresh() {
 window.forceRefresh = forceRefresh;
   function updateMetricLinks(data) {
      const openA = document.getElementById("mOpenTicketsLink");
+     const goodA = document.getElementById("mGoodCsatLink");
      const badA = document.getElementById("mBadCsatLink");
      
-     if (!openA || !badA) return;
+     if (!openA || !badA || !goodA) return;
      
      const userId = data.zendeskUserId || data.id;
      const agentEmail = data.email;
@@ -6084,8 +6086,10 @@ window.forceRefresh = forceRefresh;
      
      if (!userId && !agentEmail) {
          openA.style.opacity = "0.5";
+         goodA.style.opacity = "0.5";
          badA.style.opacity = "0.5";
          openA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
+         goodA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
          badA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
          return;
      }
@@ -6104,6 +6108,10 @@ window.forceRefresh = forceRefresh;
      const openQuery = `type:ticket ${assigneeFilter} status<solved`;
      const openUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(openQuery)}`;
      
+     // Good CSAT tickets - use created date filter
+     const goodQuery = `type:ticket ${assigneeFilter} satisfaction_score:good status:solved created>=${sixtyDaysAgoISO}`;
+     const goodUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(goodQuery)}`;
+     
      // Bad CSAT tickets - use created date filter as per requirement
      const badQuery = `type:ticket ${assigneeFilter} satisfaction_score:bad status:solved created>=${sixtyDaysAgoISO}`;
      const badUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(badQuery)}`;
@@ -6113,14 +6121,20 @@ window.forceRefresh = forceRefresh;
      openA.target = "_blank";
      openA.onclick = null;
      
+     goodA.href = goodUrl;
+     goodA.target = "_blank";
+     goodA.onclick = null;
+     
      badA.href = badUrl;
      badA.target = "_blank";
      badA.onclick = null;
      
      // Make sure links are visible and clickable
      openA.style.pointerEvents = "auto";
+     goodA.style.pointerEvents = "auto";
      badA.style.pointerEvents = "auto";
      openA.style.opacity = "1";
+     goodA.style.opacity = "1";
      badA.style.opacity = "1";
   }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
