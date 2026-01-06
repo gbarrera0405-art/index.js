@@ -1559,6 +1559,7 @@ body.agent-mode .pill.balance {
                   <div style="background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #fed7aa;">
                     <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (7d)</div>
                     <div id="mCSAT" style="font-size:18px; font-weight:900; color:#ea580c;">--</div>
+                    <div id="mCSATDetail" style="font-size:9px; color:#9a3412; margin-top:2px;"></div>
                   </div>
                 </div>
                 <div style="margin:14px auto 0; max-width: 360px; text-align:left;">
@@ -2346,6 +2347,66 @@ const CHANNEL_ABBREV = {
   "11Meetings": "1:1"
 };
   const $ = (id) => document.getElementById(id);
+  
+  // ============================================
+  // SESSION PERSISTENCE (15 minutes)
+  // ============================================
+  const SESSION_KEY = 'musely_session';
+  const SESSION_TTL = 15 * 60 * 1000; // 15 minutes
+  
+  function saveSession(data) {
+    const session = {
+      email: data.userEmail,
+      name: data.matchedPerson,
+      isManager: data.isManager,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }
+  
+  function loadSession() {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      
+      const session = JSON.parse(raw);
+      const age = Date.now() - session.timestamp;
+      
+      // Check if session is still valid (15 minutes)
+      if (age > SESSION_TTL) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+      
+      return session;
+    } catch (e) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+  }
+  
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY);
+  }
+  
+  // Check for existing session on page load
+  function restoreSession() {
+    const session = loadSession();
+    if (session) {
+      console.log("🔐 Restoring session for:", session.name);
+      window._myEmail = session.email;
+      window._myName = session.name;
+      window._isManager = session.isManager;
+      window._currentUser = session.name;
+      
+      // Refresh the session timestamp (extend expiry)
+      saveSession({ userEmail: session.email, matchedPerson: session.name, isManager: session.isManager });
+      
+      return true;
+    }
+    return false;
+  }
+  
   async function handleSignIn(response) {
   console.log("Sign-in response received");
   
@@ -2363,6 +2424,9 @@ const CHANNEL_ABBREV = {
       toast("Access Denied: " + data.error, "error");
       return;
     }
+    
+    // Save session to localStorage (15 min persistence)
+    saveSession(data);
     
     // Set global identity
     window._myEmail = data.userEmail;
@@ -2863,7 +2927,16 @@ function clearScheduleCache() {
 }
   // --- 4. LOAD SEQUENCE ---
   window.onload = function() {
-    try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
+    try {
+      // Try to restore session first (15 min persistence)
+      if (restoreSession()) {
+        console.log("✅ Session restored, loading app...");
+        document.body.classList.remove("auth-pending");
+        const loginContainer = document.getElementById("loginContainer");
+        if (loginContainer) loginContainer.style.display = "none";
+      }
+      load();
+    } catch (e) { fatal_("Boot Crash", e.message); }
   };
   function load(force, targetEmail) {
   // ✅ Show/hide login button based on auth state
@@ -5938,6 +6011,18 @@ function handleDateJump(val) {
     if(document.getElementById("mCSAT")) document.getElementById("mCSAT").innerText = formatCsatDisplay(data.csatScore);
     if(document.getElementById("mOpen")) document.getElementById("mOpen").innerText = data.openTickets ?? "--";
     
+    // Show CSAT breakdown (good/bad counts)
+    if(document.getElementById("mCSATDetail")) {
+        const good = data.csatGood || 0;
+        const bad = data.csatBad || 0;
+        const total = good + bad;
+        if (total > 0) {
+            document.getElementById("mCSATDetail").innerText = `${good} good, ${bad} bad`;
+        } else {
+            document.getElementById("mCSATDetail").innerText = "No ratings";
+        }
+    }
+    
     if(document.getElementById("mAvatar")) {
         document.getElementById("mAvatar").src = data.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
     }
@@ -5993,29 +6078,46 @@ window.forceRefresh = forceRefresh;
      
      if (!openA || !badA) return;
      
-     // Build queries based on best available identifier
-     let openQ = "";
-     let badCsatQ = "";
+     const userId = data.zendeskUserId || data.id;
+     const agentEmail = data.email;
+     const agentName = data.name;
      
-     if (data.zendeskUserId || data.id) {
-         const userId = data.zendeskUserId || data.id;
-         openQ = `type:ticket status<solved assignee_id:${userId}`;
-         badCsatQ = `type:ticket satisfaction:bad assignee_id:${userId}`;
-     } else if (data.email) {
-         openQ = `type:ticket status<solved assignee:${data.email}`;
-         badCsatQ = `type:ticket satisfaction:bad assignee:${data.email}`;
-     } else if (data.name) {
-         openQ = `type:ticket status<solved assignee:"${data.name}"`;
-         badCsatQ = `type:ticket satisfaction:bad assignee:"${data.name}"`;
+     if (!userId && !agentEmail) {
+         openA.style.opacity = "0.5";
+         badA.style.opacity = "0.5";
+         openA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
+         badA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
+         return;
      }
      
-     const baseUrl = "https://musely.zendesk.com/agent/search/1?query=";
-     openA.href = baseUrl + encodeURIComponent(openQ);
-     badA.href = baseUrl + encodeURIComponent(badCsatQ);
+     // Build Zendesk search URLs
+     // Per Zendesk docs: assignee can be ID, name, or email
+     // For satisfaction: use "satisfaction:good" or "satisfaction:bad" (not satisfaction_rating)
+     const assigneeFilter = agentEmail ? `assignee:${agentEmail}` : `assignee_id:${userId}`;
      
-     // Make sure links are clickable
+     // Open tickets = status less than solved
+     const openQuery = `${assigneeFilter} status<solved`;
+     const openUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(openQuery)}`;
+     
+     // Bad CSAT tickets - use "satisfaction:bad" per Zendesk search reference
+     // Note: This searches tickets where satisfaction IS bad (includes bad and bad_with_comment)
+     const badQuery = `${assigneeFilter} satisfaction:bad`;
+     const badUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(badQuery)}`;
+     
+     // Set as direct links
+     openA.href = openUrl;
+     openA.target = "_blank";
+     openA.onclick = null;
+     
+     badA.href = badUrl;
+     badA.target = "_blank";
+     badA.onclick = null;
+     
+     // Make sure links are visible and clickable
      openA.style.pointerEvents = "auto";
      badA.style.pointerEvents = "auto";
+     openA.style.opacity = "1";
+     badA.style.opacity = "1";
   }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
   function closeProfile() { $("profileOverlay").style.display = "none"; }
