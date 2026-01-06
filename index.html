@@ -6095,11 +6095,11 @@ window.forceRefresh = forceRefresh;
      }
      
      // Build Zendesk search URLs
-     // Per Zendesk docs: assignee can be ID, name, or email
-     // For satisfaction: use "satisfaction_score:bad" or "satisfaction_score:good"
+     // Note: Backend API uses 'satisfaction_rating:', but Zendesk UI search uses 'satisfaction_score:'
+     // For satisfaction: use "satisfaction_score:bad" or "satisfaction_score:good" for UI links
      const assigneeFilter = agentEmail ? `assignee:"${agentEmail}"` : `assignee_id:${userId}`;
      
-     // Calculate date for 60 days ago (for bad CSAT default filter)
+     // Calculate date for 60 days ago (for CSAT default filter)
      const sixtyDaysAgo = new Date();
      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
      const sixtyDaysAgoISO = sixtyDaysAgo.toISOString().split('T')[0];
