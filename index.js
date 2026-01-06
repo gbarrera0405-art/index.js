@@ -100,6 +100,13 @@ const metadataCache = {
 const agentProfileCache = new Map();
 const AGENT_PROFILE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Zendesk CSAT rating pagination safety limit
+const MAX_CSAT_RATINGS_PER_AGENT = 1000;
+
+// Valid CSAT rating scores
+const CSAT_SCORE_GOOD = 'good';
+const CSAT_SCORE_BAD = 'bad';
+
 async function getCachedMetadata() {
   const now = Date.now();
   if (metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
@@ -523,7 +530,8 @@ functions.http("helloHttp", async (req, res) => {
       "/manager/heartbeat",
       "/manager/presence",
       "/zendesk/agent/open",
-      "/zendesk/agent/badcsat"
+      "/zendesk/agent/badcsat",
+      "/zendesk/agent/csat"
     ].includes(path);
 
     if (!isApi) {
@@ -3112,6 +3120,140 @@ if (path === "/holiday/history" && req.method === "POST") {
         
         return res.status(err.status || 500).json({
           error: err.message || "Failed to fetch bad CSAT tickets"
+        });
+      }
+    }
+    
+    // GET /zendesk/agent/csat?email=...&days=7
+    if (path === "/zendesk/agent/csat" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'Fetching accurate CSAT counts');
+        
+        const email = String(req.query.email || "").trim();
+        
+        if (!email) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/csat', 'Missing email parameter');
+          return res.status(400).json({ error: "Missing email parameter" });
+        }
+        
+        // Validate days parameter (default 7, clamp 1-90) and sanitize email
+        const validDays = validateDaysParam(req.query.days, 7);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'Resolving user by email', { 
+          email: sanitizedEmail
+        });
+        
+        // Step 1: Resolve user via /users/search.json by email
+        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(sanitizedEmail)}`;
+        const userRes = await zdFetch(userSearchUrl);
+        
+        if (!userRes.users || userRes.users.length === 0) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/csat', 'User not found in Zendesk', { 
+            email: sanitizedEmail 
+          });
+          return res.status(404).json({ 
+            error: "User not found in Zendesk",
+            email: sanitizedEmail
+          });
+        }
+        
+        const user = userRes.users[0];
+        const userId = user.id;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'User resolved', { 
+          userId,
+          userName: user.name,
+          email: sanitizedEmail
+        });
+        
+        // Step 2: Calculate start_time for incremental API (Unix timestamp)
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - validDays);
+        const startTimeUnix = Math.floor(daysAgo.getTime() / 1000);
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'Fetching incremental satisfaction ratings', {
+          userId,
+          startTimeUnix,
+          days: validDays
+        });
+        
+        // Step 3: Call incremental satisfaction ratings API
+        // Fetch all pages to get accurate counts
+        let allRatings = [];
+        let nextUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/incremental/satisfaction_ratings.json?start_time=${startTimeUnix}`;
+        
+        while (nextUrl) {
+          const ratingsRes = await zdFetch(nextUrl);
+          const ratings = ratingsRes.satisfaction_ratings || [];
+          
+          // Filter ratings for this specific user (assignee_id matches) during collection
+          // Ensure type-safe comparison by converting both to numbers
+          const userRatings = ratings.filter(rating => Number(rating.assignee_id) === Number(userId));
+          allRatings = allRatings.concat(userRatings);
+          
+          // Check for next page - stop if end of stream OR no next_page (explicit null/undefined check)
+          const hasNextPage = ratingsRes.next_page !== null && ratingsRes.next_page !== undefined && ratingsRes.next_page !== '';
+          nextUrl = (ratingsRes.end_of_stream || !hasNextPage) ? null : ratingsRes.next_page;
+          
+          // Safety limit: stop after reaching max ratings to prevent excessive queries
+          if (allRatings.length >= MAX_CSAT_RATINGS_PER_AGENT) {
+            logWithTrace(traceId, 'warn', 'zendesk/agent/csat', 'Hit rating limit, stopping pagination', {
+              ratingsCount: allRatings.length,
+              limit: MAX_CSAT_RATINGS_PER_AGENT
+            });
+            break;
+          }
+        }
+        
+        // Step 4: Calculate CSAT metrics
+        let csatGood = 0;
+        let csatBad = 0;
+        
+        for (const rating of allRatings) {
+          if (rating.score === CSAT_SCORE_GOOD) {
+            csatGood++;
+          } else if (rating.score === CSAT_SCORE_BAD) {
+            csatBad++;
+          }
+          // "offered" and "unoffered" don't count as actual ratings
+        }
+        
+        const totalRatings = csatGood + csatBad;
+        const csatPercentage = totalRatings > 0 ? Math.round((csatGood / totalRatings) * 100) : null;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'CSAT calculated', {
+          userId,
+          email: sanitizedEmail,
+          good: csatGood,
+          bad: csatBad,
+          total: totalRatings,
+          percentage: csatPercentage
+        });
+        
+        return res.status(200).json({
+          ok: true,
+          userId: userId,
+          userName: user.name,
+          email: sanitizedEmail,
+          days: validDays,
+          csat: {
+            good: csatGood,
+            bad: csatBad,
+            total: totalRatings,
+            percentage: csatPercentage,
+            display: csatPercentage !== null ? `${csatPercentage}%` : "--"
+          }
+        });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/agent/csat', 'Error fetching CSAT', {
+          error: err.message,
+          status: err.status
+        });
+        
+        return res.status(err.status || 500).json({
+          error: err.message || "Failed to fetch CSAT data"
         });
       }
     }
