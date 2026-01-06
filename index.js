@@ -2944,7 +2944,7 @@ if (path === "/holiday/history" && req.method === "POST") {
     // ZENDESK AGENT TICKET SEARCH ENDPOINTS
     // ============================================
     
-    // GET /zendesk/agent/open?email=...&days=30
+    // GET /zendesk/agent/open?email=...&days=7
     if (path === "/zendesk/agent/open" && req.method === "GET") {
       try {
         logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Fetching open tickets');
@@ -2956,34 +2956,66 @@ if (path === "/holiday/history" && req.method === "POST") {
           return res.status(400).json({ error: "Missing email parameter" });
         }
         
-        // Validate days parameter and sanitize email
-        const validDays = validateDaysParam(req.query.days, 30);
+        // Validate days parameter (default 7, clamp 1-90) and sanitize email
+        const validDays = validateDaysParam(req.query.days, 7);
         const sanitizedEmail = sanitizeZendeskEmail(email);
         
-        // Build Zendesk search query - use proper status values
-        // Open tickets = status:new OR status:open OR status:pending
-        const query = `assignee:"${sanitizedEmail}" status:open status:pending status:new`;
-        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
+        // Pagination parameters
+        const page = Math.max(1, parseInt(req.query.page || "1", 10));
+        const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || "100", 10)));
         
-        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Calling Zendesk API', { email, days: validDays });
+        // Calculate date range for query
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - validDays);
+        const daysAgoISO = daysAgo.toISOString().split('T')[0];
+        
+        // Build Zendesk search query - use status<solved to get all non-solved tickets
+        // type:ticket ensures we only get tickets, not other objects
+        const query = `type:ticket assignee:"${sanitizedEmail}" status<solved created>=${daysAgoISO}`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Calling Zendesk API', { 
+          email, 
+          days: validDays, 
+          page, 
+          perPage,
+          dateFilter: daysAgoISO
+        });
         
         const data = await zdFetch(searchUrl);
         
         // Extract ticket IDs and build UI URL
-        const ticketIds = (data.results || []).map(t => t.id);
+        const tickets = (data.results || []).map(t => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          created_at: t.created_at,
+          updated_at: t.updated_at
+        }));
         const count = data.count || 0;
         const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
         
-        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Open tickets found', { email, count, days: validDays });
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Open tickets found', { 
+          email, 
+          count, 
+          days: validDays,
+          page,
+          returned: tickets.length
+        });
         
         return res.status(200).json({
           ok: true,
           count,
-          ticketIds,
+          tickets,
+          ticketIds: tickets.map(t => t.id),
           searchUrl: zendeskSearchUIUrl,
           query,
           days: validDays,
-          email
+          email,
+          page,
+          perPage,
+          hasMore: data.next_page !== null,
+          nextPage: data.next_page
         });
         
       } catch (err) {
@@ -3010,33 +3042,66 @@ if (path === "/holiday/history" && req.method === "POST") {
           return res.status(400).json({ error: "Missing email parameter" });
         }
         
-        // Validate days parameter and sanitize email
+        // Validate days parameter (default 60, clamp 1-90) and sanitize email
         const validDays = validateDaysParam(req.query.days, 60);
         const sanitizedEmail = sanitizeZendeskEmail(email);
         
-        // Build Zendesk search query - use satisfaction_rating:bad (correct field name)
-        const query = `assignee:"${sanitizedEmail}" satisfaction_rating:bad`;
-        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
+        // Pagination parameters
+        const page = Math.max(1, parseInt(req.query.page || "1", 10));
+        const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || "100", 10)));
         
-        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { email, days: validDays });
+        // Calculate date range for query
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - validDays);
+        const daysAgoISO = daysAgo.toISOString().split('T')[0];
+        
+        // Build Zendesk search query - use type:ticket and date filter
+        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:bad created>=${daysAgoISO}`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { 
+          email, 
+          days: validDays,
+          page,
+          perPage,
+          dateFilter: daysAgoISO
+        });
         
         const data = await zdFetch(searchUrl);
         
-        // Extract ticket IDs and build UI URL
-        const ticketIds = (data.results || []).map(t => t.id);
+        // Extract ticket details and build UI URL
+        const tickets = (data.results || []).map(t => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          satisfaction_rating: t.satisfaction_rating
+        }));
         const count = data.count || 0;
         const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
         
-        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Bad CSAT tickets found', { email, count, days: validDays });
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Bad CSAT tickets found', { 
+          email, 
+          count, 
+          days: validDays,
+          page,
+          returned: tickets.length
+        });
         
         return res.status(200).json({
           ok: true,
           count,
-          ticketIds,
+          tickets,
+          ticketIds: tickets.map(t => t.id),
           searchUrl: zendeskSearchUIUrl,
           query,
           days: validDays,
-          email
+          email,
+          page,
+          perPage,
+          hasMore: data.next_page !== null,
+          nextPage: data.next_page
         });
         
       } catch (err) {
