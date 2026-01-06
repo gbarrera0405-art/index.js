@@ -131,7 +131,21 @@ const zdFetch = async (url) => {
     const res = await fetch(url, {
         headers: { 'Authorization': `Basic ${auth}` }
     });
-    if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
+    
+    // Enhanced error handling
+    if (!res.ok) {
+        let errorMsg = `Zendesk API Error: ${res.statusText}`;
+        if (res.status === 401) {
+            errorMsg = 'Zendesk authentication failed. Please check credentials.';
+        } else if (res.status === 403) {
+            errorMsg = 'Access denied to Zendesk resource. Please check permissions.';
+        } else if (res.status === 429) {
+            errorMsg = 'Zendesk rate limit exceeded. Please try again later.';
+        }
+        const error = new Error(errorMsg);
+        error.status = res.status;
+        throw error;
+    }
     return res.json();
 };
 /** ------------------------
@@ -296,6 +310,25 @@ function logWithTrace(traceId, level, operation, message, metadata = {}) {
   };
   console.log(JSON.stringify(logEntry));
 }
+
+/**
+ * Sanitize email for use in Zendesk search queries
+ * Escapes special characters that could break the query
+ */
+function sanitizeZendeskEmail(email) {
+  if (!email) return '';
+  // Escape double quotes and backslashes
+  return String(email).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
+ * Validate and clamp days parameter for Zendesk queries
+ */
+function validateDaysParam(days, defaultValue = 30) {
+  const parsed = parseInt(days || defaultValue, 10);
+  return Math.max(1, Math.min(parsed, 90)); // Clamp between 1-90
+}
+
 
 function sanitizePatch(patch = {}) {
   const out = {};
@@ -488,7 +521,9 @@ functions.http("helloHttp", async (req, res) => {
       "/swap/respond",
       "/schedule/check-conflict",
       "/manager/heartbeat",
-      "/manager/presence"
+      "/manager/presence",
+      "/zendesk/agent/open",
+      "/zendesk/agent/badcsat"
     ].includes(path);
 
     if (!isApi) {
@@ -2905,6 +2940,117 @@ if (path === "/holiday/history" && req.method === "POST") {
         return res.status(500).json({ status: "error", message: err.message });
       }
     }
+    // ============================================
+    // ZENDESK AGENT TICKET SEARCH ENDPOINTS
+    // ============================================
+    
+    // GET /zendesk/agent/open?email=...&days=30
+    if (path === "/zendesk/agent/open" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Fetching open tickets');
+        
+        const email = String(req.query.email || "").trim();
+        
+        if (!email) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Missing email parameter');
+          return res.status(400).json({ error: "Missing email parameter" });
+        }
+        
+        // Validate days parameter and sanitize email
+        const validDays = validateDaysParam(req.query.days, 30);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
+        
+        // Build Zendesk search query - use proper status values
+        // Open tickets = status:new OR status:open OR status:pending
+        const query = `assignee:"${sanitizedEmail}" status:open status:pending status:new`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Calling Zendesk API', { email, days: validDays });
+        
+        const data = await zdFetch(searchUrl);
+        
+        // Extract ticket IDs and build UI URL
+        const ticketIds = (data.results || []).map(t => t.id);
+        const count = data.count || 0;
+        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Open tickets found', { email, count, days: validDays });
+        
+        return res.status(200).json({
+          ok: true,
+          count,
+          ticketIds,
+          searchUrl: zendeskSearchUIUrl,
+          query,
+          days: validDays,
+          email
+        });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Error fetching open tickets', {
+          error: err.message,
+          status: err.status
+        });
+        
+        return res.status(err.status || 500).json({
+          error: err.message || "Failed to fetch open tickets"
+        });
+      }
+    }
+    
+    // GET /zendesk/agent/badcsat?email=...&days=60
+    if (path === "/zendesk/agent/badcsat" && req.method === "GET") {
+      try {
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Fetching bad CSAT tickets');
+        
+        const email = String(req.query.email || "").trim();
+        
+        if (!email) {
+          logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Missing email parameter');
+          return res.status(400).json({ error: "Missing email parameter" });
+        }
+        
+        // Validate days parameter and sanitize email
+        const validDays = validateDaysParam(req.query.days, 60);
+        const sanitizedEmail = sanitizeZendeskEmail(email);
+        
+        // Build Zendesk search query - use satisfaction_rating:bad (correct field name)
+        const query = `assignee:"${sanitizedEmail}" satisfaction_rating:bad`;
+        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { email, days: validDays });
+        
+        const data = await zdFetch(searchUrl);
+        
+        // Extract ticket IDs and build UI URL
+        const ticketIds = (data.results || []).map(t => t.id);
+        const count = data.count || 0;
+        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
+        
+        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Bad CSAT tickets found', { email, count, days: validDays });
+        
+        return res.status(200).json({
+          ok: true,
+          count,
+          ticketIds,
+          searchUrl: zendeskSearchUIUrl,
+          query,
+          days: validDays,
+          email
+        });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Error fetching bad CSAT tickets', {
+          error: err.message,
+          status: err.status
+        });
+        
+        return res.status(err.status || 500).json({
+          error: err.message || "Failed to fetch bad CSAT tickets"
+        });
+      }
+    }
+    
     if (path === "/agent-profile" && req.method === "POST") {
       try {
         const { name } = readJsonBody(req);
@@ -2935,48 +3081,74 @@ if (path === "/holiday/history" && req.method === "POST") {
         }
         
         // 2. Lookup User in Zendesk
-        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
+        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(agentEmail)}`;
         const userRes = await zdFetch(userSearchUrl);
         if (!userRes.users?.length) throw new Error("Email not found in Zendesk.");
         
         const user = userRes.users[0];
         const zendeskUserId = user.id;
         
-        // 3. Fetch Open Tickets and Solved in parallel
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const date7 = oneWeekAgo.toISOString().split('T')[0];
+        // 3. Calculate date boundaries (7 days ago)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoISO = sevenDaysAgo.toISOString().split('T')[0];
+        const sevenDaysAgoUnix = Math.floor(sevenDaysAgo.getTime() / 1000);
         
-        const [openRes, solvedRes] = await Promise.all([
-          zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} status<solved`)}`),
-          zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} status:solved solved>${date7}`)}`)
-        ]);
+        // 4. Fetch ticket counts - use a single query for open tickets
+        let openCount = 0;
+        let solvedCount = 0;
         
-        // 4. Fetch CSAT using search API (7 days to match solved tickets)
-        const csatDaysBack = 7;
-        const csatStartDate = new Date();
-        csatStartDate.setDate(csatStartDate.getDate() - csatDaysBack);
-        const csatStartISO = csatStartDate.toISOString().split('T')[0];
+        try {
+          // Single query for all unsolved tickets (status:new OR status:open OR status:pending)
+          const unsolvedQuery = `assignee_id:${zendeskUserId} -status:solved -status:closed`;
+          const solvedQuery = `assignee_id:${zendeskUserId} status:solved solved>=${sevenDaysAgoISO}`;
+          
+          const [unsolvedRes, solvedRes] = await Promise.all([
+            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(unsolvedQuery)}`),
+            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(solvedQuery)}`)
+          ]);
+          
+          openCount = unsolvedRes.count || 0;
+          solvedCount = solvedRes.count || 0;
+        } catch (ticketErr) {
+          console.warn("Ticket count failed:", ticketErr.message);
+        }
         
+        // 5. Fetch CSAT by searching for tickets with satisfaction ratings
+        // Match the Zendesk View filter: "Request date in the last 7 days" + assignee + has rating
         let csatDisplay = "--";
         let csatGood = 0;
         let csatBad = 0;
+        
         try {
-          // Fetch good and bad rated tickets in parallel (7 days)
-          const [goodRes, badRes] = await Promise.all([
-            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} satisfaction:good solved>${csatStartISO}`)}`),
-            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${zendeskUserId} satisfaction:bad solved>${csatStartISO}`)}`)
-          ]);
+          // Search for tickets created in last 7 days for this assignee
+          // The Search API returns tickets with satisfaction_rating object embedded
+          const ticketSearchQuery = `assignee_id:${zendeskUserId} created>=${sevenDaysAgoISO}`;
+          const ticketSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(ticketSearchQuery)}&per_page=100`;
           
-          csatGood = goodRes.count || 0;
-          csatBad = badRes.count || 0;
+          const ticketRes = await zdFetch(ticketSearchUrl);
+          const tickets = ticketRes.results || [];
+          
+          // Count satisfaction ratings from tickets
+          for (const ticket of tickets) {
+            if (ticket.satisfaction_rating && ticket.satisfaction_rating.score) {
+              const score = ticket.satisfaction_rating.score;
+              if (score === "good") csatGood++;
+              else if (score === "bad") csatBad++;
+              // "offered" and "unoffered" don't count as actual ratings
+            }
+          }
+          
+          // Log for debugging
+          console.log(`CSAT for ${user.name} (ID: ${zendeskUserId}): Good=${csatGood}, Bad=${csatBad}, Total tickets searched=${tickets.length}`);
+          
           const total = csatGood + csatBad;
           csatDisplay = total > 0 ? Math.round((csatGood / total) * 100) + "%" : "--";
         } catch (csatErr) {
           console.warn("CSAT lookup failed:", csatErr.message);
         }
         
-        // 5. Build response
+        // 6. Build response
         const profileData = {
           found: true,
           id: zendeskUserId,
@@ -2986,8 +3158,8 @@ if (path === "/holiday/history" && req.method === "POST") {
           avatar: user.photo ? user.photo.content_url : null,
           role: user.role,
           lastLogin: user.last_login_at,
-          openTickets: openRes.count || 0,
-          solvedWeek: solvedRes.count || 0,
+          openTickets: openCount,
+          solvedWeek: solvedCount,
           csatScore: csatDisplay,
           csatGood: csatGood,
           csatBad: csatBad
