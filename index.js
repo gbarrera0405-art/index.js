@@ -3173,6 +3173,7 @@ if (path === "/holiday/history" && req.method === "POST") {
         
         // Step 3: Fetch satisfaction ratings using incremental API
         // This API is more reliable than search for CSAT data
+        // The start_time parameter ensures we only get ratings from the specified date range
         let csatGood = 0;
         let csatBad = 0;
         let totalRatings = 0;
@@ -3195,6 +3196,7 @@ if (path === "/holiday/history" && req.method === "POST") {
           });
           
           // Filter ratings for this specific assignee
+          // Note: The incremental API already filtered by start_time, so this is efficient
           for (const rating of allRatings) {
             if (rating.assignee_id === zendeskUserId && rating.score) {
               const score = rating.score;
@@ -3244,8 +3246,9 @@ if (path === "/holiday/history" && req.method === "POST") {
           ? Math.round((csatGood / totalRatings) * 100) 
           : null;
         
-        // Build hardened search link for UI
-        const searchQuery = `type:ticket assignee_id:${zendeskUserId}`;
+        // Build hardened search link for UI with date range filter for consistency
+        const daysAgoISO = daysAgo.toISOString().split('T')[0];
+        const searchQuery = `type:ticket assignee_id:${zendeskUserId} created>=${daysAgoISO}`;
         const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(searchQuery)}`;
         
         logWithTrace(traceId, 'info', 'zendesk/agent/csat', 'CSAT data compiled', {
