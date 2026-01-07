@@ -536,9 +536,13 @@ function servePublicFile(reqPath, res) {
  * Main HTTP Handler
  * ------------------------ */
 functions.http("helloHttp", async (req, res) => {
+  const startTime = Date.now();
+  let traceId;
+  let path;
+  
   try {
     // Generate or extract trace ID
-    const traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // CORS first
     res.set("Access-Control-Allow-Origin", "*");
@@ -546,18 +550,30 @@ functions.http("helloHttp", async (req, res) => {
     res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,x-preview-key,X-Trace-Id");
     res.set("X-Trace-Id", traceId);
 
-    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method === "OPTIONS") {
+      logWithTrace(traceId, 'info', 'OPTIONS', 'CORS preflight handled');
+      return res.status(204).send("");
+    }
 
-    let path = String(req.path || "/").toLowerCase();
+    path = String(req.path || "/").toLowerCase();
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
     const action = (req.query.action || (req.body && req.body.action) || "").toLowerCase();
     // Force path to match action if present
     if (action) {
       path = "/" + action;
     }
+    
+    logWithTrace(traceId, 'info', 'request', `${req.method} ${path}`, {
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    
     // Gate (optional)
     if (path !== "/health") {
-      if (!requirePreviewKey(req, res)) return;
+      if (!requirePreviewKey(req, res)) {
+        logWithTrace(traceId, 'warn', 'auth', 'Preview key validation failed');
+        return;
+      }
     }
     // Static first (anything not in the API list)
     const isApi = [
@@ -3325,15 +3341,127 @@ if (path === "/holiday/history" && req.method === "POST") {
         // Cache the result using the proper Map
         agentProfileCache.set(cacheKey, { data: profileData, timestamp: Date.now() });
         
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'info', 'response', `200 ${path}`, { duration });
+        
         return res.status(200).json(profileData);
       } catch (error) {
-        console.error("Profile Error:", error);
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'error', 'agent-profile', 'Profile fetch error', {
+          error: error.message,
+          duration
+        });
         return res.status(500).json({ error: error.message });
       }
     }
+    
+    // ============================================
+    // SCHEDULE EXPORT TO CSV
+    // ============================================
+    if (path === "/schedule/export" && req.method === "POST") {
+      try {
+        logWithTrace(traceId, 'info', 'schedule/export', 'Processing CSV export request');
+        
+        const body = readJsonBody(req);
+        const startDate = body.startDate || new Date().toISOString().split('T')[0];
+        const days = clampDays(body.days || 14);
+        const teamKey = body.teamKey || '';
+        
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+          logWithTrace(traceId, 'error', 'schedule/export', 'Invalid date format', { startDate });
+          return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Calculate date range
+        const start = new Date(`${startDate}T00:00:00Z`);
+        if (isNaN(start.getTime())) {
+          logWithTrace(traceId, 'error', 'schedule/export', 'Invalid date', { startDate });
+          return res.status(400).json({ error: 'Invalid start date' });
+        }
+        
+        const endDate = new Date(start);
+        endDate.setUTCDate(endDate.getUTCDate() + days);
+        const endStr = endDate.toISOString().split('T')[0];
+        
+        // Fetch schedule data
+        let query = db.collection("scheduleDays")
+          .where("date", ">=", startDate)
+          .where("date", "<=", endStr);
+        
+        if (teamKey) {
+          query = query.where("team", "==", teamKey);
+        }
+        
+        const snapshot = await query.get();
+        
+        logWithTrace(traceId, 'info', 'schedule/export', 'Fetched schedule data', {
+          docs: snapshot.size,
+          startDate,
+          endStr,
+          teamKey
+        });
+        
+        // Build CSV
+        const csvRows = [];
+        csvRows.push('Date,Team,Person,Role,Start Time,End Time,Status,Notes');
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const assignments = data.assignments || [];
+          
+          assignments.forEach(a => {
+            const row = [
+              data.date || '',
+              data.team || '',
+              (a.person || 'Unassigned').replace(/,/g, ';'), // Escape commas
+              (a.role || '').replace(/,/g, ';'),
+              toAmPm(a.start || ''),
+              toAmPm(a.end || ''),
+              a.status || 'Active',
+              (a.notes || '').replace(/,/g, ';').replace(/\n/g, ' ')
+            ];
+            csvRows.push(row.join(','));
+          });
+        });
+        
+        const csv = csvRows.join('\n');
+        const filename = `schedule_${startDate}_to_${endStr}${teamKey ? '_' + teamKey : ''}.csv`;
+        
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'info', 'schedule/export', 'CSV export completed', {
+          duration,
+          rows: csvRows.length - 1,
+          filename
+        });
+        
+        res.set('Content-Type', 'text/csv');
+        res.set('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(csv);
+        
+      } catch (err) {
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'error', 'schedule/export', 'Export error', {
+          error: err.message,
+          stack: err.stack,
+          duration
+        });
+        return res.status(500).json({ error: err.message || 'Export failed' });
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    logWithTrace(traceId, 'warn', 'response', `404 ${path}`, { duration });
     return res.status(404).json({ error: "Not found" });
+    
   } catch (err) {
-    console.error("ERROR:", err);
+    const duration = Date.now() - startTime;
+    logWithTrace(traceId || 'unknown', 'error', 'request', 'Unhandled error', {
+      error: err?.message || String(err),
+      stack: err?.stack,
+      path: path || 'unknown',
+      duration
+    });
     return res.status(500).json({ error: "Server error", details: String(err?.message || err) });
   }
 });

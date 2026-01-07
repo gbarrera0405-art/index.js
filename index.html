@@ -1322,6 +1322,197 @@ body.agent-mode .pill.balance {
   right: -8px;
   font-size: 14px;
 }
+
+/* ============================================
+   MOBILE RESPONSIVENESS
+   ============================================ */
+@media (max-width: 768px) {
+  /* Header adjustments */
+  .header {
+    padding: 0 12px;
+    height: 56px;
+    flex: 0 0 56px;
+  }
+  
+  .hTitle {
+    font-size: 14px;
+  }
+  
+  .metaGroup {
+    gap: 4px;
+  }
+  
+  .pill {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+  
+  .iconBtn {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .iconBtn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Hide less important buttons on mobile */
+  .seg, #btnMasterMode, #drawerToggle {
+    display: none !important;
+  }
+  
+  /* Navigation adjustments */
+  .navGroup {
+    padding: 8px 12px;
+  }
+  
+  .navBtn {
+    width: 28px;
+    height: 28px;
+  }
+  
+  /* Content area */
+  .content {
+    padding: 12px;
+  }
+  
+  /* Calendar view - stack vertically */
+  .calGrid {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
+  .dayCol {
+    min-width: 100%;
+    max-width: 100%;
+    margin-bottom: 12px;
+  }
+  
+  /* Schedule view adjustments */
+  .schedule-container {
+    flex-direction: column;
+  }
+  
+  .day-tabs {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 4px;
+    padding: 0 0 8px 0;
+  }
+  
+  .day-tab {
+    min-width: 100px;
+    padding: 10px;
+  }
+  
+  .day-tab .day-name {
+    font-size: 13px;
+  }
+  
+  .day-tab .day-date {
+    font-size: 10px;
+  }
+  
+  /* Shift cards - make them stack */
+  .shifts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .shift-card-b {
+    padding: 12px;
+  }
+  
+  /* Modals - full width on mobile */
+  .modal {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 10px;
+  }
+  
+  .overlay {
+    padding: 0;
+  }
+  
+  /* Drawer - full width on mobile */
+  .drawer {
+    width: 100%;
+    right: -100%;
+  }
+  
+  .drawer.open {
+    right: 0;
+  }
+  
+  /* Toast positioning */
+  #toastHost {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+  }
+  
+  .toast {
+    min-width: 100%;
+  }
+  
+  /* Selection bar */
+  .selection-bar {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+  }
+  
+  .sb-left, .sb-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .sb-actions {
+    flex-wrap: wrap;
+  }
+  
+  /* Coverage banner */
+  .coverage-banner {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+  }
+  
+  .coverage-banner-title {
+    font-size: 10px;
+    margin-bottom: 4px;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+    width: 100%;
+  }
+  
+  .coverage-chips {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens */
+  .hTitle {
+    display: none;
+  }
+  
+  .dayCol {
+    min-width: 100%;
+  }
+  
+  .sc-time {
+    font-size: 11px;
+  }
+  
+  .sc-name {
+    font-size: 14px;
+  }
+}
   
 </style>
 </head>
@@ -1386,6 +1577,9 @@ body.agent-mode .pill.balance {
         <span id="notifCount" class="hidden">0</span>
       </button>
 <button id="btnAgentToggle" class="btn ghost" style="display:none; font-size:12px; border:1px solid #cbd5e1; margin-right:10px;" onclick="toggleAgentView()">Show Team</button>
+      <button id="btnExport" type="button" class="iconBtn" title="Export Schedule to CSV" onclick="openExportModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
+      </button>
       <button id="btnAdmin" type="button" class="iconBtn" title="Admin Settings" onclick="openAdminModal()">
         <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       </button>
@@ -8556,5 +8750,110 @@ document.addEventListener("DOMContentLoaded", function() {
   border-radius: 50%;
 }
 </style>
+
+<!-- Export Modal -->
+<div id="exportOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeExportModal()">
+  <div class="modal" style="width: 420px;">
+    <div class="mHead">
+      <span class="mTitle">📥 Export Schedule to CSV</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeExportModal()">✕</button>
+    </div>
+    <div class="mBody">
+      <div style="margin-bottom:20px;">
+        <label>Start Date</label>
+        <input type="date" id="exportStartDate" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label>Number of Days</label>
+        <input type="number" id="exportDays" value="14" min="1" max="90" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label>Team (Optional - leave blank for all)</label>
+        <select id="exportTeam" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+          <option value="">All Teams</option>
+        </select>
+      </div>
+    </div>
+    <div class="mFoot">
+      <button class="btn ghost" onclick="closeExportModal()">Cancel</button>
+      <button class="btn primary" onclick="performExport()">📥 Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Export Modal Functions
+function openExportModal() {
+  const modal = document.getElementById('exportOverlay');
+  if (!modal) return;
+  
+  // Set default start date to today
+  const today = new Date().toISOString().split('T')[0];
+  const dateInput = document.getElementById('exportStartDate');
+  if (dateInput) dateInput.value = today;
+  
+  // Populate team dropdown
+  const teamSelect = document.getElementById('exportTeam');
+  if (teamSelect && window._teams) {
+    teamSelect.innerHTML = '<option value="">All Teams</option>';
+    window._teams.forEach(team => {
+      const opt = document.createElement('option');
+      opt.value = team;
+      opt.textContent = team;
+      teamSelect.appendChild(opt);
+    });
+  }
+  
+  modal.style.display = 'flex';
+}
+
+function closeExportModal() {
+  const modal = document.getElementById('exportOverlay');
+  if (modal) modal.style.display = 'none';
+}
+
+async function performExport() {
+  const startDate = document.getElementById('exportStartDate')?.value;
+  const days = parseInt(document.getElementById('exportDays')?.value || '14');
+  const teamKey = document.getElementById('exportTeam')?.value || '';
+  
+  if (!startDate) {
+    toast('Please select a start date', 'error');
+    return;
+  }
+  
+  try {
+    const res = await fetch('./?action=schedule/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startDate, days, teamKey })
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Export failed');
+    }
+    
+    // Download the CSV file
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schedule_${startDate}_${days}days${teamKey ? '_' + teamKey : ''}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    closeExportModal();
+    toast('✅ Schedule exported successfully!', 'success');
+    
+  } catch (err) {
+    console.error('Export error:', err);
+    toast('Export failed: ' + err.message, 'error');
+  }
+}
+</script>
+
 </body>
 </html>
