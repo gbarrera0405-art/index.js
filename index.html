@@ -724,6 +724,7 @@ body:not(.auth-pending) #authOverlay {
    ============================================ */
 /* Hide manager-only header elements */
 body.agent-mode #btnAdmin,
+body.agent-mode #btnAddAgent,
 body.agent-mode #btnMasterMode,
 body.agent-mode #drawerToggle,
 body.agent-mode #teamChips,
@@ -1580,6 +1581,9 @@ body.agent-mode .pill.balance {
       <button id="btnExport" type="button" class="iconBtn" title="Export Schedule to CSV" onclick="openExportModal()">
         <svg viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
       </button>
+      <button id="btnAddAgent" type="button" class="iconBtn" title="Add Agent" onclick="openAddAgentModal()">
+        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </button>
       <button id="btnAdmin" type="button" class="iconBtn" title="Admin Settings" onclick="openAdminModal()">
         <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       </button>
@@ -2295,6 +2299,84 @@ body.agent-mode .pill.balance {
     </div>
   </div>
 </div>
+
+<!-- Add Agent Modal -->
+<div id="addAgentOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAddAgentModal()">
+  <div class="modal" style="width: 480px; border-radius: 16px;">
+    <div class="mHead" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+      <span class="mTitle" style="color: white;">👤 Add New Agent</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color: white; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);" onclick="closeAddAgentModal()">✕</button>
+    </div>
+    <div class="mBody" style="padding: 24px;">
+      <form id="addAgentForm" onsubmit="submitAddAgent(event)">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">
+            Name <span style="color: #ef4444;">*</span>
+          </label>
+          <input type="text" id="agentName" name="name" required 
+            style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+            placeholder="e.g., John Doe">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">
+            Email <span style="color: #ef4444;">*</span>
+          </label>
+          <input type="email" id="agentEmail" name="email" required 
+            style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+            placeholder="e.g., john@musely.com">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">
+            Chat User ID (Optional)
+          </label>
+          <input type="text" id="agentChatUserId" name="chatUserId" 
+            style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+            placeholder="e.g., spaces/abc123/members/xyz">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">
+            Roles (comma-separated)
+          </label>
+          <input type="text" id="agentRoles" name="roles" 
+            style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+            placeholder="e.g., Support, Sales">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">
+            Teams (comma-separated)
+          </label>
+          <input type="text" id="agentTeams" name="teams" 
+            style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+            placeholder="e.g., Support, OnDemand">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="agentActive" name="active" checked 
+              style="width: 18px; height: 18px; cursor: pointer;">
+            <span style="font-size: 14px; font-weight: 600; color: #475569;">Active</span>
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button type="button" class="btn ghost" onclick="closeAddAgentModal()" 
+            style="flex: 1; padding: 12px; font-weight: 600;">
+            Cancel
+          </button>
+          <button type="submit" class="btn primary" 
+            style="flex: 1; padding: 12px; font-weight: 600; background: #10b981; border-color: #10b981;">
+            Add Agent
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Agent Overlay - REDESIGNED -->
 <div id="agentOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentModal()">
   <div class="modal" style="width: 460px; border-radius: 20px;">
@@ -6617,6 +6699,74 @@ if (!window._isManager && window._myName) {
   function confirmManagerSelection() { _selectedManagerEmail=$("masterManagerDropdown").value; $("masterContextOverlay").style.display="none"; load(true, _selectedManagerEmail); }
   function openAdminModal() { $("adminOverlay").style.display="flex"; loadRules(); }
   function closeAdminModal() { $("adminOverlay").style.display="none"; }
+  
+  function openAddAgentModal() {
+    $("addAgentOverlay").style.display = "flex";
+    // Clear form
+    $("addAgentForm").reset();
+  }
+  
+  function closeAddAgentModal() {
+    $("addAgentOverlay").style.display = "none";
+  }
+  
+  async function submitAddAgent(event) {
+    event.preventDefault();
+    
+    const name = $("agentName").value.trim();
+    const email = $("agentEmail").value.trim();
+    const chatUserId = $("agentChatUserId").value.trim();
+    const rolesStr = $("agentRoles").value.trim();
+    const teamsStr = $("agentTeams").value.trim();
+    const active = $("agentActive").checked;
+    
+    // Parse comma-separated values
+    const roles = rolesStr ? rolesStr.split(',').map(r => r.trim()).filter(r => r) : [];
+    const teams = teamsStr ? teamsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+    
+    if (!name || !email) {
+      alert("Name and Email are required");
+      return;
+    }
+    
+    try {
+      const payload = {
+        name,
+        email,
+        roles,
+        teams,
+        active
+      };
+      if (chatUserId) {
+        payload.chatUserId = chatUserId;
+      }
+      
+      const response = await fetch('./?action=agents/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.ok) {
+        alert(`✅ Agent "${name}" added successfully!`);
+        closeAddAgentModal();
+        
+        // Refresh metadata if loadSystemData is available
+        if (typeof loadSystemData === 'function') {
+          await loadSystemData();
+        } else if (typeof load === 'function') {
+          load(true);
+        }
+      } else {
+        alert(`❌ Error: ${result.error || 'Failed to add agent'}`);
+      }
+    } catch (err) {
+      alert(`❌ Error: ${err.message}`);
+    }
+  }
+  
   function loadRules() {
   const list = $("ruleList");
   list.innerHTML = '<div style="padding:10px; color:#94a3b8;">Loading...</div>';
