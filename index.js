@@ -277,6 +277,12 @@ function timeRangesOverlap(start1, end1, start2, end2) {
   // Check for overlap: ranges overlap if one starts before the other ends
   return (s1 < e2) && (s2 < e1);
 }
+
+function csvEscape(val) {
+  const s = val == null ? "" : String(val);
+  // wrap in quotes and escape internal quotes
+  return `"${s.replace(/"/g, '""')}"`;
+}
 // Check if a person is already scheduled during a time slot on a given date
 // Also flags lunch conflicts
 async function checkDoubleBooking(db, personName, date, startTime, endTime, excludeAssignmentId = null) {
@@ -519,7 +525,7 @@ function contentTypeFor(filePath) {
   if (ext === ".css") return "text/css; charset=utf-8";
   if (ext === ".json") return "application/json; charset=utf-8";
   if (ext === ".png") return "image/png";
-  if (ext === ".jpg") || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".svg") return "image/svg+xml";
   // FIXED: Changed invalid MIME type to correct format
   if (ext === ".csv") return "text/csv; charset=utf-8";
@@ -627,7 +633,8 @@ functions.http("helloHttp", async (req, res) => {
       "/admin/wipe-future",
       "/admin/regenerate-all",
       "/schedule/extended",
-      "/schedule/past", 
+      "/schedule/past",
+      "/agents/add", 
       "/schedule/future",
       "/agent/notifications",
       "/agent/notifications/read",
@@ -1552,6 +1559,46 @@ if (path === "/audit/logs" && req.method === "GET") {
         return res.status(500).json({ error: e.message || "Status update failed" });
       }
     }
+
+    if (path === "/agents/add" && req.method === "POST") {
+  try {
+    const body = readJsonBody(req);
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim();
+    const active = body.active !== false; // default true
+    const chatUserId = body.chatUserId ? String(body.chatUserId).trim() : "";
+    const roles = Array.isArray(body.roles) ? body.roles : [];
+    const teams = Array.isArray(body.teams) ? body.teams : [];
+
+    if (!name || !email) {
+      return res.status(400).json({ error: "name and email are required" });
+    }
+
+    const docId = name.toLowerCase().replace(/\s+/g, "_");
+    await db
+      .collection("people")
+      .doc(docId)
+      .set(
+        {
+          name,
+          email,
+          active,
+          chatUserId: chatUserId || null,
+          roles,
+          teams,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+    invalidateMetadataCache();
+    invalidateAgentProfileCache(name);
+    return res.status(200).json({ ok: true, id: docId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
    
     if (path === "/schedule/extended" && req.method === "POST") {
       const body = req.body || {};
@@ -3367,109 +3414,98 @@ if (path === "/holiday/history" && req.method === "POST") {
     // SCHEDULE EXPORT TO CSV
     // ============================================
     if (path === "/schedule/export" && req.method === "POST") {
-      try {
-        logWithTrace(traceId, 'info', 'schedule/export', 'Processing CSV export request');
-        
-        const body = readJsonBody(req);
-        const startDate = body.startDate || new Date().toISOString().split('T')[0];
-        const days = clampDays(body.days || 14);
-        const teamKey = body.teamKey || '';
-        
-        // Validate date format
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-          logWithTrace(traceId, 'error', 'schedule/export', 'Invalid date format', { startDate });
-          return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
-        }
-        
-        // Calculate date range
-        const start = new Date(`${startDate}T00:00:00Z`);
-        if (isNaN(start.getTime())) {
-          logWithTrace(traceId, 'error', 'schedule/export', 'Invalid date', { startDate });
-          return res.status(400).json({ error: 'Invalid start date' });
-        }
-        
-        const endDate = new Date(start);
-        endDate.setUTCDate(endDate.getUTCDate() + days);
-        const endStr = endDate.toISOString().split('T')[0];
-        
-        // Fetch schedule data
-        let query = db.collection("scheduleDays")
-          .where("date", ">=", startDate)
-          .where("date", "<=", endStr);
-        
-        if (teamKey) {
-          query = query.where("team", "==", teamKey);
-        }
-        
-        const snapshot = await query.get();
-        
-        logWithTrace(traceId, 'info', 'schedule/export', 'Fetched schedule data', {
-          docs: snapshot.size,
-          startDate,
-          endStr,
-          teamKey
-        });
-        
-        // Build CSV
-        const csvRows = [];
-        csvRows.push('Date,Team,Person,Role,Start Time,End Time,Status,Notes');
-        
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const assignments = data.assignments || [];
-          
-          assignments.forEach(a => {
-            const row = [
-              data.date || '',
-              data.team || '',
-              (a.person || 'Unassigned').replace(/,/g, ';'), // Escape commas
-              (a.role || '').replace(/,/g, ';'),
-              toAmPm(a.start || ''),
-              toAmPm(a.end || ''),
-              a.status || 'Active',
-              (a.notes || '').replace(/,/g, ';').replace(/\n/g, ' ')
-            ];
-            csvRows.push(row.join(','));
-          });
-        });
-        
-        const csv = csvRows.join('\n');
-        const filename = `schedule_${startDate}_to_${endStr}${teamKey ? '_' + teamKey : ''}.csv`;
-        
-        const duration = Date.now() - startTime;
-        logWithTrace(traceId, 'info', 'schedule/export', 'CSV export completed', {
-          duration,
-          rows: csvRows.length - 1,
-          filename
-        });
-        
-        res.set('Content-Type', 'text/csv');
-        res.set('Content-Disposition', `attachment; filename="${filename}"`);
-        return res.status(200).send(csv);
-        
-      } catch (err) {
-        const duration = Date.now() - startTime;
-        logWithTrace(traceId, 'error', 'schedule/export', 'Export error', {
-          error: err.message,
-          stack: err.stack,
-          duration
-        });
-        return res.status(500).json({ error: err.message || 'Export failed' });
-      }
+  try {
+    logWithTrace(traceId, "info", "schedule/export", "Processing CSV export request");
+
+    const body = readJsonBody(req);
+    const startDate = body.startDate || new Date().toISOString().split("T")[0];
+    const days = clampDays(body.days || 14);
+    const teamKey = body.teamKey || "";
+
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      logWithTrace(traceId, "error", "schedule/export", "Invalid date format", { startDate });
+      return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD" });
     }
-    
+
+    // Calculate date range
+    const start = new Date(`${startDate}T00:00:00Z`);
+    if (isNaN(start.getTime())) {
+      logWithTrace(traceId, "error", "schedule/export", "Invalid date", { startDate });
+      return res.status(400).json({ error: "Invalid start date" });
+    }
+
+    const endDate = new Date(start);
+    endDate.setUTCDate(endDate.getUTCDate() + days);
+    const endStr = endDate.toISOString().split("T")[0];
+
+    // Fetch schedule data
+    let query = db
+      .collection("scheduleDays")
+      .where("date", ">=", startDate)
+      .where("date", "<=", endStr);
+
+    if (teamKey) {
+      query = query.where("team", "==", teamKey);
+    }
+
+    const snapshot = await query.get();
+
+    logWithTrace(traceId, "info", "schedule/export", "Fetched schedule data", {
+      docs: snapshot.size,
+      startDate,
+      endStr,
+      teamKey,
+    });
+
+    // Build CSV (Sheets-friendly: quoted fields + BOM)
+    const csvRows = [];
+    csvRows.push(
+      ["Date", "Team", "Person", "Role", "Start Time", "End Time", "Status", "Notes"]
+        .map(csvEscape)
+        .join(",")
+    );
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const assignments = data.assignments || [];
+
+      assignments.forEach((a) => {
+        const row = [
+          data.date || "",
+          data.team || "",
+          a.person || "Unassigned",
+          a.role || "",
+          toAmPm(a.start || ""),
+          toAmPm(a.end || ""),
+          a.status || "Active",
+          a.notes || "",
+        ].map(csvEscape);
+        csvRows.push(row.join(","));
+      });
+    });
+
+    const csv = "\uFEFF" + csvRows.join("\n"); // UTF-8 BOM
+    const filename = `schedule_${startDate}_to_${endStr}${teamKey ? "_" + teamKey : ""}.csv`;
+
     const duration = Date.now() - startTime;
-    logWithTrace(traceId, 'warn', 'response', `404 ${path}`, { duration });
-    return res.status(404).json({ error: "Not found" });
-    
+    logWithTrace(traceId, "info", "schedule/export", "CSV export completed", {
+      duration,
+      rows: csvRows.length - 1,
+      filename,
+    });
+
+    res.set("Content-Type", "text/csv; charset=utf-8");
+    res.set("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.status(200).send(csv);
   } catch (err) {
     const duration = Date.now() - startTime;
-    logWithTrace(traceId || 'unknown', 'error', 'request', 'Unhandled error', {
-      error: err?.message || String(err),
-      stack: err?.stack,
-      path: path || 'unknown',
-      duration
+    logWithTrace(traceId, "error", "schedule/export", "Export error", {
+      error: err.message,
+      stack: err.stack,
+      duration,
     });
-    return res.status(500).json({ error: "Server error", details: String(err?.message || err) });
+    return res.status(500).json({ error: err.message || "Export failed" });
   }
+}
 });
