@@ -6701,24 +6701,24 @@ if (!window._isManager && window._myName) {
   function closeAdminModal() { $("adminOverlay").style.display="none"; }
   
   function openAddAgentModal() {
-    document.getElementById("addAgentOverlay").style.display = "flex";
+    $("addAgentOverlay").style.display = "flex";
     // Clear form
-    document.getElementById("addAgentForm").reset();
+    $("addAgentForm").reset();
   }
   
   function closeAddAgentModal() {
-    document.getElementById("addAgentOverlay").style.display = "none";
+    $("addAgentOverlay").style.display = "none";
   }
   
   async function submitAddAgent(event) {
     event.preventDefault();
     
-    const name = document.getElementById("agentName").value.trim();
-    const email = document.getElementById("agentEmail").value.trim();
-    const chatUserId = document.getElementById("agentChatUserId").value.trim();
-    const rolesStr = document.getElementById("agentRoles").value.trim();
-    const teamsStr = document.getElementById("agentTeams").value.trim();
-    const active = document.getElementById("agentActive").checked;
+    const name = $("agentName").value.trim();
+    const email = $("agentEmail").value.trim();
+    const chatUserId = $("agentChatUserId").value.trim();
+    const rolesStr = $("agentRoles").value.trim();
+    const teamsStr = $("agentTeams").value.trim();
+    const active = $("agentActive").checked;
     
     // Parse comma-separated values
     const roles = rolesStr ? rolesStr.split(',').map(r => r.trim()).filter(r => r) : [];
