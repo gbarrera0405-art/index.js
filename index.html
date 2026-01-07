@@ -1570,9 +1570,10 @@ body.agent-mode .pill.balance {
                   <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
                   <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
                     <a id="mOpenTicketsLink" class="btn ghost" target="_blank" style="text-decoration:none;">View Open Tickets</a>
-                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
+                    <a id="mGoodCsatLink" class="btn ghost" target="_blank" style="text-decoration:none; color:#16a34a; border-color:#86efac;">View Good CSAT</a>
+                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none; color:#dc2626; border-color:#fca5a5;">Find Bad CSAT</a>
                   </div>
-                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
+                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use "Find Bad CSAT" to send examples to the agent for review, or "View Good CSAT" to share positive examples.</div>
                 </div>
               </div>
             </div>
@@ -2355,14 +2356,37 @@ const CHANNEL_ABBREV = {
   const SESSION_TTL = 15 * 60 * 1000; // 15 minutes
   
   function saveSession(data) {
-    const session = {
-      email: data.userEmail,
-      name: data.matchedPerson,
-      isManager: data.isManager,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  }
+  const session = {
+    email: data.userEmail,
+    name: data.matchedPerson,
+    isManager: data.isManager,
+    idToken: data.idToken || null,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+(function attachAuthToFetch() {
+  const origFetch = window.fetch;
+
+  window.fetch = function (input, init = {}) {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      const session = raw ? JSON.parse(raw) : null;
+      const token = session?.idToken;
+
+      const url = typeof input === "string" ? input : input?.url || "";
+      const isSameOrigin = !/^https?:\/\//i.test(url) || url.startsWith(location.origin);
+
+      if (token && isSameOrigin) {
+        const headers = new Headers(init.headers || {});
+        headers.set("Authorization", `Bearer ${token}`);
+        init.headers = headers;
+      }
+    } catch {}
+    return origFetch(input, init);
+  };
+})();
   
   function loadSession() {
     try {
@@ -2412,10 +2436,12 @@ const CHANNEL_ABBREV = {
   
   try {
     const res = await fetch('/config', {
+      
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential: response.credential })
     });
+    saveSession({ ...data, idToken: response.credential });
     
     const data = await res.json();
     
@@ -6074,9 +6100,10 @@ function forceRefresh() {
 window.forceRefresh = forceRefresh;
   function updateMetricLinks(data) {
      const openA = document.getElementById("mOpenTicketsLink");
+     const goodA = document.getElementById("mGoodCsatLink");
      const badA = document.getElementById("mBadCsatLink");
      
-     if (!openA || !badA) return;
+     if (!openA || !badA || !goodA) return;
      
      const userId = data.zendeskUserId || data.id;
      const agentEmail = data.email;
@@ -6084,24 +6111,34 @@ window.forceRefresh = forceRefresh;
      
      if (!userId && !agentEmail) {
          openA.style.opacity = "0.5";
+         goodA.style.opacity = "0.5";
          badA.style.opacity = "0.5";
          openA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
+         goodA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
          badA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
          return;
      }
      
      // Build Zendesk search URLs
-     // Per Zendesk docs: assignee can be ID, name, or email
-     // For satisfaction: use "satisfaction:good" or "satisfaction:bad" (not satisfaction_rating)
-     const assigneeFilter = agentEmail ? `assignee:${agentEmail}` : `assignee_id:${userId}`;
+     // Note: Backend API uses 'satisfaction_rating:', but Zendesk UI search uses 'satisfaction_score:'
+     // For satisfaction: use "satisfaction_score:bad" or "satisfaction_score:good" for UI links
+     const assigneeFilter = userId ? `assignee:${userId}` : (agentEmail ? `assignee:"${agentEmail}"` : "");
+     
+     // Calculate date for 60 days ago (for CSAT default filter)
+     const sixtyDaysAgo = new Date();
+     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+     const sixtyDaysAgoISO = sixtyDaysAgo.toISOString().split('T')[0];
      
      // Open tickets = status less than solved
-     const openQuery = `${assigneeFilter} status<solved`;
+     const openQuery = `type:ticket ${assigneeFilter} status<solved`;
      const openUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(openQuery)}`;
      
-     // Bad CSAT tickets - use "satisfaction:bad" per Zendesk search reference
-     // Note: This searches tickets where satisfaction IS bad (includes bad and bad_with_comment)
-     const badQuery = `${assigneeFilter} satisfaction:bad`;
+     // Good CSAT tickets - use created date filter
+const goodQuery = `type:ticket ${assigneeFilter} satisfaction:good status:solved created>=${sixtyDaysAgoISO}`;
+     const goodUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(goodQuery)}`;
+     
+     // Bad CSAT tickets - use created date filter as per requirement
+const badQuery  = `type:ticket ${assigneeFilter} satisfaction:bad  status:solved created>=${sixtyDaysAgoISO}`;
      const badUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(badQuery)}`;
      
      // Set as direct links
@@ -6109,14 +6146,20 @@ window.forceRefresh = forceRefresh;
      openA.target = "_blank";
      openA.onclick = null;
      
+     goodA.href = goodUrl;
+     goodA.target = "_blank";
+     goodA.onclick = null;
+     
      badA.href = badUrl;
      badA.target = "_blank";
      badA.onclick = null;
      
      // Make sure links are visible and clickable
      openA.style.pointerEvents = "auto";
+     goodA.style.pointerEvents = "auto";
      badA.style.pointerEvents = "auto";
      openA.style.opacity = "1";
+     goodA.style.opacity = "1";
      badA.style.opacity = "1";
   }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
