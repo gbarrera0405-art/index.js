@@ -6730,17 +6730,21 @@ if (!window._isManager && window._myName) {
     }
     
     try {
+      const payload = {
+        name,
+        email,
+        roles,
+        teams,
+        active
+      };
+      if (chatUserId) {
+        payload.chatUserId = chatUserId;
+      }
+      
       const response = await fetch('./?action=agents/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          email,
-          chatUserId: chatUserId || undefined,
-          roles,
-          teams,
-          active
-        })
+        body: JSON.stringify(payload)
       });
       
       const result = await response.json();
