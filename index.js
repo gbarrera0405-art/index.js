@@ -3,7 +3,12 @@ const { Firestore } = require("@google-cloud/firestore");
 const pathMod = require("path");
 const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
-const CLIENT_ID = "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
+const CLIENT_ID = process.env.CLIENT_ID;
+
+if (!CLIENT_ID) {
+    console.error('⚠️  CLIENT_ID environment variable is not set. Google authentication will not work.');
+}
+
 const client = new OAuth2Client(CLIENT_ID);
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
@@ -100,6 +105,31 @@ const metadataCache = {
 const agentProfileCache = new Map();
 const AGENT_PROFILE_TTL = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Invalidate metadata cache - call after updates to people or teams
+ */
+function invalidateMetadataCache() {
+  console.log("🗑️  Invalidating metadata cache");
+  metadataCache.people = null;
+  metadataCache.teams = null;
+  metadataCache.lastFetch = 0;
+}
+
+/**
+ * Invalidate agent profile cache for a specific agent or all agents
+ * @param {string} agentName - Optional agent name to invalidate, or null for all
+ */
+function invalidateAgentProfileCache(agentName = null) {
+  if (agentName) {
+    const cacheKey = agentName.toLowerCase().trim();
+    agentProfileCache.delete(cacheKey);
+    console.log(`🗑️  Invalidated profile cache for ${agentName}`);
+  } else {
+    agentProfileCache.clear();
+    console.log("🗑️  Invalidated all agent profile caches");
+  }
+}
+
 async function getCachedMetadata() {
   const now = Date.now();
   if (metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
@@ -123,30 +153,112 @@ async function getCachedMetadata() {
 const ZD_CONFIG = {
     subdomain: process.env.ZENDESK_SUBDOMAIN || "musely",
     adminEmail: process.env.ZENDESK_ADMIN_EMAIL || "genaro.barrera@trusper.com",
-    apiToken: process.env.ZENDESK_API_TOKEN || "bUBkQG96B50GVworY7rxKT6b0qFyfpirLeoKVXGS"
+    apiToken: process.env.ZENDESK_API_TOKEN // No fallback - must be set in environment
 };
 
-const zdFetch = async (url) => {
-    const auth = Buffer.from(`${ZD_CONFIG.adminEmail}/token:${ZD_CONFIG.apiToken}`).toString('base64');
-    const res = await fetch(url, {
-        headers: { 'Authorization': `Basic ${auth}` }
-    });
-    
-    // Enhanced error handling
-    if (!res.ok) {
-        let errorMsg = `Zendesk API Error: ${res.statusText}`;
-        if (res.status === 401) {
-            errorMsg = 'Zendesk authentication failed. Please check credentials.';
-        } else if (res.status === 403) {
-            errorMsg = 'Access denied to Zendesk resource. Please check permissions.';
-        } else if (res.status === 429) {
-            errorMsg = 'Zendesk rate limit exceeded. Please try again later.';
-        }
-        const error = new Error(errorMsg);
-        error.status = res.status;
+if (!ZD_CONFIG.apiToken) {
+    console.warn('⚠️  ZENDESK_API_TOKEN not set. Zendesk integration will be disabled.');
+}
+
+/**
+ * Zendesk API fetch with retry logic, exponential backoff, and timeout handling
+ * @param {string} url - The Zendesk API URL to fetch
+ * @param {number} maxRetries - Maximum number of retry attempts (default: 3)
+ * @param {number} timeout - Request timeout in milliseconds (default: 10000)
+ * @returns {Promise<object>} - The JSON response from Zendesk
+ */
+const zdFetch = async (url, maxRetries = 3, timeout = 10000) => {
+    // Check if API token is configured
+    if (!ZD_CONFIG.apiToken) {
+        const error = new Error('Zendesk API token not configured');
+        error.status = 500;
         throw error;
     }
-    return res.json();
+
+    const auth = Buffer.from(`${ZD_CONFIG.adminEmail}/token:${ZD_CONFIG.apiToken}`).toString('base64');
+    
+    let lastError;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            // Create abort controller for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Basic ${auth}` },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            // Handle rate limiting with exponential backoff
+            if (res.status === 429) {
+                const retryAfter = parseInt(res.headers.get('Retry-After') || '60', 10);
+                
+                if (attempt < maxRetries) {
+                    // Exponential backoff: 2^attempt * retryAfter seconds (capped at 5 minutes)
+                    const delay = Math.min(Math.pow(2, attempt) * retryAfter * 1000, 300000);
+                    console.warn(`⏱️  Zendesk rate limit hit. Retrying in ${delay/1000}s (attempt ${attempt + 1}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                
+                const error = new Error('Zendesk rate limit exceeded. Please try again later.');
+                error.status = 429;
+                throw error;
+            }
+            
+            // Enhanced error handling for other status codes
+            if (!res.ok) {
+                let errorMsg = `Zendesk API Error: ${res.statusText}`;
+                if (res.status === 401) {
+                    errorMsg = 'Zendesk authentication failed. Please check credentials.';
+                } else if (res.status === 403) {
+                    errorMsg = 'Access denied to Zendesk resource. Please check permissions.';
+                } else if (res.status === 404) {
+                    errorMsg = 'Zendesk resource not found.';
+                } else if (res.status >= 500) {
+                    errorMsg = 'Zendesk server error. Please try again later.';
+                }
+                const error = new Error(errorMsg);
+                error.status = res.status;
+                throw error;
+            }
+            
+            return res.json();
+            
+        } catch (err) {
+            lastError = err;
+            
+            // Handle timeout errors
+            if (err.name === 'AbortError') {
+                const timeoutError = new Error(`Zendesk request timeout after ${timeout}ms`);
+                timeoutError.status = 408;
+                lastError = timeoutError;
+                
+                if (attempt < maxRetries) {
+                    const delay = Math.pow(2, attempt) * 1000; // Exponential backoff for timeouts
+                    console.warn(`⏱️  Request timeout. Retrying in ${delay/1000}s (attempt ${attempt + 1}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+            }
+            
+            // For 5xx errors, retry with exponential backoff
+            if (err.status >= 500 && attempt < maxRetries) {
+                const delay = Math.pow(2, attempt) * 1000;
+                console.warn(`🔄 Server error. Retrying in ${delay/1000}s (attempt ${attempt + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            
+            // For other errors, throw immediately (don't retry)
+            throw err;
+        }
+    }
+    
+    // If all retries exhausted, throw the last error
+    throw lastError;
 };
 /** ------------------------
  * Helpers
@@ -247,21 +359,6 @@ async function checkDoubleBooking(db, personName, date, startTime, endTime, excl
   if (s.includes("pto")) return "pto";
   // Default to PTO if unknown
   return "pto";
-}
-// Helper: Calculate hours between two time strings (e.g. "09:00", "17:30")
-function calculateHoursDiff(start, end) {
-  if (!start || !end) return 0;
-  try {
-    const [h1, m1] = start.split(':').map(Number);
-    const [h2, m2] = end.split(':').map(Number);
-    const startDec = h1 + (m1 / 60);
-    const endDec = h2 + (m2 / 60);
-    let diff = endDec - startDec;
-    if (diff < 0) diff += 24; // Handle overnight shifts
-    return parseFloat(diff.toFixed(2));
-  } catch (e) {
-    return 0;
-  }
 }
 function readJsonBody(req) {
   if (!req.body) return {};
@@ -444,9 +541,13 @@ function servePublicFile(reqPath, res) {
  * Main HTTP Handler
  * ------------------------ */
 functions.http("helloHttp", async (req, res) => {
+  const startTime = Date.now();
+  let traceId = '';
+  let path = '';
+  
   try {
     // Generate or extract trace ID
-    const traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // CORS first
     res.set("Access-Control-Allow-Origin", "*");
@@ -454,18 +555,30 @@ functions.http("helloHttp", async (req, res) => {
     res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,x-preview-key,X-Trace-Id");
     res.set("X-Trace-Id", traceId);
 
-    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method === "OPTIONS") {
+      logWithTrace(traceId, 'info', 'OPTIONS', 'CORS preflight handled');
+      return res.status(204).send("");
+    }
 
-    let path = String(req.path || "/").toLowerCase();
+    path = String(req.path || "/").toLowerCase();
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
     const action = (req.query.action || (req.body && req.body.action) || "").toLowerCase();
     // Force path to match action if present
     if (action) {
       path = "/" + action;
     }
+    
+    logWithTrace(traceId, 'info', 'request', `${req.method} ${path}`, {
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    
     // Gate (optional)
     if (path !== "/health") {
-      if (!requirePreviewKey(req, res)) return;
+      if (!requirePreviewKey(req, res)) {
+        logWithTrace(traceId, 'warn', 'auth', 'Preview key validation failed');
+        return;
+      }
     }
     // Static first (anything not in the API list)
     const isApi = [
@@ -3233,15 +3346,127 @@ if (path === "/holiday/history" && req.method === "POST") {
         // Cache the result using the proper Map
         agentProfileCache.set(cacheKey, { data: profileData, timestamp: Date.now() });
         
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'info', 'response', `200 ${path}`, { duration });
+        
         return res.status(200).json(profileData);
       } catch (error) {
-        console.error("Profile Error:", error);
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'error', 'agent-profile', 'Profile fetch error', {
+          error: error.message,
+          duration
+        });
         return res.status(500).json({ error: error.message });
       }
     }
+    
+    // ============================================
+    // SCHEDULE EXPORT TO CSV
+    // ============================================
+    if (path === "/schedule/export" && req.method === "POST") {
+      try {
+        logWithTrace(traceId, 'info', 'schedule/export', 'Processing CSV export request');
+        
+        const body = readJsonBody(req);
+        const startDate = body.startDate || new Date().toISOString().split('T')[0];
+        const days = clampDays(body.days || 14);
+        const teamKey = body.teamKey || '';
+        
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+          logWithTrace(traceId, 'error', 'schedule/export', 'Invalid date format', { startDate });
+          return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Calculate date range
+        const start = new Date(`${startDate}T00:00:00Z`);
+        if (isNaN(start.getTime())) {
+          logWithTrace(traceId, 'error', 'schedule/export', 'Invalid date', { startDate });
+          return res.status(400).json({ error: 'Invalid start date' });
+        }
+        
+        const endDate = new Date(start);
+        endDate.setUTCDate(endDate.getUTCDate() + days);
+        const endStr = endDate.toISOString().split('T')[0];
+        
+        // Fetch schedule data
+        let query = db.collection("scheduleDays")
+          .where("date", ">=", startDate)
+          .where("date", "<=", endStr);
+        
+        if (teamKey) {
+          query = query.where("team", "==", teamKey);
+        }
+        
+        const snapshot = await query.get();
+        
+        logWithTrace(traceId, 'info', 'schedule/export', 'Fetched schedule data', {
+          docs: snapshot.size,
+          startDate,
+          endStr,
+          teamKey
+        });
+        
+        // Build CSV
+        const csvRows = [];
+        csvRows.push('Date,Team,Person,Role,Start Time,End Time,Status,Notes');
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const assignments = data.assignments || [];
+          
+          assignments.forEach(a => {
+            const row = [
+              data.date || '',
+              data.team || '',
+              (a.person || 'Unassigned').replace(/,/g, ';'), // Escape commas
+              (a.role || '').replace(/,/g, ';'),
+              toAmPm(a.start || ''),
+              toAmPm(a.end || ''),
+              a.status || 'Active',
+              (a.notes || '').replace(/,/g, ';').replace(/\n/g, ' ')
+            ];
+            csvRows.push(row.join(','));
+          });
+        });
+        
+        const csv = csvRows.join('\n');
+        const filename = `schedule_${startDate}_to_${endStr}${teamKey ? '_' + teamKey : ''}.csv`;
+        
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'info', 'schedule/export', 'CSV export completed', {
+          duration,
+          rows: csvRows.length - 1,
+          filename
+        });
+        
+        res.set('Content-Type', 'text/csv');
+        res.set('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(csv);
+        
+      } catch (err) {
+        const duration = Date.now() - startTime;
+        logWithTrace(traceId, 'error', 'schedule/export', 'Export error', {
+          error: err.message,
+          stack: err.stack,
+          duration
+        });
+        return res.status(500).json({ error: err.message || 'Export failed' });
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    logWithTrace(traceId, 'warn', 'response', `404 ${path}`, { duration });
     return res.status(404).json({ error: "Not found" });
+    
   } catch (err) {
-    console.error("ERROR:", err);
+    const duration = Date.now() - startTime;
+    logWithTrace(traceId || 'unknown', 'error', 'request', 'Unhandled error', {
+      error: err?.message || String(err),
+      stack: err?.stack,
+      path: path || 'unknown',
+      duration
+    });
     return res.status(500).json({ error: "Server error", details: String(err?.message || err) });
   }
 });
