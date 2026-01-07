@@ -1697,7 +1697,7 @@ body.agent-mode .pill.balance {
   <!-- MAIN -->
   <div class="main">
     <div class="content">
-        <div id="coverageBanner" class="coverage-banner hidden" onclick="openCoverageDashboard()">
+        <div id="coverageBanner" class="coverage-banner hidden" tabindex="0" onclick="openCoverageDashboard()" onkeydown="if(event.key==='Enter'||event.key===' ') openCoverageDashboard()">
   <div class="coverage-banner-title">📊 Coverage (Click for Details)</div>
   <div id="coverageChips" class="coverage-chips"></div>
 </div>
@@ -8925,6 +8925,9 @@ function openCoverageDashboard() {
       html += '<thead><tr style="background:#f8fafc;"><th style="padding:8px; text-align:left; border-bottom:2px solid #e2e8f0;">Time Block</th><th style="padding:8px; text-align:center; border-bottom:2px solid #e2e8f0;">Coverage</th><th style="padding:8px; text-align:center; border-bottom:2px solid #e2e8f0;">Status</th></tr></thead>';
       html += '<tbody>';
       
+      // Calculate current hour once outside the loop for better performance
+      const currentHourPST = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"})).getHours();
+      
       blocks.forEach(blk => {
         if (blk.start < openHour || blk.end > closeHour) return; // Skip closed hours
         
@@ -8932,7 +8935,7 @@ function openCoverageDashboard() {
           (s.team === channel) && coversBlock(s, blk.start, blk.end)
         ).length;
         
-        const isPast = blk.end <= new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"})).getHours();
+        const isPast = blk.end <= currentHourPST;
         const status = count >= min ? '✓ Good' : '⚠️ Low';
         const statusColor = count >= min ? '#22c55e' : '#ef4444';
         const bgColor = isPast ? '#f8fafc' : (count >= min ? '#f0fdf4' : '#fef2f2');

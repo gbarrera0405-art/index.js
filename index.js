@@ -3,7 +3,12 @@ const { Firestore } = require("@google-cloud/firestore");
 const pathMod = require("path");
 const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
-const CLIENT_ID = process.env.CLIENT_ID || "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
+const CLIENT_ID = process.env.CLIENT_ID;
+
+if (!CLIENT_ID) {
+    console.error('⚠️  CLIENT_ID environment variable is not set. Google authentication will not work.');
+}
+
 const client = new OAuth2Client(CLIENT_ID);
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
@@ -537,8 +542,8 @@ function servePublicFile(reqPath, res) {
  * ------------------------ */
 functions.http("helloHttp", async (req, res) => {
   const startTime = Date.now();
-  let traceId;
-  let path;
+  let traceId = '';
+  let path = '';
   
   try {
     // Generate or extract trace ID
