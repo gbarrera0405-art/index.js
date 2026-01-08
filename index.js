@@ -3,12 +3,7 @@ const { Firestore } = require("@google-cloud/firestore");
 const pathMod = require("path");
 const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
-const CLIENT_ID = process.env.CLIENT_ID;
-
-if (!CLIENT_ID) {
-    console.error('⚠️  CLIENT_ID environment variable is not set. Google authentication will not work.');
-}
-
+const CLIENT_ID = "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
 const client = new OAuth2Client(CLIENT_ID);
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
@@ -20,7 +15,7 @@ const CHAT_BOT_URL = process.env.CHAT_BOT_URL || "https://musely-chat-bot-637987
  */
 async function sendShiftNotification(agentEmail, shiftData) {
   try {
-    //1. Look up agent's Google Chat user ID from Firestore
+    // 1. Look up the agent's Google Chat user ID from Firestore
     const peopleSnap = await db.collection("people")
       .where("email", "==", agentEmail)
       .limit(1)
@@ -35,7 +30,7 @@ async function sendShiftNotification(agentEmail, shiftData) {
       console.warn(`sendShiftNotification: Agent ${agentEmail} has no chatUserId`);
       return { success: false, error: "Agent has no Chat ID configured" };
     }
-    //2. Call the Chat Bot service
+    // 2. Call the Chat Bot service
     console.log(`Sending notification to ${agentEmail} (${chatUserId})...`);
     
     const response = await fetch(CHAT_BOT_URL, {
@@ -98,38 +93,8 @@ const metadataCache = {
   people: null,
   teams: null,
   lastFetch: 0,
-  TTL:5 * 60 * 1000 //5 minutes
+  TTL: 5 * 60 * 1000 // 5 minutes
 };
-
-// Separate cache for agent profiles (using Map for dynamic keys)
-const agentProfileCache = new Map(); // ADDED MISSING GLOBAL
-const AGENT_PROFILE_TTL = 5 * 60 * 1000; //5 minutes
-
-/**
- * Invalidate metadata cache - call after updates to people or teams
- */
-function invalidateMetadataCache() {
-  console.log("🗑️  Invalidating metadata cache");
-  metadataCache.people = null;
-  metadataCache.teams = null;
-  metadataCache.lastFetch = 0;
-}
-
-/**
- * Invalidate agent profile cache for a specific agent or all agents
- * @param {string} agentName - Optional agent name to invalidate, or null for all
- */
-function invalidateAgentProfileCache(agentName = null) {
-  if (agentName) {
-    const cacheKey = agentName.toLowerCase().trim();
-    agentProfileCache.delete(cacheKey);
-    console.log(`🗑️  Invalidated profile cache for ${agentName}`);
-  } else {
-    agentProfileCache.clear();
-    console.log("🗑️  Invalidated all agent profile caches");
-  }
-}
-
 async function getCachedMetadata() {
   const now = Date.now();
   if (metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
@@ -153,112 +118,16 @@ async function getCachedMetadata() {
 const ZD_CONFIG = {
     subdomain: process.env.ZENDESK_SUBDOMAIN || "musely",
     adminEmail: process.env.ZENDESK_ADMIN_EMAIL || "genaro.barrera@trusper.com",
-    apiToken: process.env.ZENDESK_API_TOKEN // No fallback - must be set in environment
+    apiToken: process.env.ZENDESK_API_TOKEN || "bUBkQG96B50GVworY7rxKT6b0qFyfpirLeoKVXGS"
 };
 
-if (!ZD_CONFIG.apiToken) {
-    console.warn('⚠️  ZENDESK_API_TOKEN not set. Zendesk integration will be disabled.');
-}
-
-/**
- * Zendesk API fetch with retry logic, exponential backoff, and timeout handling
- * @param {string} url - The Zendesk API URL to fetch
- * @param {number} maxRetries - Maximum number of retry attempts (default:3)
- * @param {number} timeout - Request timeout in milliseconds (default: 10000)
- * @returns {Promise<object>} - The JSON response from Zendesk
- */
-const zdFetch = async (url, maxRetries =3, timeout = 10000) => {
-    // Check if API token is configured
-    if (!ZD_CONFIG.apiToken) {
-        const error = new Error('Zendesk API token not configured');
-        error.status = 500;
-        throw error;
-    }
-
+const zdFetch = async (url) => {
     const auth = Buffer.from(`${ZD_CONFIG.adminEmail}/token:${ZD_CONFIG.apiToken}`).toString('base64');
-    
-    let lastError;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-            // Create abort controller for timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-            
-            const res = await fetch(url, {
-                headers: { 'Authorization': `Basic ${auth}` },
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            // Handle rate limiting with exponential backoff
-            if (res.status === 429) {
-                const retryAfter = parseInt(res.headers.get('Retry-After') || '60', 10);
-                
-                if (attempt < maxRetries) {
-                    // Exponential backoff:2^attempt * retryAfter seconds (capped at 5 minutes)
-                    const delay = Math.min(Math.pow(2, attempt) * retryAfter * 1000, 300000);
-                    console.warn(`⏱️  Zendesk rate limit hit. Retrying in ${delay/1000}s (attempt ${attempt +1}/${maxRetries})`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
-                }
-                
-                const error = new Error('Zendesk rate limit exceeded. Please try again later.');
-                error.status = 429;
-                throw error;
-            }
-            
-            // Enhanced error handling for other status codes
-            if (!res.ok) {
-                let errorMsg = `Zendesk API Error: ${res.statusText}`;
-                if (res.status === 401) {
-                    errorMsg = 'Zendesk authentication failed. Please check credentials.';
-                } else if (res.status === 403) {
-                    errorMsg = 'Access denied to Zendesk resource. Please check permissions.';
-                } else if (res.status === 404) {
-                    errorMsg = 'Zendesk resource not found.';
-                } else if (res.status >= 500) {
-                    errorMsg = 'Zendesk server error. Please try again later.';
-                }
-                const error = new Error(errorMsg);
-                error.status = res.status;
-                throw error;
-            }
-            
-            return res.json();
-            
-        } catch (err) {
-            lastError = err;
-            
-            // Handle timeout errors
-            if (err.name === 'AbortError') {
-                const timeoutError = new Error(`Zendesk request timeout after ${timeout}ms`);
-                timeoutError.status = 408;
-                lastError = timeoutError;
-                
-                if (attempt < maxRetries) {
-                    const delay = Math.pow(2, attempt) * 1000; // Exponential backoff for timeouts
-                    console.warn(`⏱️  Request timeout. Retrying in ${delay/1000}s (attempt ${attempt +1}/${maxRetries})`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
-                }
-            }
-            
-            // For 5xx errors, retry with exponential backoff
-            if (err.status >= 500 && attempt < maxRetries) {
-                const delay = Math.pow(2, attempt) * 1000;
-                console.warn(`🔄 Server error. Retrying in ${delay/1000}s (attempt ${attempt +1}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-            
-            // For other errors, throw immediately (don't retry)
-            throw err;
-        }
-    }
-    
-    // If all retries exhausted, throw last error
-    throw lastError;
+    const res = await fetch(url, {
+        headers: { 'Authorization': `Basic ${auth}` }
+    });
+    if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
+    return res.json();
 };
 /** ------------------------
  * Helpers
@@ -272,19 +141,10 @@ function timeRangesOverlap(start1, end1, start2, end2) {
   
   // Handle invalid times
   if (s1 === 0 && e1 === 0) return false;
-  if (s2 === 0 && e2 === 0) return false;  
+  if (s2 === 0 && e2 === 0) return false;
   
   // Check for overlap: ranges overlap if one starts before the other ends
   return (s1 < e2) && (s2 < e1);
-}
-
-function csvEscape(field) {
-  if (field === null || field === undefined) return "";
-  const stringField = String(field);
-  if (stringField.search(/("|,|\n|\r)/g) >= 0) {
-    return `"${stringField.replace(/"/g, '""')}"`;
-  }
-  return stringField;
 }
 // Check if a person is already scheduled during a time slot on a given date
 // Also flags lunch conflicts
@@ -369,6 +229,21 @@ async function checkDoubleBooking(db, personName, date, startTime, endTime, excl
   // Default to PTO if unknown
   return "pto";
 }
+// Helper: Calculate hours between two time strings (e.g. "09:00", "17:30")
+function calculateHoursDiff(start, end) {
+  if (!start || !end) return 0;
+  try {
+    const [h1, m1] = start.split(':').map(Number);
+    const [h2, m2] = end.split(':').map(Number);
+    const startDec = h1 + (m1 / 60);
+    const endDec = h2 + (m2 / 60);
+    let diff = endDec - startDec;
+    if (diff < 0) diff += 24; // Handle overnight shifts
+    return parseFloat(diff.toFixed(2));
+  } catch (e) {
+    return 0;
+  }
+}
 function readJsonBody(req) {
   if (!req.body) return {};
   if (typeof req.body === "object") return req.body;
@@ -379,14 +254,10 @@ function readJsonBody(req) {
   }
 }
 function requirePreviewKey(req, res) {
-  const expected = process.env. PREVIEW_KEY;
-  if (!expected) {
-    console.log("ℹ️ PREVIEW_KEY not set, allowing request");
-    return true;
-  }
+  const expected = process.env.PREVIEW_KEY; // set in Cloud Run
+  if (!expected) return true; // if not set, no gate
   const got = req.get("x-preview-key") || String(req.query.key || "");
   if (got !== expected) {
-    console.log("❌ Preview key mismatch");
     res.status(403).send("Forbidden");
     return false;
   }
@@ -420,25 +291,6 @@ function logWithTrace(traceId, level, operation, message, metadata = {}) {
   };
   console.log(JSON.stringify(logEntry));
 }
-
-/**
- * Sanitize email for use in Zendesk search queries
- * Escapes special characters that could break the query
- */
-function sanitizeZendeskEmail(email) {
-  if (!email) return '';
-  // Escape double quotes and backslashes
-  return String(email).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-/**
- * Validate and clamp days parameter for Zendesk queries
- */
-function validateDaysParam(days, defaultValue = 30) {
-  const parsed = parseInt(days || defaultValue, 10);
-  return Math.max(1, Math.min(parsed, 90)); // Clamp between 1-90
-}
-
 
 function sanitizePatch(patch = {}) {
   const out = {};
@@ -506,7 +358,7 @@ function buildScheduleDocIds(teamKey, start, days) {
     const d = new Date(startDate);
     d.setUTCDate(d.getUTCDate() + i);
     const yyyy = d.getUTCFullYear();
-    const mm = String(d.getUTCMonth() +1).padStart(2, "0");
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
     const dd = String(d.getUTCDate()).padStart(2, "0");
     ids.push(`${yyyy}-${mm}-${dd}__${teamKey}`);
   }
@@ -518,7 +370,7 @@ async function fetchSchedule(teamKey, start, days) {
   const snaps = await db.getAll(...refs);
   let results = snaps
     .filter((s) => s.exists)
-    .map((s) => ({ id: s.id, ...normalizeValue(s.data()) })); // FIXED: Corrected normalizeValue typo
+    .map((s) => ({ id: s.id, ...normalizeValue(s.data()) }));
   results = results.map((day) => ({
     ...day,
     assignments: (day.assignments || []).map(normalizeAssignment),
@@ -534,8 +386,6 @@ function contentTypeFor(filePath) {
   if (ext === ".png") return "image/png";
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".svg") return "image/svg+xml";
-  // FIXED: Changed invalid MIME type to correct format
-  if (ext === ".csv") return "text/csv; charset=utf-8";
   return "application/octet-stream";
 }
 function servePublicFile(reqPath, res) {
@@ -556,13 +406,9 @@ function servePublicFile(reqPath, res) {
  * Main HTTP Handler
  * ------------------------ */
 functions.http("helloHttp", async (req, res) => {
-  const startTime = Date.now();
-  let traceId = ''; // FIXED: Initialized traceId to prevent undefined logs
-  let path = '';
-  
   try {
     // Generate or extract trace ID
-    traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const traceId = req.get('X-Trace-Id') || `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // CORS first
     res.set("Access-Control-Allow-Origin", "*");
@@ -570,27 +416,20 @@ functions.http("helloHttp", async (req, res) => {
     res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,x-preview-key,X-Trace-Id");
     res.set("X-Trace-Id", traceId);
 
-    if (req.method === "OPTIONS") {
-      logWithTrace(traceId, 'info', 'OPTIONS', 'CORS preflight handled');
-      return res.status(204).send("");
-    }
+    if (req.method === "OPTIONS") return res.status(204).send("");
 
-    path = String(req.path || "/").toLowerCase();
+    let path = String(req.path || "/").toLowerCase();
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
     const action = (req.query.action || (req.body && req.body.action) || "").toLowerCase();
     // Force path to match action if present
     if (action) {
       path = "/" + action;
     }
-    
-    logWithTrace(traceId, 'info', 'request', `${req.method} ${path}`, {
-      ip: req.ip,
-      userAgent: req.get('user-agent')
-    });
-    
     // Gate (optional)
-    
-    // Static first (anything not in API list)
+    if (path !== "/health") {
+      if (!requirePreviewKey(req, res)) return;
+    }
+    // Static first (anything not in the API list)
     const isApi = [
       "/health",
       "/people",
@@ -619,8 +458,7 @@ functions.http("helloHttp", async (req, res) => {
       "/holidays/list",
       "/holidays/add",
       "/holidays/delete",
-      "/holiday/accrue",
-      "/holiday/history",
+      "/holiday/bank",
       "/agent/schedule",
       "/balances/list",        
       "/balances/update",
@@ -635,34 +473,23 @@ functions.http("helloHttp", async (req, res) => {
       "/admin/wipe-future",
       "/admin/regenerate-all",
       "/schedule/extended",
-      "/schedule/past",
-      "/agents/add", 
+      "/schedule/past", 
       "/schedule/future",
       "/agent/notifications",
       "/agent/notifications/read",
       "/swap/request",
       "/swap/pending",
       "/swap/respond",
-      "/schedule/export",
       "/schedule/check-conflict",
       "/manager/heartbeat",
       "/manager/presence",
-      "/zendesk/agent/open",
-      "/zendesk/agent/badcsat"
+      "/people/add",
+      "/base-schedule/save"
     ].includes(path);
 
     if (!isApi) {
-  // Only serve static files for real browser GETs without ?action=
-  if (req.method === "GET" && !action && servePublicFile(req.path || "/", res)) return;
-}
-
-const publicApi = new Set(["/health", "/config"]);
-if (isApi && !publicApi.has(path)) {
-  if (!requirePreviewKey(req, res)) {
-    logWithTrace(traceId, "warn", "auth", "Preview key validation failed");
-    return;
-  }
-}
+      if (servePublicFile(req.path || "/", res)) return;
+    }
     // Health
     if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
     // ============================================
@@ -802,6 +629,65 @@ if (isApi && !publicApi.has(path)) {
         return res.status(500).json({ error: err.message });
       }
     }
+
+    if (path === "/people/add" && req.method === "POST") {
+  try {
+    const body = readJsonBody(req);
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const team = String(body.team || "").trim();
+    const chatUserId = String(body.chatUserId || "").trim();
+
+    if (!name || !email) return res.status(400).json({ ok:false, error:"Missing name or email" });
+
+    const docId = email.replace(/[^\w.@-]/g, "_"); // stable, avoids dupes
+    await db.collection("people").doc(docId).set({
+      name,
+      email,
+      team: team || "Support",
+      chatUserId: chatUserId || "",
+      isActive: true,
+      createdAt: toIsoNow()
+    }, { merge: true });
+
+    return res.status(200).json({ ok:true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok:false, error:e.message });
+  }
+}
+
+if (path === "/base-schedule/save" && req.method === "POST") {
+  try {
+    const body = readJsonBody(req);
+    const days = body.days || {};
+    const validDays = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+    const batch = db.batch();
+
+    validDays.forEach(day => {
+      if (!(day in days)) return;
+      const raw = Array.isArray(days[day]) ? days[day] : [];
+      const items = raw.map(x => ({
+        person: String(x.person || "").trim(),
+        start: hhmm(x.start),
+        end: hhmm(x.end),
+        team: String(x.team || "Other").trim(),
+        role: String(x.role || "Agent").trim(),
+      })).filter(i => i.person && i.start && i.end);
+
+      batch.set(db.collection("base_schedule").doc(day), { items }, { merge: true });
+    });
+
+    await batch.commit();
+    return res.status(200).json({ ok:true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok:false, error:e.message });
+  }
+}
+
+
     if (path === "/admin/regenerate-all" && req.method === "POST") {
       const body = readJsonBody(req);
       const confirmRegen = body.confirm === true;
@@ -1026,64 +912,33 @@ if (path === "/audit/logs" && req.method === "GET") {
     return res.status(500).json({ error: err.message });
   }
 }
-    // Config endpoint - handle both POST and GET for flexibility
-if ((path === "/config" || action === "config") && (req.method === "POST" || req.method === "GET")) {
-  try {
-    let idToken;
-    
-    // Handle both POST body and GET query params
-    if (req.method === "POST") {
-      const body = readJsonBody(req);
-      idToken = body.credential;
-    } else {
-      idToken = req.query.credential;
+    if (path === "/config" || action === "config") {
+        if (req.method === "POST") {
+            try {
+                const ticket = await client.verifyIdToken({
+                    idToken: req.body.credential,
+                    audience: CLIENT_ID,
+                });
+                const payload = ticket.getPayload();
+                const email = payload['email'];
+                const personDoc = await db.collection("people").where("email", "==", email).get();
+                
+                if (personDoc.empty) {
+                    return res.status(403).json({ error: "Access Denied: User not in system." });
+                }
+                const userData = personDoc.docs[0].data();
+                return res.status(200).json({
+                    userEmail: email,
+                    matchedPerson: userData.name,
+                    isManager: userData.role === "admin" || userData.role === "MASTER",
+                    role: userData.role
+                });
+            } catch (e) {
+                console.error("Auth Failure:", e.message);
+                return res.status(401).json({ error: "Unauthorized" });
+            }
+        }
     }
-
-    if (!idToken) {
-      console.error("Missing credential in request");
-      return res.status(400).json({ error: "Missing credential" });
-    }
-
-    console.log("🔐 Verifying token...");
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const email = payload?. email;
-
-    if (!email) {
-      console.error("No email in token payload");
-      return res.status(401).json({ error: "Unauthorized - no email" });
-    }
-
-    console.log(`✅ Token verified for:  ${email}`);
-
-    const personSnap = await db.collection("people").where("email", "==", email).limit(1).get();
-    if (personSnap.empty) {
-      console.error(`Access denied:  ${email} not in system`);
-      return res.status(403).json({ error: "Access Denied:  User not in system." });
-    }
-
-    const userData = personSnap.docs[0].data();
-    const role = String(userData.role || "").toLowerCase();
-    const isManager = role === "admin" || role === "master";
-
-    console.log(`✅ User authenticated: ${userData.name}, role: ${userData.role}`);
-
-    return res.status(200).json({
-      userEmail: email,
-      matchedPerson: userData.name || email,
-      isManager,
-      role:  userData.role || "",
-    });
-  } catch (e) {
-    console.error("❌ Auth Failure:", e. message, e.stack);
-    return res.status(401).json({ error: "Unauthorized:  " + e.message });
-  }
-}
-
     // Get all pending notifications
     if (path === "/notifications/pending" && req.method === "GET") {
       try {
@@ -1601,49 +1456,6 @@ if ((path === "/config" || action === "config") && (req.method === "POST" || req
         return res.status(500).json({ error: e.message || "Status update failed" });
       }
     }
-
-    if (path === "/agents/add" && req.method === "POST") {
-  try {
-    const body = readJsonBody(req);
-    const name = String(body.name || "").trim();
-    const email = String(body.email || "").trim();
-    const active = body.active !== false; // default true
-    const chatUserId = body.chatUserId ?  String(body.chatUserId).trim() : "";
-    const roles = Array.isArray(body.roles) ? body.roles : [];
-    const teams = Array.isArray(body.teams) ? body.teams : [];
-
-    if (!name || !email) {
-      return res.status(400).json({ error: "name and email are required" });
-    }
-
-    // Create a safe document ID from the name
-    const docId = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    
-    const docData = {
-      name,
-      email,
-      active,
-      chatUserId:  chatUserId || null,
-      roles,
-      teams,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    await db.collection("people").doc(docId).set(docData, { merge: true });
-
-    // Invalidate caches so the new agent shows up
-    invalidateMetadataCache();
-    invalidateAgentProfileCache(name);
-    
-    console.log(`✅ Agent added:  ${name} (${docId})`);
-    
-    return res.status(200).json({ ok: true, id: docId });
-  } catch (err) {
-    console.error("Add agent error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}
    
     if (path === "/schedule/extended" && req.method === "POST") {
       const body = req.body || {};
@@ -2814,12 +2626,12 @@ const idx = assignments.findIndex(a => {
     const balances = [];
     
     snap.forEach(doc => {
-      const data = doc.data();
       balances.push({
         person: doc.id,
-        pto: data.pto || 0,
-        holiday_hours: data.holiday_hours || 0,
-        lastUpdated: data.lastUpdated
+        pto: doc.data().pto || 0,
+        sick: doc.data().sick || 0,
+        holiday_bank: doc.data().holiday_bank || 0,
+        lastUpdated: doc.data().lastUpdated
       });
     });
     
@@ -2828,111 +2640,89 @@ const idx = assignments.findIndex(a => {
     return res.status(500).json({ error: err.message });
   }
 }
-// Update balance (PTO and Holiday Hours)
+// Update balance
 if (path === "/balances/update" && req.method === "POST") {
   try {
     const body = readJsonBody(req);
     const { person, type, hours } = body;
     
-    if (!person || hours === undefined) {
-      return res.status(400).json({ error: "Missing person or hours" });
+    if (!person || !type || hours === undefined) {
+      return res.status(400).json({ error: "Missing person, type, or hours" });
     }
     
-    // Support PTO and holiday_hours for contractors
-    const validTypes = ["pto", "holiday_hours"];
-    const balanceType = type || "pto";
-    if (!validTypes.includes(balanceType)) {
-      return res.status(400).json({ error: "Type must be 'pto' or 'holiday_hours'" });
+    // Support pto, sick, and holiday_bank
+    if (type !== "pto" && type !== "sick" && type !== "holiday_bank") {
+      return res.status(400).json({ error: "Type must be 'pto', 'sick', or 'holiday_bank'" });
     }
     
     const docRef = db.collection("accrued_hours").doc(person);
     const snap = await docRef.get();
     
-    const current = snap.exists ? snap.data() : { pto: 0, holiday_hours: 0 };
-    current[balanceType] = parseFloat(hours) || 0;
+    const current = snap.exists ? snap.data() : { pto: 0, sick: 0, holiday_bank: 0 };
+    current[type] = parseFloat(hours) || 0;
     current.lastUpdated = toIsoNow();
     
     await docRef.set(current, { merge: true });
     
-    return res.status(200).json({ ok: true, person, type: balanceType, hours: current[balanceType] });
+    return res.status(200).json({ ok: true, person, type, hours: current[type] });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 }
 
-// Holiday Hours Accrual - When agent works on a holiday
-if (path === "/holiday/accrue" && req.method === "POST") {
+// Holiday Banking - Calculate and apply holiday hours
+if (path === "/holiday/bank" && req.method === "POST") {
   try {
     const body = readJsonBody(req);
-    const { person, date, hoursWorked } = body;
+    const { person, date, hoursWorked, action } = body;
+    // action: "worked" (bank 0.5x extra) or "off" (deduct full hours)
     
     if (!person || !date) {
       return res.status(400).json({ error: "Missing person or date" });
     }
     
-    // Verify this date is actually a holiday
-    const holidayDoc = await db.collection("holidays").doc(date).get();
-    if (!holidayDoc.exists) {
-      return res.status(400).json({ error: "This date is not a registered holiday" });
-    }
-    
     const docRef = db.collection("accrued_hours").doc(person);
     const snap = await docRef.get();
-    const current = snap.exists ? snap.data() : { pto: 0 };
+    const current = snap.exists ? snap.data() : { pto: 0, sick: 0, holiday_bank: 0 };
     
-    // Accrue 0.5x the hours worked as holiday bonus - ADD TO PTO
-    const worked = parseFloat(hoursWorked) || 8;
-    const accrued = worked * 0.5;
-    current.pto = (current.pto || 0) + accrued;
+    let hoursChange = 0;
+    let message = "";
+    
+    if (action === "worked") {
+      // Worked holiday: bank 0.5x extra hours (the 0.5x bonus on top of regular pay)
+      const worked = parseFloat(hoursWorked) || 8;
+      hoursChange = worked * 0.5; // Bank half the hours worked
+      current.holiday_bank = (current.holiday_bank || 0) + hoursChange;
+      message = `Banked ${hoursChange}h for working holiday`;
+    } else if (action === "off") {
+      // Didn't work: deduct from PTO (not holiday bank)
+      hoursChange = parseFloat(hoursWorked) || 8;
+      current.pto = Math.max(0, (current.pto || 0) - hoursChange);
+      message = `Deducted ${hoursChange}h PTO for holiday absence`;
+    }
+    
     current.lastUpdated = toIsoNow();
-    
     await docRef.set(current, { merge: true });
     
-    // Log the accrual
-    await db.collection("holiday_accruals").add({
+    // Log the transaction
+    await db.collection("holiday_transactions").add({
       person,
       date,
-      hoursWorked: worked,
-      hoursAccrued: accrued,
-      holidayName: holidayDoc.data().name || "Holiday",
-      addedToPto: true,
+      action,
+      hoursChange,
+      newBalance: action === "worked" ? current.holiday_bank : current.pto,
       createdAt: toIsoNow()
     });
     
     return res.status(200).json({ 
       ok: true, 
       person, 
-      hoursAccrued: accrued,
+      action,
+      hoursChange,
       newPtoBalance: current.pto,
-      message: `Added ${accrued}h to PTO for working on ${holidayDoc.data().name}`
+      newHolidayBank: current.holiday_bank,
+      message 
     });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-}
-
-// Get holiday accrual history for a person
-if (path === "/holiday/history" && req.method === "POST") {
-  try {
-    const body = readJsonBody(req);
-    const { person } = body;
-    
-    if (!person) {
-      return res.status(400).json({ error: "Missing person" });
-    }
-    
-    const snap = await db.collection("holiday_accruals")
-      .where("person", "==", person)
-      .orderBy("createdAt", "desc")
-      .limit(50)
-      .get();
-    
-    const history = [];
-    snap.forEach(doc => {
-      history.push({ id: doc.id, ...doc.data() });
-    });
-    
-    return res.status(200).json({ ok: true, history });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -3148,195 +2938,10 @@ if (path === "/holiday/history" && req.method === "POST") {
         return res.status(500).json({ status: "error", message: err.message });
       }
     }
-    // ============================================
-    // ZENDESK AGENT TICKET SEARCH ENDPOINTS
-    // ============================================
-    
-    // GET /zendesk/agent/open?email=...&days=7
-    if (path === "/zendesk/agent/open" && req.method === "GET") {
-      try {
-        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Fetching open tickets');
-        
-        const email = String(req.query.email || "").trim();
-        
-        if (!email) {
-          logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Missing email parameter');
-          return res.status(400).json({ error: "Missing email parameter" });
-        }
-        
-        // Validate days parameter (default 7, clamp 1-90) and sanitize email
-        const validDays = validateDaysParam(req.query.days, 7);
-        const sanitizedEmail = sanitizeZendeskEmail(email);
-        
-        // Pagination parameters
-        const page = Math.max(1, parseInt(req.query.page || "1", 10));
-        const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || "100", 10)));
-        
-        // Calculate date range for query
-        const daysAgo = new Date();
-        daysAgo.setDate(daysAgo.getDate() - validDays);
-        const daysAgoISO = daysAgo.toISOString().split('T')[0];
-        
-        // Build Zendesk search query - use status<solved to get all non-solved tickets
-        // type:ticket ensures we only get tickets, not other objects
-        const query = `type:ticket assignee:"${sanitizedEmail}" status<solved created>=${daysAgoISO}`;
-        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
-        
-        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Calling Zendesk API', { 
-          email, 
-          days: validDays, 
-          page, 
-          perPage,
-          dateFilter: daysAgoISO
-        });
-        
-        const data = await zdFetch(searchUrl);
-        
-        // Extract ticket IDs and build UI URL
-        const tickets = (data.results || []).map(t => ({
-          id: t.id,
-          subject: t.subject,
-          status: t.status,
-          created_at: t.created_at,
-          updated_at: t.updated_at
-        }));
-        const count = data.count || 0;
-        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
-        
-        logWithTrace(traceId, 'info', 'zendesk/agent/open', 'Open tickets found', { 
-          email, 
-          count, 
-          days: validDays,
-          page,
-          returned: tickets.length
-        });
-        
-        return res.status(200).json({
-          ok: true,
-          count,
-          tickets,
-          ticketIds: tickets.map(t => t.id),
-          searchUrl: zendeskSearchUIUrl,
-          query,
-          days: validDays,
-          email,
-          page,
-          perPage,
-          hasMore: data.next_page !== null,
-          nextPage: data.next_page
-        });
-        
-      } catch (err) {
-        logWithTrace(traceId, 'error', 'zendesk/agent/open', 'Error fetching open tickets', {
-          error: err.message,
-          status: err.status
-        });
-        
-        return res.status(err.status || 500).json({
-          error: err.message || "Failed to fetch open tickets"
-        });
-      }
-    }
-    
-    // GET /zendesk/agent/badcsat?email=...&days=60
-    if (path === "/zendesk/agent/badcsat" && req.method === "GET") {
-      try {
-        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Fetching bad CSAT tickets');
-        
-        const email = String(req.query.email || "").trim();
-        
-        if (!email) {
-          logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Missing email parameter');
-          return res.status(400).json({ error: "Missing email parameter" });
-        }
-        
-        // Validate days parameter (default 60, clamp 1-90) and sanitize email
-        const validDays = validateDaysParam(req.query.days, 60);
-        const sanitizedEmail = sanitizeZendeskEmail(email);
-        
-        // Pagination parameters
-        const page = Math.max(1, parseInt(req.query.page || "1", 10));
-        const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || "100", 10)));
-        
-        // Calculate date range for query
-        const daysAgo = new Date();
-        daysAgo.setDate(daysAgo.getDate() - validDays);
-        const daysAgoISO = daysAgo.toISOString().split('T')[0];
-        
-        // Build Zendesk search query - use type:ticket and date filter
-        const query = `type:ticket assignee:"${sanitizedEmail}" satisfaction_rating:bad created>=${daysAgoISO}`;
-        const searchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`;
-        
-        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Calling Zendesk API', { 
-          email, 
-          days: validDays,
-          page,
-          perPage,
-          dateFilter: daysAgoISO
-        });
-        
-        const data = await zdFetch(searchUrl);
-        
-        // Extract ticket details and build UI URL
-        const tickets = (data.results || []).map(t => ({
-          id: t.id,
-          subject: t.subject,
-          status: t.status,
-          created_at: t.created_at,
-          updated_at: t.updated_at,
-          satisfaction_rating: t.satisfaction_rating
-        }));
-        const count = data.count || 0;
-        const zendeskSearchUIUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/search/1?query=${encodeURIComponent(query)}`;
-        
-        logWithTrace(traceId, 'info', 'zendesk/agent/badcsat', 'Bad CSAT tickets found', { 
-          email, 
-          count, 
-          days: validDays,
-          page,
-          returned: tickets.length
-        });
-        
-        return res.status(200).json({
-          ok: true,
-          count,
-          tickets,
-          ticketIds: tickets.map(t => t.id),
-          searchUrl: zendeskSearchUIUrl,
-          query,
-          days: validDays,
-          email,
-          page,
-          perPage,
-          hasMore: data.next_page !== null,
-          nextPage: data.next_page
-        });
-        
-      } catch (err) {
-        logWithTrace(traceId, 'error', 'zendesk/agent/badcsat', 'Error fetching bad CSAT tickets', {
-          error: err.message,
-          status: err.status
-        });
-        
-        return res.status(err.status || 500).json({
-          error: err.message || "Failed to fetch bad CSAT tickets"
-        });
-      }
-    }
-    
     if (path === "/agent-profile" && req.method === "POST") {
       try {
         const { name } = readJsonBody(req);
         if (!name) return res.status(400).json({ error: "No name provided" });
-        
-        // Check cache first (5 minute TTL)
-        const cacheKey = name.toLowerCase().trim();
-        const cached = agentProfileCache.get(cacheKey);
-        if (cached && (Date.now() - cached.timestamp < AGENT_PROFILE_TTL)) {
-          console.log(`📦 Agent profile cache hit for ${name}`);
-          return res.status(200).json(cached.data);
-        }
-        
         // 1. Find the agent's email from Firestore
         const { people } = await getCachedMetadata();
         let agentEmail = "";
@@ -3344,225 +2949,81 @@ if (path === "/holiday/history" && req.method === "POST") {
         const target = name.toLowerCase().trim();
         for (const p of people) {
           const dbName = String(p.name || p.id || "").toLowerCase().trim();
+          
+          // Match full name or first name
           if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
             agentEmail = p.email; 
             break;
           }
         }
         if (!agentEmail) {
-          throw new Error(`Agent ${name} not found or missing email address.`);
+          throw new Error(`Agent ${name} found in Firestore, but they are missing an email address.`);
         }
-        
         // 2. Lookup User in Zendesk
-        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(agentEmail)}`;
+        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
         const userRes = await zdFetch(userSearchUrl);
         if (!userRes.users?.length) throw new Error("Email not found in Zendesk.");
         
         const user = userRes.users[0];
-        const zendeskUserId = user.id;
+        // 3. Fetch Open Tickets
+        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status<solved`)}`;
+        const openRes = await zdFetch(openUrl);
+        // 4. Fetch Solved Tickets (Last 7 Days)
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const date7 = oneWeekAgo.toISOString().split('T')[0];
+        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status:solved solved>${date7}`)}`;
+        const solvedRes = await zdFetch(solvedUrl);
+        // 5. Fetch CSAT (Last 60 Days)
+        const daysBack = 60;
+        const endSec = Math.floor(Date.now() / 1000) - 120;
+        const startSec = endSec - (daysBack * 24 * 60 * 60);
         
-        // 3. Calculate date boundaries (7 days ago)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sevenDaysAgoISO = sevenDaysAgo.toISOString().split('T')[0];
-        const sevenDaysAgoUnix = Math.floor(sevenDaysAgo.getTime() / 1000);
-        
-        // 4. Fetch ticket counts - use a single query for open tickets
-        let openCount = 0;
-        let solvedCount = 0;
-        
-        try {
-          // Single query for all unsolved tickets (status:new OR status:open OR status:pending)
-          const unsolvedQuery = `assignee_id:${zendeskUserId} -status:solved -status:closed`;
-          const solvedQuery = `assignee_id:${zendeskUserId} status:solved solved>=${sevenDaysAgoISO}`;
-          
-          const [unsolvedRes, solvedRes] = await Promise.all([
-            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(unsolvedQuery)}`),
-            zdFetch(`https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(solvedQuery)}`)
-          ]);
-          
-          openCount = unsolvedRes.count || 0;
-          solvedCount = solvedRes.count || 0;
-        } catch (ticketErr) {
-          console.warn("Ticket count failed:", ticketErr.message);
-        }
-        
-        // 5. Fetch CSAT by searching for tickets with satisfaction ratings
-        // Match the Zendesk View filter: "Request date in the last 7 days" + assignee + has rating
-        let csatDisplay = "--";
-        let csatGood = 0;
-        let csatBad = 0;
-        
-        try {
-          // Search for tickets created in last 7 days for this assignee
-          // The Search API returns tickets with satisfaction_rating object embedded
-          const ticketSearchQuery = `assignee_id:${zendeskUserId} created>=${sevenDaysAgoISO}`;
-          const ticketSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(ticketSearchQuery)}&per_page=100`;
-          
-          const ticketRes = await zdFetch(ticketSearchUrl);
-          const tickets = ticketRes.results || [];
-          
-          // Count satisfaction ratings from tickets
-          for (const ticket of tickets) {
-            if (ticket.satisfaction_rating && ticket.satisfaction_rating.score) {
-              const score = ticket.satisfaction_rating.score;
-              if (score === "good") csatGood++;
-              else if (score === "bad") csatBad++;
-              // "offered" and "unoffered" don't count as actual ratings
+        const getCsatCount = async (score) => {
+            let count = 0;
+            let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&score=${encodeURIComponent(score)}`;
+            
+            let safetyPages = 0;
+            while (url) {
+                safetyPages++;
+                if (safetyPages > 50) break;
+                const data = await zdFetch(url);
+                const ratings = data.satisfaction_ratings || [];
+                for (const r of ratings) {
+                    if (Number(r.assignee_id) === Number(user.id)) {
+                        count++;
+                    }
+                }
+                
+                url = data.next_page || null;
             }
-          }
-          
-          // Log for debugging
-          console.log(`CSAT for ${user.name} (ID: ${zendeskUserId}): Good=${csatGood}, Bad=${csatBad}, Total tickets searched=${tickets.length}`);
-          
-          const total = csatGood + csatBad;
-          csatDisplay = total > 0 ? Math.round((csatGood / total) * 100) + "%" : "--";
-        } catch (csatErr) {
-          console.warn("CSAT lookup failed:", csatErr.message);
-        }
-        
-        // 6. Build response
-        const profileData = {
-          found: true,
-          id: zendeskUserId,
-          zendeskUserId: zendeskUserId,
-          name: user.name,
-          email: user.email,
-          avatar: user.photo ? user.photo.content_url : null,
-          role: user.role,
-          lastLogin: user.last_login_at,
-          openTickets: openCount,
-          solvedWeek: solvedCount,
-          csatScore: csatDisplay,
-          csatGood: csatGood,
-          csatBad: csatBad
+            return count;
         };
-        
-        // Cache the result using the proper Map
-        agentProfileCache.set(cacheKey, { data: profileData, timestamp: Date.now() });
-        
-        const duration = Date.now() - startTime;
-        logWithTrace(traceId, 'info', 'response', `200 ${path}`, { duration });
-        
-        return res.status(200).json(profileData);
-      } catch (error) {
-        const duration = Date.now() - startTime;
-        logWithTrace(traceId, 'error', 'agent-profile', 'Profile fetch error', {
-          error: error.message,
-          duration
+        const good = await getCsatCount("good");
+        const bad = await getCsatCount("bad");
+        const total = good + bad;
+        const csatDisplay = total ? Math.round((good / total) * 100) + "%" : "--";
+        // 6. Return standard object to UI
+        return res.status(200).json({
+            found: true,
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar: user.photo ? user.photo.content_url : null,
+            role: user.role,
+            lastLogin: user.last_login_at,
+            openTickets: openRes.count || 0,
+            solvedWeek: solvedRes.count || 0,
+            csatScore: csatDisplay
         });
+      } catch (error) {
+        console.error("Profile Error:", error);
         return res.status(500).json({ error: error.message });
       }
     }
-    
-    // ============================================
-    // SCHEDULE EXPORT TO CSV
-    // ============================================
-    if (path === "/schedule/export" && req.method === "POST") {
-  try {
-    logWithTrace(traceId, "info", "schedule/export", "Processing CSV export request");
-
-    const body = readJsonBody(req);
-    const startDate = body.startDate || new Date().toISOString().split("T")[0];
-    const days = clampDays(body.days || 14);
-    const teamKey = body.teamKey || "";
-
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-      logWithTrace(traceId, "error", "schedule/export", "Invalid date format", { startDate });
-      return res.status(400).json({ error: "Invalid date format.  Use YYYY-MM-DD" });
-    }
-
-    // Calculate date range
-    const start = new Date(`${startDate}T00:00:00Z`);
-    if (isNaN(start.getTime())) {
-      logWithTrace(traceId, "error", "schedule/export", "Invalid date", { startDate });
-      return res.status(400).json({ error: "Invalid start date" });
-    }
-
-    const endDate = new Date(start);
-    endDate.setUTCDate(endDate.getUTCDate() + days);
-    const endStr = endDate.toISOString().split("T")[0];
-
-    // Fetch schedule data
-    let query = db
-      .collection("scheduleDays")
-      .where("date", ">=", startDate)
-      .where("date", "<=", endStr);
-
-    if (teamKey) {
-      query = query.where("team", "==", teamKey);
-    }
-
-    const snapshot = await query.get();
-
-    logWithTrace(traceId, "info", "schedule/export", "Fetched schedule data", {
-      docs: snapshot.size,
-      startDate,
-      endStr,
-      teamKey,
-    });
-
-    // Build CSV rows
-    const csvRows = [];
-    // Header row
-    csvRows.push(
-      ["Date", "Team", "Person", "Role", "Start Time", "End Time", "Status", "Notes"]
-        .map(csvEscape)
-        .join(",")
-    );
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const assignments = data.assignments || [];
-
-      assignments.forEach((a) => {
-        const row = [
-          data.date || "",
-          data.team || "",
-          a.person || "Unassigned",
-          a.role || "",
-          toAmPm(a.start || ""),
-          toAmPm(a.end || ""),
-          a.status || "Active",
-          a.notes || "",
-        ].map(csvEscape);
-        csvRows.push(row.join(","));
-      });
-    });
-
-    // Create CSV string with BOM for Excel/Sheets compatibility
-    const BOM = "\uFEFF";
-    const csvContent = BOM + csvRows.join("\r\n");
-    const filename = `schedule_${startDate}_to_${endStr}${teamKey ?  "_" + teamKey : ""}.csv`;
-
-    const duration = Date.now() - startTime;
-    logWithTrace(traceId, "info", "schedule/export", "CSV export completed", {
-      duration,
-      rows: csvRows.length - 1,
-      filename,
-    });
-
-    // Set proper headers for CSV download
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Cache-Control", "no-cache");
-    
-    return res.status(200).send(csvContent);
-    
-} catch (err) {
-    const duration = Date.now() - startTime;
-    logWithTrace(traceId, "error", "schedule/export", "Export error", {
-      error: err.message,
-      stack: err.stack,
-      duration,
-    });
-    return res.status(500).json({ error: err.message || "Export failed" });
+    return res.status(404).json({ error: "Not found" });
+  } catch (err) {
+    console.error("ERROR:", err);
+    return res.status(500).json({ error: "Server error", details: String(err?.message || err) });
   }
-}  
-
-} catch (err) {  
-  console.error("Unhandled error:", err);
-  res.status(500).send("Internal Server Error");
-}
-});  
+});
