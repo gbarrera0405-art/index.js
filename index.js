@@ -278,10 +278,13 @@ function timeRangesOverlap(start1, end1, start2, end2) {
   return (s1 < e2) && (s2 < e1);
 }
 
-function csvEscape(val) {
-  const s = val == null ? "" : String(val);
-  // wrap in quotes and escape internal quotes
-  return `"${s.replace(/"/g, '""')}"`;
+function csvEscape(field) {
+  if (field === null || field === undefined) return "";
+  const stringField = String(field);
+  if (stringField.search(/("|,|\n|\r)/g) >= 0) {
+    return `"${stringField.replace(/"/g, '""')}"`;
+  }
+  return stringField;
 }
 // Check if a person is already scheduled during a time slot on a given date
 // Also flags lunch conflicts
@@ -641,7 +644,7 @@ functions.http("helloHttp", async (req, res) => {
       "/swap/request",
       "/swap/pending",
       "/swap/respond",
-      // FIXED: Corrected typo from "/schedule/check-conflict" to "/schedule/check-conflict"
+      "/schedule/export",
       "/schedule/check-conflict",
       "/manager/heartbeat",
       "/manager/presence",
@@ -650,8 +653,9 @@ functions.http("helloHttp", async (req, res) => {
     ].includes(path);
 
     if (!isApi) {
-      if (servePublicFile(req.path || "/", res)) return;
-    }
+  // Only serve static files for real browser GETs without ?action=
+  if (req.method === "GET" && !action && servePublicFile(req.path || "/", res)) return;
+}
     // Health
     if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
     // ============================================
@@ -1566,7 +1570,7 @@ if (path === "/audit/logs" && req.method === "GET") {
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim();
     const active = body.active !== false; // default true
-    const chatUserId = body.chatUserId ? String(body.chatUserId).trim() : "";
+    const chatUserId = body.chatUserId ?  String(body.chatUserId).trim() : "";
     const roles = Array.isArray(body.roles) ? body.roles : [];
     const teams = Array.isArray(body.teams) ? body.teams : [];
 
@@ -1574,28 +1578,31 @@ if (path === "/audit/logs" && req.method === "GET") {
       return res.status(400).json({ error: "name and email are required" });
     }
 
-    const docId = name.toLowerCase().replace(/\s+/g, "_");
-    await db
-      .collection("people")
-      .doc(docId)
-      .set(
-        {
-          name,
-          email,
-          active,
-          chatUserId: chatUserId || null,
-          roles,
-          teams,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+    // Create a safe document ID from the name
+    const docId = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    
+    const docData = {
+      name,
+      email,
+      active,
+      chatUserId:  chatUserId || null,
+      roles,
+      teams,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
+    await db.collection("people").doc(docId).set(docData, { merge: true });
+
+    // Invalidate caches so the new agent shows up
     invalidateMetadataCache();
     invalidateAgentProfileCache(name);
+    
+    console.log(`✅ Agent added:  ${name} (${docId})`);
+    
     return res.status(200).json({ ok: true, id: docId });
   } catch (err) {
+    console.error("Add agent error:", err);
     return res.status(500).json({ error: err.message });
   }
 }
@@ -3425,7 +3432,7 @@ if (path === "/holiday/history" && req.method === "POST") {
     // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
       logWithTrace(traceId, "error", "schedule/export", "Invalid date format", { startDate });
-      return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD" });
+      return res.status(400).json({ error: "Invalid date format.  Use YYYY-MM-DD" });
     }
 
     // Calculate date range
@@ -3458,8 +3465,9 @@ if (path === "/holiday/history" && req.method === "POST") {
       teamKey,
     });
 
-    // Build CSV (Sheets-friendly: quoted fields + BOM)
+    // Build CSV rows
     const csvRows = [];
+    // Header row
     csvRows.push(
       ["Date", "Team", "Person", "Role", "Start Time", "End Time", "Status", "Notes"]
         .map(csvEscape)
@@ -3475,7 +3483,7 @@ if (path === "/holiday/history" && req.method === "POST") {
           data.date || "",
           data.team || "",
           a.person || "Unassigned",
-          a.role || "",
+          a. role || "",
           toAmPm(a.start || ""),
           toAmPm(a.end || ""),
           a.status || "Active",
@@ -3485,8 +3493,10 @@ if (path === "/holiday/history" && req.method === "POST") {
       });
     });
 
-    const csv = "\uFEFF" + csvRows.join("\n"); // UTF-8 BOM
-    const filename = `schedule_${startDate}_to_${endStr}${teamKey ? "_" + teamKey : ""}.csv`;
+    // Create CSV string with BOM for Excel/Sheets compatibility
+    const BOM = "\uFEFF";
+    const csvContent = BOM + csvRows.join("\r\n");
+    const filename = `schedule_${startDate}_to_${endStr}${teamKey ?  "_" + teamKey : ""}. csv`;
 
     const duration = Date.now() - startTime;
     logWithTrace(traceId, "info", "schedule/export", "CSV export completed", {
@@ -3495,9 +3505,13 @@ if (path === "/holiday/history" && req.method === "POST") {
       filename,
     });
 
-    res.set("Content-Type", "text/csv; charset=utf-8");
-    res.set("Content-Disposition", `attachment; filename="${filename}"`);
-    return res.status(200).send(csv);
+    // Set proper headers for CSV download
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-cache");
+    
+    return res.status(200).send(csvContent);
+    
   } catch (err) {
     const duration = Date.now() - startTime;
     logWithTrace(traceId, "error", "schedule/export", "Export error", {
@@ -3508,4 +3522,8 @@ if (path === "/holiday/history" && req.method === "POST") {
     return res.status(500).json({ error: err.message || "Export failed" });
   }
 }
+} catch (err) {
+    console.error("Unhandled error in main handler:", err);
+    res.status(500).send("Internal Server Error");
+  }
 });
