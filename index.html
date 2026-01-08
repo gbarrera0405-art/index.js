@@ -724,6 +724,7 @@ body:not(.auth-pending) #authOverlay {
    ============================================ */
 /* Hide manager-only header elements */
 body.agent-mode #btnAdmin,
+body.agent-mode #btnAddAgent,
 body.agent-mode #btnMasterMode,
 body.agent-mode #drawerToggle,
 body.agent-mode #teamChips,
@@ -1580,6 +1581,9 @@ body.agent-mode .pill.balance {
       <button id="btnExport" type="button" class="iconBtn" title="Export Schedule to CSV" onclick="openExportModal()">
         <svg viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
       </button>
+      <button id="btnAddAgent" type="button" class="iconBtn" title="Add Agent" onclick="openAddAgentModal()">
+        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </button>
       <button id="btnAdmin" type="button" class="iconBtn" title="Admin Settings" onclick="openAdminModal()">
         <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       </button>
@@ -2295,6 +2299,40 @@ body.agent-mode .pill.balance {
     </div>
   </div>
 </div>
+
+<!-- Add Agent Modal -->
+<div id="addAgentOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAddAgentModal()">
+  <div class="modal" style="width: 480px;">
+    <div class="mHead" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+      <span class="mTitle" style="color: white;">👤 Add New Agent</span>
+      <button type="button" class="btn ghost" style="padding: 6px 12px; color: white; border-color:rgba(255,255,255,0.3);" onclick="closeAddAgentModal()">✕</button>
+    </div>
+    <div class="mBody">
+      <div style="margin-bottom:16px;">
+        <label>Full Name *</label>
+        <input type="text" id="newAgentName" placeholder="e.g., John Smith" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:10px;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label>Email Address *</label>
+        <input type="email" id="newAgentEmail" placeholder="e.g., john. smith@company.com" style="width:100%; padding:12px; border: 2px solid #e2e8f0; border-radius:10px;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label>Google Chat User ID (Optional)</label>
+        <input type="text" id="newAgentChatId" placeholder="e.g., users/123456789" style="width: 100%; padding:12px; border:2px solid #e2e8f0; border-radius: 10px;">
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">Used for shift notifications via Google Chat</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+        <input type="checkbox" id="newAgentActive" checked style="width:18px; height:18px;">
+        <label style="margin: 0; text-transform:none; font-weight:500;">Active (can be scheduled)</label>
+      </div>
+    </div>
+    <div class="mFoot">
+      <button class="btn ghost" onclick="closeAddAgentModal()">Cancel</button>
+      <button class="btn primary" onclick="saveNewAgent()" style="background:#10b981;">+ Add Agent</button>
+    </div>
+  </div>
+</div>
+
 <!-- Agent Overlay - REDESIGNED -->
 <div id="agentOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentModal()">
   <div class="modal" style="width: 460px; border-radius: 20px;">
@@ -2941,6 +2979,9 @@ uiRestoreAssignment: async function(id) {
   let _myName = ""; 
   let _masterSelected=new Set(), _masterRawData=[]; // Moved here for safety
   let _lastSelectedPerson = null;
+
+  window.API_BASE = 'https://scheduler-api-63798769550.us-central1.run.app';
+
   // --- 3. HELPERS (FORMATTING) ---
   function formatCsatDisplay(val) {
     if (val === null || val === undefined || val === "" || val === "--") return "--";
@@ -3187,7 +3228,7 @@ function clearScheduleCache() {
     if ($("btnAdmin")) $("btnAdmin").style.display = "none";
     if ($("btnMasterMode")) $("btnMasterMode").style.display = "none";
     if ($("drawerToggle")) $("drawerToggle").style.display = "none";
-    if ($("btnAgentToggle")) $("btnAgentToggle").style.display = "none";
+    if ($("btnAgentToggle")) $("btnAgentToggle").style.display = "inline-flex";
     
     // ✅ AGENT: FORCE HIDE METRICS BUTTON
     if ($("btnMetrics")) $("btnMetrics").style.display = "none"; 
@@ -3196,7 +3237,7 @@ function clearScheduleCache() {
     if (headerTitle) headerTitle.textContent = "My Schedule";
     
     // Filter to only show agent's own shifts
-    if (myName) {
+    if (myName && !_agentShowingTeam) {
       _selectedPeople.clear(); 
       _selectedPeople.add(myName);
     }
@@ -3960,16 +4001,7 @@ function parseTimeDecimal(t) {
   const [h, m] = t.split(':').map(Number);
   return h + (m || 0) / 60;
 }
-// Helper function if not already defined
-function pstISODate() {
-  const now = new Date();
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day:  '2-digit'
-  }).format(now);
-}
+
 async function regenerateAllSchedule() {
   const result = await Swal.fire({
     title: '🔄 Regenerate Entire Schedule?',
@@ -4163,23 +4195,7 @@ async function regenerateAllSchedule() {
       });
     }
 }
-function getChannelAbbrev(channel) {
-  const abbrevMap = {
-    'livechat': 'LC',
-    'phone': 'Phone',
-    'floater': 'Float',
-    'socials': 'SS',
-    'disputes': 'Dis',
-    'mdsupport': 'MD',
-    'projects': 'Proj',
-    'lunch': 'Lunch',
-    '1:1meetings': '1:1',
-    'other': 'Other'
-  };
-  
-  const normalized = normalizeChannelName(channel);
-  return abbrevMap[normalized] || channel.substring(0, 4);
-}
+
 // 1. Open the Queue (uses SweetAlert for simplicity)
 async function openTimeOffQueue() {
   closeAdminModal();
@@ -4730,6 +4746,92 @@ async function logAuditEntry(entry) {
     alert("Error: The 'agentOverlay' HTML is missing.");
   }
 }
+
+// --- Add Agent Function ---
+async function addAgent() {
+  // Get values from the modal form
+  const name = document.getElementById("agentName")?.value?. trim();
+  const email = document.getElementById("agentEmail")?.value?.trim();
+  const chatUserId = document.getElementById("agentChatUserId")?.value?.trim();
+  const rolesStr = document.getElementById("agentRoles")?.value?.trim();
+  const teamsStr = document.getElementById("agentTeams")?.value?.trim();
+  const active = document.getElementById("agentActive")?.checked ?? true;
+
+  // Validate required fields
+  if (!name) {
+    toast("Name is required", "error");
+    return;
+  }
+  if (!email) {
+    toast("Email is required", "error");
+    return;
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    toast("Please enter a valid email address", "error");
+    return;
+  }
+
+  // Parse comma-separated values
+  const roles = rolesStr ?  rolesStr.split(',').map(r => r.trim()).filter(r => r) : [];
+  const teams = teamsStr ? teamsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+
+  // Build payload
+  const payload = {
+    name,
+    email,
+    roles,
+    teams,
+    active
+  };
+  
+  if (chatUserId) {
+    payload.chatUserId = chatUserId;
+  }
+
+  // Show loading state
+  const submitBtn = document.querySelector('#addAgentOverlay .btn. primary');
+  const originalText = submitBtn?. textContent;
+  if (submitBtn) {
+    submitBtn.textContent = "Adding...";
+    submitBtn.disabled = true;
+  }
+
+  try {
+    const response = await fetch('. /? action=agents/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.ok) {
+      toast(`✅ Agent "${name}" added successfully!`, "success");
+      closeAddAgentModal();
+      
+      // Clear the form
+      document.getElementById("addAgentForm")?.reset();
+      
+      // Refresh the people list
+      clearScheduleCache();
+      await loadSystemData();
+    } else {
+      toast(`❌ Error: ${result.error || 'Failed to add agent'}`, "error");
+    }
+  } catch (err) {
+    console.error("Add agent error:", err);
+    toast(`❌ Error: ${err.message}`, "error");
+  } finally {
+    // Restore button state
+    if (submitBtn) {
+      submitBtn.textContent = originalText || "Add Agent";
+      submitBtn.disabled = false;
+    }
+  }
+}
 // ✅ Function to load and display agent's PTO in the modal
 function loadAgentPtoDisplay() {
   const ptoEl = document.getElementById("agPtoHours");
@@ -4986,6 +5088,69 @@ function closeAgentModal() {
     console.error("Agent modal not found!");
   }
 }
+
+async function downloadSchedule() {
+  const startDate = document.getElementById('start-date-picker')?.value || new Date().toISOString().split('T')[0];
+  
+  // 1. Show loading
+  Swal.fire({ title: 'Exporting...', didOpen: () => Swal.showLoading() });
+
+  try {
+    // 2. Request the CSV using POST
+    const response = await fetch('/schedule/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        startDate: startDate,
+        days: 14 // or however many days you want
+      })
+    });
+
+    if (!response.ok) throw new Error('Export failed');
+
+    // 3. Convert response to a Blob (file) and download it
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schedule_export_${startDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    
+    Swal.close();
+  } catch (error) {
+    Swal.fire('Error', 'Could not export schedule', 'error');
+  }
+}
+
+// Agent toggle: "My Schedule" <-> "Team Schedule"
+let _agentShowingTeam = false;
+
+function toggleAgentView() {
+  if (window._isManager) return;
+
+  _agentShowingTeam = !_agentShowingTeam;
+
+  const headerTitle = document.querySelector(".hTitle");
+  const btn = document.getElementById("btnAgentToggle");
+
+  if (_agentShowingTeam) {
+    // Show team (no person filter)
+    _selectedPeople.clear();
+    if (headerTitle) headerTitle.textContent = "Team Schedule";
+    if (btn) btn.textContent = "Show Mine";
+  } else {
+    // Show only me
+    _selectedPeople.clear();
+    if (window._myName) _selectedPeople.add(window._myName);
+    if (headerTitle) headerTitle.textContent = "My Schedule";
+    if (btn) btn.textContent = "Show Team";
+  }
+
+  applyLocalFilters(); // this already re-renders in your build
+}
+
   async function submitSwap() {
     const targetPerson = $("agSwapPerson") ? $("agSwapPerson").value : "";
     const note = $("agSwapNote") ? $("agSwapNote").value : "";
@@ -6617,6 +6782,137 @@ if (!window._isManager && window._myName) {
   function confirmManagerSelection() { _selectedManagerEmail=$("masterManagerDropdown").value; $("masterContextOverlay").style.display="none"; load(true, _selectedManagerEmail); }
   function openAdminModal() { $("adminOverlay").style.display="flex"; loadRules(); }
   function closeAdminModal() { $("adminOverlay").style.display="none"; }
+  
+  <script>
+// ============================================
+// ADD AGENT MODAL FUNCTIONS
+// ============================================
+
+function openAddAgentModal() {
+  // Clear previous values
+  document.getElementById('newAgentName').value = '';
+  document.getElementById('newAgentEmail').value = '';
+  document. getElementById('newAgentChatId').value = '';
+  document. getElementById('newAgentActive').checked = true;
+  
+  // Show the modal
+  document.getElementById('addAgentOverlay').style.display = 'flex';
+}
+
+function closeAddAgentModal() {
+  document.getElementById('addAgentOverlay').style.display = 'none';
+}
+
+async function saveNewAgent() {
+  const name = document.getElementById('newAgentName').value.trim();
+  const email = document.getElementById('newAgentEmail').value.trim();
+  const chatUserId = document.getElementById('newAgentChatId').value.trim();
+  const active = document. getElementById('newAgentActive').checked;
+  
+  // Validation
+  if (!name) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Name Required',
+      text: 'Please enter the agent\'s full name.',
+      confirmButtonColor: '#3b82f6'
+    });
+    return;
+  }
+  
+  if (!email) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Email Required',
+      text: 'Please enter the agent\'s email address.',
+      confirmButtonColor: '#3b82f6'
+    });
+    return;
+  }
+  
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Invalid Email',
+      text: 'Please enter a valid email address.',
+      confirmButtonColor: '#3b82f6'
+    });
+    return;
+  }
+  
+  try {
+    // Show loading state
+    Swal.fire({
+      title: 'Adding Agent...',
+      text: 'Please wait while we add the new agent.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+    
+    // Call the API
+    const response = await fetch(window.API_BASE + '/agents/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-preview-key': window. PREVIEW_KEY || ''
+      },
+      body:  JSON.stringify({
+        name: name,
+        email: email,
+        chatUserId: chatUserId || null,
+        active: active,
+        roles: [],
+        teams: []
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (! response.ok || result.error) {
+      throw new Error(result.error || 'Failed to add agent');
+    }
+    
+    // Success! 
+    closeAddAgentModal();
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Agent Added! ',
+      text: `${name} has been added to the system.`,
+      confirmButtonColor: '#10b981'
+    });
+    
+    // Refresh the people list if you have a function for that
+    if (typeof loadMetadata === 'function') {
+      await loadMetadata();
+    }
+    
+    // Also refresh the quick rail if it exists
+    if (typeof renderQuickRail === 'function') {
+      renderQuickRail();
+    }
+    
+    // Refresh metrics list if visible
+    if (typeof renderMetricsList === 'function') {
+      renderMetricsList();
+    }
+    
+  } catch (err) {
+    console.error('Error adding agent:', err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.message || 'Failed to add agent. Please try again.',
+      confirmButtonColor: '#ef4444'
+    });
+  }
+}
+  
   function loadRules() {
   const list = $("ruleList");
   list.innerHTML = '<div style="padding:10px; color:#94a3b8;">Loading...</div>';
@@ -6833,21 +7129,7 @@ window.toast = toast;
     }); 
   }
  
-  async function deleteRule(idx) { 
-    if (!confirm("Delete rule?")) return; 
-    try {
-      await fetch('./?action=staffing/rules/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idx: idx })
-      });
-      toast("Rule deleted");
-      loadRules();
-    } catch (err) {
-      console.error("Delete rule error:", err);
-      toast("Failed to delete rule", "error");
-    }
-  }
+  
   // Master Template Logic
   function renderMasterView(data) {
     if(!data || data.error) { 
