@@ -3483,7 +3483,7 @@ if (path === "/holiday/history" && req.method === "POST") {
           data.date || "",
           data.team || "",
           a.person || "Unassigned",
-          a. role || "",
+          a.role || "",
           toAmPm(a.start || ""),
           toAmPm(a.end || ""),
           a.status || "Active",
@@ -3496,7 +3496,7 @@ if (path === "/holiday/history" && req.method === "POST") {
     // Create CSV string with BOM for Excel/Sheets compatibility
     const BOM = "\uFEFF";
     const csvContent = BOM + csvRows.join("\r\n");
-    const filename = `schedule_${startDate}_to_${endStr}${teamKey ?  "_" + teamKey : ""}. csv`;
+    const filename = `schedule_${startDate}_to_${endStr}${teamKey ?  "_" + teamKey : ""}.csv`;
 
     const duration = Date.now() - startTime;
     logWithTrace(traceId, "info", "schedule/export", "CSV export completed", {
@@ -3512,7 +3512,7 @@ if (path === "/holiday/history" && req.method === "POST") {
     
     return res.status(200).send(csvContent);
     
-  } catch (err) {
+} catch (err) {
     const duration = Date.now() - startTime;
     logWithTrace(traceId, "error", "schedule/export", "Export error", {
       error: err.message,
@@ -3521,9 +3521,10 @@ if (path === "/holiday/history" && req.method === "POST") {
     });
     return res.status(500).json({ error: err.message || "Export failed" });
   }
+}  
+
+} catch (err) {  
+  console.error("Unhandled error:", err);
+  res.status(500).send("Internal Server Error");
 }
-} catch (err) {
-    console.error("Unhandled error in main handler:", err);
-    res.status(500).send("Internal Server Error");
-  }
-});
+});  
