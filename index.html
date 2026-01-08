@@ -2817,6 +2817,13 @@ const CACHE_CONFIG = {
 // ============================================
 // SESSION PERSISTENCE (15-minute auth cache)
 // ============================================
+// Note: Session data is stored in localStorage without encryption.
+// This is acceptable because:
+// 1. Server still validates all requests with preview key
+// 2. Session TTL is only 15 minutes
+// 3. No passwords or tokens are stored
+// 4. Only caches display name, email, and role flag
+// For higher security requirements, consider using httpOnly cookies
 const SESSION_CONFIG = {
   KEY: 'musely_auth_session',
   TTL: 15 * 60 * 1000, // 15 minutes in milliseconds
@@ -2919,7 +2926,9 @@ const DARK_MODE_KEY = 'musely_dark_mode';
 function initDarkMode() {
   // Check for saved preference or use prefers-color-scheme
   const savedMode = localStorage.getItem(DARK_MODE_KEY);
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  // Safely check for prefers-color-scheme support
+  const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
   
   const shouldUseDarkMode = savedMode === 'true' || (savedMode === null && prefersDark);
   
