@@ -2642,19 +2642,23 @@ const CHANNEL_ABBREV = {
     return false;
   }
   
-  async function handleSignIn(response) {
+async function handleSignIn(response) {
   console.log("Sign-in response received");
   
   try {
-    const res = await fetch('/config', {
+    const base = window.API_BASE || "";
+    const res = await fetch(`${base}/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-preview-key': window.PREVIEW_KEY || ''
+      },
       body: JSON.stringify({ credential: response.credential })
     });
     
     const data = await res.json();
     
-    if (data.error) {
+    if (!res.ok || data.error) {
       console.error("Auth error:", data.error);
       toast("Access Denied: " + data.error, "error");
       return;
@@ -2683,7 +2687,7 @@ const CHANNEL_ABBREV = {
     
   } catch (err) {
     console.error("Sign-in failed:", err);
-    toast("Sign-in failed", "error");
+    toast("Sign-in failed: " + (err?.message || err), "error");
   }
 }
 // Expose to global scope IMMEDIATELY
