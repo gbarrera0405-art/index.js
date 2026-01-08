@@ -379,10 +379,14 @@ function readJsonBody(req) {
   }
 }
 function requirePreviewKey(req, res) {
-  const expected = process.env.PREVIEW_KEY; // set in Cloud Run
-  if (!expected) return true; // if not set, no gate
+  const expected = process.env. PREVIEW_KEY;
+  if (!expected) {
+    console.log("ℹ️ PREVIEW_KEY not set, allowing request");
+    return true;
+  }
   const got = req.get("x-preview-key") || String(req.query.key || "");
   if (got !== expected) {
+    console.log("❌ Preview key mismatch");
     res.status(403).send("Forbidden");
     return false;
   }
@@ -585,12 +589,7 @@ functions.http("helloHttp", async (req, res) => {
     });
     
     // Gate (optional)
-    if (path !== "/health") {
-      if (!requirePreviewKey(req, res)) {
-        logWithTrace(traceId, 'warn', 'auth', 'Preview key validation failed');
-        return;
-      }
-    }
+    
     // Static first (anything not in API list)
     const isApi = [
       "/health",
@@ -655,6 +654,14 @@ functions.http("helloHttp", async (req, res) => {
     if (!isApi) {
   // Only serve static files for real browser GETs without ?action=
   if (req.method === "GET" && !action && servePublicFile(req.path || "/", res)) return;
+}
+
+const publicApi = new Set(["/health", "/config"]);
+if (isApi && !publicApi.has(path)) {
+  if (!requirePreviewKey(req, res)) {
+    logWithTrace(traceId, "warn", "auth", "Preview key validation failed");
+    return;
+  }
 }
     // Health
     if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
@@ -1019,33 +1026,64 @@ if (path === "/audit/logs" && req.method === "GET") {
     return res.status(500).json({ error: err.message });
   }
 }
-    if (path === "/config" || action === "config") {
-        if (req.method === "POST") {
-            try {
-                const ticket = await client.verifyIdToken({
-                    idToken: req.body.credential,
-                    audience: CLIENT_ID,
-                });
-                const payload = ticket.getPayload();
-                const email = payload['email'];
-                const personDoc = await db.collection("people").where("email", "==", email).get();
-                
-                if (personDoc.empty) {
-                    return res.status(403).json({ error: "Access Denied: User not in system." });
-                }
-                const userData = personDoc.docs[0].data();
-                return res.status(200).json({
-                    userEmail: email,
-                    matchedPerson: userData.name,
-                    isManager: userData.role === "admin" || userData.role === "MASTER",
-                    role: userData.role
-                });
-            } catch (e) {
-                console.error("Auth Failure:", e.message);
-                return res.status(401).json({ error: "Unauthorized" });
-            }
-        }
+    // Config endpoint - handle both POST and GET for flexibility
+if ((path === "/config" || action === "config") && (req.method === "POST" || req.method === "GET")) {
+  try {
+    let idToken;
+    
+    // Handle both POST body and GET query params
+    if (req.method === "POST") {
+      const body = readJsonBody(req);
+      idToken = body.credential;
+    } else {
+      idToken = req.query.credential;
     }
+
+    if (!idToken) {
+      console.error("Missing credential in request");
+      return res.status(400).json({ error: "Missing credential" });
+    }
+
+    console.log("🔐 Verifying token...");
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload?. email;
+
+    if (!email) {
+      console.error("No email in token payload");
+      return res.status(401).json({ error: "Unauthorized - no email" });
+    }
+
+    console.log(`✅ Token verified for:  ${email}`);
+
+    const personSnap = await db.collection("people").where("email", "==", email).limit(1).get();
+    if (personSnap.empty) {
+      console.error(`Access denied:  ${email} not in system`);
+      return res.status(403).json({ error: "Access Denied:  User not in system." });
+    }
+
+    const userData = personSnap.docs[0].data();
+    const role = String(userData.role || "").toLowerCase();
+    const isManager = role === "admin" || role === "master";
+
+    console.log(`✅ User authenticated: ${userData.name}, role: ${userData.role}`);
+
+    return res.status(200).json({
+      userEmail: email,
+      matchedPerson: userData.name || email,
+      isManager,
+      role:  userData.role || "",
+    });
+  } catch (e) {
+    console.error("❌ Auth Failure:", e. message, e.stack);
+    return res.status(401).json({ error: "Unauthorized:  " + e.message });
+  }
+}
+
     // Get all pending notifications
     if (path === "/notifications/pending" && req.method === "GET") {
       try {
