@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,7 +6,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* --- RESET & BASICS --- */
   /* --- RESET & BASICS --- */
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   body { margin: 0; padding: 0; background: #f3f4f6; color: #1e293b; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -394,72 +392,70 @@
   .sTime { font-size: 13px; font-weight: 800; color: #334155; }
   .sName { font-size: 13px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sRole { font-size: 11px; color: #64748b; font-weight: 500; }
-  /* Team/Channel Color Classes - Consolidated */
-  .t-other { 
-    background: #f8fafc; 
-    border-color: #e2e8f0; 
-  }
-  .t-other .sTime, .t-other .sName { color: #475569; }
-  
-  .t-11meeting, .t-1-1meetings, .t-11meetings { 
-    background: #adbaf1 !important; 
-    border-color: #8e9de0 !important; 
-  } 
-  .t-1-1meetings .sTime, .t-1-1meetings .sName,
-  .t-11meetings .sTime, .t-11meetings .sName { color: #20175c !important; }
-  
+.t-other { 
+  background:  #f8fafc; 
+  border-color: #e2e8f0; 
+}
+.t-other .sTime, .t-other .sName { color: #475569; }
+.t-11meeting, .t-1-1meetings, .t-11meetings { 
+  background: #adbaf1 !important; 
+  border-color: #8e9de0 !important; 
+} 
+.t-1-1meetings .sTime, .t-1-1meetings .sName,
+.t-11meetings .sTime, .t-11meetings .sName { color: #20175c !important; }
   .t-lunch { 
-    background: #fee498 !important; 
-    border-color: #c8d4a0 !important; 
-  } 
-  .t-lunch .sTime, .t-lunch .sName { color: #2b4e2e !important; }
-  
-  .t-projects, .t-reportingprojects { 
-    background: #e9d0db !important; 
-    border-color: #d4b0c0 !important; 
-  } 
-  .t-projects .sTime, .t-projects .sName,
-  .t-reportingprojects .sTime, .t-reportingprojects .sName { color: #8c1b47 !important; }
-  
+  background: #fee498 !important; 
+  border-color: #c8d4a0 !important; 
+} 
+.t-lunch .sTime, .t-lunch .sName { color: #2b4e2e !important; }
+.t-projects, .t-reportingprojects { 
+  background: #e9d0db !important; 
+  border-color: #d4b0c0 !important; 
+} 
+.t-projects .sTime, .t-projects .sName,
+.t-reportingprojects .sTime, .t-reportingprojects .sName { color: #8c1b47 !important; }
   .t-livechat { 
-    background: #b3a6d5 !important; 
-    border-color: #9688c2 !important; 
-  } 
-  .t-livechat .sTime, .t-livechat .sName { color: #351d77 !important; }
-  
+  background:  #b3a6d5 !important; 
+  border-color: #9688c2 !important; 
+} 
+.t-livechat .sTime, .t-livechat .sName { color: #351d77 !important; }
   .t-floater, .t-emailfloater { 
-    background: #fee498 !important; 
-    border-color: #ecd07a !important; 
-  } 
-  .t-floater .sTime, .t-floater .sName,
-  .t-emailfloater .sTime, .t-emailfloater .sName { color: #7f692a !important; }
-  
+  background:  #fee498 !important; 
+  border-color: #ecd07a !important; 
+} 
+.t-floater .sTime, .t-floater .sName,
+.t-emailfloater .sTime, .t-emailfloater .sName { color: #7f692a !important; }
   .t-phone, .t-phonesupport { 
-    background: #a1c3c8 !important; 
-    border-color: #7ea9b0 !important; 
+    background: #fff3e0 !important; 
+    border-color: #ffb74d !important; 
   } 
-  .t-phone .sTime, .t-phone .sName,
-  .t-phonesupport .sTime, .t-phonesupport .sName { color: #135062 !important; }
-  
+  .t-phone, .t-phonesupport { 
+  background: #a1c3c8 !important; 
+  border-color:  #7ea9b0 ! important; 
+} 
+.t-phone .sTime, .t-phone .sName,
+.t-phonesupport .sTime, .t-phonesupport .sName { color: #135062 !important; }
   .t-socials { 
-    background: #f8ca9b !important; 
-    border-color: #e5b078 !important; 
-  } 
-  .t-socials .sTime, .t-socials .sName { color: #b35f16 !important; }
-  
+  background: #f8ca9b !important; 
+  border-color: #e5b078 !important; 
+} 
+.t-socials .sTime, .t-socials .sName { color: #b35f16 !important; }
   .t-disputes { 
-    background: #d0b0ad !important; 
-    border-color: #b89490 !important; 
-  } 
-  .t-disputes .sTime, .t-disputes .sName { color: #4c1130 !important; }
-  
+  background: #d0b0ad !important; 
+  border-color: #b89490 ! important; 
+} 
+.t-disputes .sTime, .t-disputes .sName { color: #4c1130 ! important; }
   .t-mdsupport, .t-md { 
-    background: #a3c1f3 !important; 
-    border-color: #7ba3e8 !important; 
-  } 
-  .t-mdsupport .sTime, .t-mdsupport .sName,
-  .t-md .sTime, .t-md .sName { color: #2655cb !important; }
+  background: #a3c1f3 ! important; 
+  border-color: #7ba3e8 !important; 
+} 
+.t-mdsupport .sTime, .t-mdsupport .sName,
+.t-md .sTime, .t-md .sName { color: #2655cb !important; }
   
+  /* NEW CHANNELS */
+  .t-lunch { background: #f3f4f6; border-color: #d1d5db; } .t-lunch .sTime, .t-lunch .sName { color: #374151; }
+  .t-11meeting { background: #fdf2f8; border-color: #fbcfe8; } .t-11meeting .sTime, .t-11meeting .sName { color: #be185d; }
+  .t-other { background: #f8fafc; border-color: #e2e8f0; }
   .shift.selected { outline: 2px solid #3b82f6; z-index: 10; }
   .shift.dropTarget { background: #f0f9ff; border: 2px dashed #3b82f6; }
   .selBox { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; background: #fff; border: 1px solid #cbd5e1; border-radius: 5px; display: none; align-items: center; justify-content: center; font-size: 14px; color: #0f172a; }
@@ -724,7 +720,6 @@ body:not(.auth-pending) #authOverlay {
    ============================================ */
 /* Hide manager-only header elements */
 body.agent-mode #btnAdmin,
-body.agent-mode #btnAddAgent,
 body.agent-mode #btnMasterMode,
 body.agent-mode #drawerToggle,
 body.agent-mode #teamChips,
@@ -1323,197 +1318,6 @@ body.agent-mode .pill.balance {
   right: -8px;
   font-size: 14px;
 }
-
-/* ============================================
-   MOBILE RESPONSIVENESS
-   ============================================ */
-@media (max-width: 768px) {
-  /* Header adjustments */
-  .header {
-    padding: 0 12px;
-    height: 56px;
-    flex: 0 0 56px;
-  }
-  
-  .hTitle {
-    font-size: 14px;
-  }
-  
-  .metaGroup {
-    gap: 4px;
-  }
-  
-  .pill {
-    font-size: 9px;
-    padding: 3px 6px;
-  }
-  
-  .iconBtn {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .iconBtn svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  /* Hide less important buttons on mobile */
-  .seg, #btnMasterMode, #drawerToggle {
-    display: none !important;
-  }
-  
-  /* Navigation adjustments */
-  .navGroup {
-    padding: 8px 12px;
-  }
-  
-  .navBtn {
-    width: 28px;
-    height: 28px;
-  }
-  
-  /* Content area */
-  .content {
-    padding: 12px;
-  }
-  
-  /* Calendar view - stack vertically */
-  .calGrid {
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  
-  .dayCol {
-    min-width: 100%;
-    max-width: 100%;
-    margin-bottom: 12px;
-  }
-  
-  /* Schedule view adjustments */
-  .schedule-container {
-    flex-direction: column;
-  }
-  
-  .day-tabs {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 4px;
-    padding: 0 0 8px 0;
-  }
-  
-  .day-tab {
-    min-width: 100px;
-    padding: 10px;
-  }
-  
-  .day-tab .day-name {
-    font-size: 13px;
-  }
-  
-  .day-tab .day-date {
-    font-size: 10px;
-  }
-  
-  /* Shift cards - make them stack */
-  .shifts-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .shift-card-b {
-    padding: 12px;
-  }
-  
-  /* Modals - full width on mobile */
-  .modal {
-    width: 95% !important;
-    max-width: 95% !important;
-    margin: 10px;
-  }
-  
-  .overlay {
-    padding: 0;
-  }
-  
-  /* Drawer - full width on mobile */
-  .drawer {
-    width: 100%;
-    right: -100%;
-  }
-  
-  .drawer.open {
-    right: 0;
-  }
-  
-  /* Toast positioning */
-  #toastHost {
-    bottom: 12px;
-    right: 12px;
-    left: 12px;
-  }
-  
-  .toast {
-    min-width: 100%;
-  }
-  
-  /* Selection bar */
-  .selection-bar {
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-  }
-  
-  .sb-left, .sb-actions {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .sb-actions {
-    flex-wrap: wrap;
-  }
-  
-  /* Coverage banner */
-  .coverage-banner {
-    flex-wrap: wrap;
-    padding: 8px 12px;
-  }
-  
-  .coverage-banner-title {
-    font-size: 10px;
-    margin-bottom: 4px;
-    border-right: none;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 4px;
-    width: 100%;
-  }
-  
-  .coverage-chips {
-    flex-wrap: wrap;
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  /* Extra small screens */
-  .hTitle {
-    display: none;
-  }
-  
-  .dayCol {
-    min-width: 100%;
-  }
-  
-  .sc-time {
-    font-size: 11px;
-  }
-  
-  .sc-name {
-    font-size: 14px;
-  }
-}
   
 </style>
 </head>
@@ -1557,7 +1361,7 @@ body.agent-mode .pill.balance {
       
       <div class="metaGroup" style="margin-left: 16px;">
         <div id="balancePill" class="pill balance" style="display:none;" onclick="openBalanceModal()">
-            <span id="balanceText">PTO: --</span>
+            <span id="balanceText">PTO: -- | Sick: --</span>
         </div>
         <div id="managerContextPill" class="pill" style="display:none; background:#7e22ce; color:#fff; border-color:#6b21a8;">Loading...</div>
       </div>
@@ -1578,12 +1382,6 @@ body.agent-mode .pill.balance {
         <span id="notifCount" class="hidden">0</span>
       </button>
 <button id="btnAgentToggle" class="btn ghost" style="display:none; font-size:12px; border:1px solid #cbd5e1; margin-right:10px;" onclick="toggleAgentView()">Show Team</button>
-      <button id="btnExport" type="button" class="iconBtn" title="Export Schedule to CSV" onclick="openExportModal()">
-        <svg viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
-      </button>
-      <button id="btnAddAgent" type="button" class="iconBtn" title="Add Agent" onclick="openAddAgentModal()">
-        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-      </button>
       <button id="btnAdmin" type="button" class="iconBtn" title="Admin Settings" onclick="openAdminModal()">
         <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       </button>
@@ -1701,8 +1499,8 @@ body.agent-mode .pill.balance {
   <!-- MAIN -->
   <div class="main">
     <div class="content">
-        <div id="coverageBanner" class="coverage-banner hidden" tabindex="0" onclick="openCoverageDashboard()" onkeydown="if(event.key==='Enter'||event.key===' ') openCoverageDashboard()">
-  <div class="coverage-banner-title">📊 Coverage (Click for Details)</div>
+        <div id="coverageBanner" class="coverage-banner hidden">
+  <div class="coverage-banner-title">📊 Coverage</div>
   <div id="coverageChips" class="coverage-chips"></div>
 </div>
       <div id="scheduleView" class="schedule-container">
@@ -1758,9 +1556,8 @@ body.agent-mode .pill.balance {
                     <div id="mSolved" style="font-size:18px; font-weight:900; color:#16a34a;">--</div>
                   </div>
                   <div style="background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #fed7aa;">
-                    <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (7d)</div>
+                    <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (60d)</div>
                     <div id="mCSAT" style="font-size:18px; font-weight:900; color:#ea580c;">--</div>
-                    <div id="mCSATDetail" style="font-size:9px; color:#9a3412; margin-top:2px;"></div>
                   </div>
                 </div>
                 <div style="margin:14px auto 0; max-width: 360px; text-align:left;">
@@ -1869,6 +1666,8 @@ body.agent-mode .pill.balance {
       </div>
       <input type="hidden" id="modalOrigStart">
       <input type="hidden" id="modalOrigEnd">
+      <input type="hidden" id="modalDocId">
+      <input type="hidden" id="modalAssignmentId">
       <div style="margin-bottom:15px; margin-top:10px;">
         <label style="display:block; font-size:12px; color:#666; margin-bottom:5px;">Team</label>
         <select id="modalTeam" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; background:#fff;"></select>
@@ -1884,37 +1683,35 @@ body.agent-mode .pill.balance {
   </div>
   <!-- OVERLAYS -->
   <div id="modalOverlay" class="overlay" onclick="if(event.target===this) closeModal()">
-    <div class="modal" style="width: 440px; border-radius: 16px;">
-      <div class="mHead" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; border-radius: 16px 16px 0 0;">
-        <span class="mTitle" style="color: white;">🔄 Replace Coverage</span>
-        <button type="button" class="btn ghost" style="padding:6px 12px; color:white; border-color:rgba(255,255,255,0.3);" onclick="closeModal()">✕</button>
+    <div class="modal">
+      <div class="mHead">
+        <span class="mTitle">Replace Coverage</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeModal()">✕</button>
       </div>
-      <div class="mBody" style="padding: 20px;">
-        <div style="margin-bottom:16px; padding:12px; background:#f0f9ff; border-radius:10px; border:1px solid #bae6fd;" id="mSub"></div>
-        
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Replace With</label>
-          <select id="mNewPerson" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:10px; font-size:14px;"></select>
-        </div>
-        
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Notification</label>
-          <select id="mNotify" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:10px; font-size:14px;">
-            <option value="defer">📋 Add to Pending (Send Later)</option>
-            <option value="send">📲 Send Notification Now</option>
-          </select>
-        </div>
-        
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Notes (Optional)</label>
-          <textarea id="mNotes" placeholder="Add any notes about this coverage change..." style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; min-height:70px; resize:vertical;"></textarea>
-        </div>
+      <div class="mBody">
+        <div style="margin-bottom:16px; font-size:13px; color:#64748b;" id="mSub"></div>
+        <label>Replace With</label>
+        <select id="mNewPerson" style="margin-bottom:16px;"></select>
+        <label>Notification</label>
+        <select id="mNotify" style="margin-bottom:16px;">
+          <option value="defer">Defer (Pending)</option>
+          <option value="send">Send Bot Notification</option>
+        </select>
+        <label>Notes</label>
+        <textarea id="mNotes"></textarea>
       </div>
-      <div class="mFoot" style="justify-content: space-between; padding:16px 20px; background:#f8fafc; border-radius:0 0 16px 16px;">
-        <button id="actionBtn" class="btn ghost" style="color:#ef4444; border-color:#fecaca; background:#fef2f2;" onclick="handleSaveClick()">⛔ Mark Off</button>
+      <div class="mFoot" style="justify-content: space-between;">
+        <button id="actionBtn" class="btn ghost" style="color:#ef4444; border-color:#fecaca; background:#fef2f2;">
+  ⛔ Mark Off
+</button>
+        <button id="btnDeleteShift"
+  onclick="deleteLiveShiftFromReplace()"
+  style="display:none; padding:10px 12px; border-radius:10px; border:1px solid #fecaca; background:#fef2f2; color:#ef4444; font-weight:800; cursor:pointer;">
+  🗑️ Delete Shift
+</button>
         <div style="display:flex; gap:10px;">
           <button class="btn ghost" onclick="closeModal()">Cancel</button>
-          <button class="btn primary" id="mSave" onclick="saveReplace()">💾 Save Changes</button>
+          <button class="btn primary" id="mSave" onclick="saveReplace()">Save Changes</button>
         </div>
       </div>
     </div>
@@ -2001,7 +1798,7 @@ body.agent-mode .pill.balance {
               <div id="pSolved" style="font-size: 20px; font-weight: 800; color: #16a34a;">--</div>
             </div>
             <div style="background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px solid #fed7aa;">
-              <div style="font-size: 10px; font-weight: 700; color: #c2410c;">CSAT (7d)</div>
+              <div style="font-size: 10px; font-weight: 700; color: #c2410c;">CSAT (60d)</div>
               <div id="pCSAT" style="font-size: 20px; font-weight: 800; color: #ea580c;">--</div>
             </div>
           </div>
@@ -2094,7 +1891,7 @@ body.agent-mode .pill.balance {
       </div>
       <div>
         <div class="tool-title">Accrued Hours</div>
-        <div class="tool-desc">Adjust PTO balances for agents.</div>
+        <div class="tool-desc">Adjust PTO and sick leave balances.</div>
       </div>
     </div>
     <div class="tool-card">
@@ -2132,82 +1929,86 @@ body.agent-mode .pill.balance {
   </div>
 </div>
         <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; display:block;">Generation Tools</label>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <button type="button" class="btn ghost" style="border-color:#3b82f6; color:#3b82f6; padding:10px;" onclick="runGenerate()">📅 Generate 14 Days</button>
-            <button type="button" class="btn ghost" style="padding:10px;" onclick="runArchive()">📦 Archive Old Data</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+          <button type="button" class="btn ghost" style="border-color:#3b82f6; color:#3b82f6;" onclick="runGenerate()">Generate 14 Days</button>
+          <button type="button" class="btn ghost" onclick="runArchive()">Archive Old Data</button>
+          <button type="button" class="btn ghost" style="grid-column: span 2;" onclick="runBoth()">Full Sync (Gen + Archive)</button>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px; border-radius:10px;">
+          <span style="font-size:13px; font-weight:700; color:#334155;">Daily Automation</span>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn" id="btnEnable" style="padding:6px 12px; font-size:11px;">Enable</button>
+            <button type="button" class="btn" id="btnDisable" style="padding:6px 12px; font-size:11px;">Disable</button>
           </div>
-          <button type="button" class="btn primary" style="width:100%; padding:12px;" onclick="runBoth()">⚡ Full Sync (Generate + Archive)</button>
         </div>
       </div>
       <div id="staffingModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeStaffingModal()">
-  <div class="modal" style="width: 520px; border-radius: 16px;">
-    <div class="mHead" style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: white; border-radius: 16px 16px 0 0;">
-      <span class="mTitle" style="color: white;">🛡️ Staffing Requirements</span>
-      <button type="button" class="btn ghost" style="color:white; border-color:rgba(255,255,255,0.3);" onclick="closeStaffingModal()">✕</button>
+  <div class="modal" style="width: 500px;">
+    <div class="mHead">
+      <span class="mTitle">🛡️ Staffing Requirements</span>
+      <button type="button" class="btn ghost" onclick="closeStaffingModal()">✕</button>
     </div>
-    <div class="mBody" style="padding: 20px;">
-      <div style="background:#f8fafc; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #e2e8f0;">
-        <label style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:10px; display:block;">Add New Rule</label>
-        <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px; margin-bottom:10px;">
-          <select id="ruleTeam" style="padding:10px; border:2px solid #e2e8f0; border-radius:8px;"><option value="">Select Channel...</option></select>
-          <select id="ruleDay" style="padding:10px; border:2px solid #e2e8f0; border-radius:8px;">
+    <div class="mBody">
+      <div style="background:#f8fafc; padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid #e2e8f0;">
+        <label>Add New Rule</label>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <select id="ruleTeam" style="flex:2;"><option value="">Select Team...</option></select>
+          <select id="ruleDay" style="flex:1;">
             <option value="All">Every Day</option>
             <option value="Weekday">Mon-Fri</option>
             <option value="Weekend">Sat-Sun</option>
             <option value="Mon">Mon</option><option value="Tue">Tue</option><option value="Wed">Wed</option>
             <option value="Thu">Thu</option><option value="Fri">Fri</option><option value="Sat">Sat</option><option value="Sun">Sun</option>
           </select>
-          <input id="ruleMin" type="number" placeholder="Min #" style="padding:10px; border:2px solid #e2e8f0; border-radius:8px; text-align:center;">
+          <input id="ruleMin" type="number" placeholder="Min" style="flex:1; width:60px;">
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
-          <select id="ruleTimeBlock" style="padding:10px; border:2px solid #e2e8f0; border-radius:8px;" onchange="toggleCustomHours()">
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <select id="ruleTimeBlock" style="flex:1;">
             <option value="all">All Hours</option>
             <option value="morning">Morning (6a-12p)</option>
             <option value="afternoon">Afternoon (12p-6p)</option>
             <option value="evening">Evening (6p-10p)</option>
             <option value="custom">Custom Hours</option>
           </select>
-          <input id="ruleStartHour" type="number" min="0" max="23" placeholder="Start Hr" style="padding:10px; border:2px solid #e2e8f0; border-radius:8px; display:none; text-align:center;">
-          <input id="ruleEndHour" type="number" min="0" max="23" placeholder="End Hr" style="padding:10px; border:2px solid #e2e8f0; border-radius:8px; display:none; text-align:center;">
+          <input id="ruleStartHour" type="number" min="0" max="23" placeholder="Start" style="flex:1; display:none;">
+          <input id="ruleEndHour" type="number" min="0" max="23" placeholder="End" style="flex:1; display:none;">
         </div>
-        <button class="btn primary" style="width:100%; padding:12px;" onclick="addRule()">+ Add Requirement</button>
+        <button class="btn primary" style="width:100%;" onclick="addRule()">+ Save Requirement</button>
       </div>
       
-      <div style="background:#f0fdf4; padding:12px; border-radius:10px; margin-bottom:16px; border:1px solid #86efac;">
-        <div style="font-size:11px; font-weight:700; color:#15803d; margin-bottom:8px;">⚡ Quick Add</div>
+      <div style="background:#eff6ff; padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid #bfdbfe;">
+        <div style="font-size:11px; font-weight:700; color:#1d4ed8; margin-bottom:6px;">💡 Recommended Rules</div>
         <div style="display:flex; flex-wrap:wrap; gap:6px;">
-          <button class="btn ghost" style="font-size:11px; padding:6px 10px; background:#fff;" onclick="addQuickRule('Live Chat', 3, 'morning')">LC 3+ (AM)</button>
-          <button class="btn ghost" style="font-size:11px; padding:6px 10px; background:#fff;" onclick="addQuickRule('Phone', 2, 'all')">Phone 2+</button>
-          <button class="btn ghost" style="font-size:11px; padding:6px 10px; background:#fff;" onclick="addQuickRule('MD Support', 1, 'all')">MD 1+</button>
+          <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('Live Chat', 3, 'morning')">LC 3+ (AM)</button>
+          <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('Phone', 2, 'all')">Phone 2+</button>
+          <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('MD Support', 1, 'all')">MD 1+</button>
         </div>
       </div>
       
-      <label style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:8px; display:block;">Active Rules</label>
+      <label>Current Rules</label>
       <div id="ruleList" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </div>
   </div>
 </div>
   <!-- ✅ Audit Overlay (sibling, not nested) -->
   <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()">
-    <div class="modal" style="width: 750px; max-width: 90vw; height: 80vh; display:flex; flex-direction:column; border-radius: 16px;">
-      <div class="mHead" style="background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%); color: white; border-radius: 16px 16px 0 0;">
-        <span class="mTitle" style="color: white;">📋 Audit History</span>
-        <button type="button" class="btn ghost" style="padding:6px 12px; color:white; border-color:rgba(255,255,255,0.3);" onclick="closeAuditModal()">✕</button>
+    <div class="modal" style="width: 700px; max-width: 90vw; height: 80vh; display:flex; flex-direction:column;">
+      <div class="mHead">
+        <span class="mTitle">Audit History</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAuditModal()">✕</button>
       </div>
       <div class="mBody" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
-        <div style="background:#f0f9ff; border-bottom:1px solid #bae6fd; padding:12px 16px; font-size:12px; color:#0369a1; display:flex; justify-content:space-between; align-items:center;">
-          <span>📊 Showing last 50 actions (newest first)</span>
-          <button class="btn ghost" style="font-size:11px; padding:4px 10px;" onclick="openAuditLog()">🔄 Refresh</button>
+        <div style="background:#fff; border-bottom:1px solid #e2e8f0; padding:10px 16px; font-size:12px; color:#64748b;">
+          Showing last 50 actions. Newest first.
         </div>
         <div style="flex:1; overflow-y:auto;">
           <table class="audit-table">
             <thead>
               <tr>
-                <th style="width:130px;">Time</th>
-                <th style="width:110px;">Manager</th>
-                <th style="width:90px;">Action</th>
-                <th style="width:110px;">Target</th>
+                <th style="width:140px;">Time</th>
+                <th style="width:120px;">Manager</th>
+                <th style="width:100px;">Action</th>
+                <th style="width:120px;">Target</th>
                 <th>Details</th>
               </tr>
             </thead>
@@ -2255,33 +2056,53 @@ body.agent-mode .pill.balance {
   <div id="loader" class="hidden"></div>
   <!-- Accrued Hours Modal -->
 <div id="balanceModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeBalanceModal()">
-  <div class="modal" style="width: 500px;">
+  <div class="modal" style="width: 650px;">
     <div class="mHead">
-      <span class="mTitle">⏰ PTO Balance</span>
+      <span class="mTitle">⏰ Accrued Hours</span>
       <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeBalanceModal()">✕</button>
     </div>
     
     <div class="mBody">
       <!-- Agent View -->
       <div id="agentBalanceView" style="display:none;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #86efac; border-radius: 20px; padding: 32px 40px; display: inline-block; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.15);">
-            <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
-              Available PTO
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+          <div style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+              PTO Balance
             </div>
-            <div id="agentPtoBalance" style="font-size: 56px; font-weight: 900; color: #16a34a; line-height: 1;">
+            <div id="agentPtoBalance" style="font-size: 32px; font-weight: 900; color: #16a34a;">
               --
             </div>
-            <div style="font-size: 14px; color: #22c55e; margin-top: 8px; font-weight: 600;">hours</div>
+            <div style="font-size: 10px; color: #4ade80; margin-top: 4px;">hours available</div>
+          </div>
+          
+          <div style="background: #eff6ff; border: 2px solid #93c5fd; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 11px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+              Sick Leave
+            </div>
+            <div id="agentSickBalance" style="font-size: 32px; font-weight: 900; color: #2563eb;">
+              --
+            </div>
+            <div style="font-size: 10px; color: #60a5fa; margin-top: 4px;">hours available</div>
+          </div>
+          
+          <div style="background: #fef3c7; border: 2px solid #fcd34d; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 11px; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+              🎄 Holiday Bank
+            </div>
+            <div id="agentHolidayBalance" style="font-size: 32px; font-weight: 900; color: #d97706;">
+              --
+            </div>
+            <div style="font-size: 10px; color: #fbbf24; margin-top: 4px;">hours banked</div>
           </div>
         </div>
         
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; font-size: 13px; color: #64748b;">
-          <div style="font-weight: 700; color: #334155; margin-bottom: 10px;">📊 How PTO Works</div>
-          <ul style="margin: 0; padding-left: 18px; line-height: 1.8;">
-            <li><strong>Weekly Accrual:</strong> Earn 1.5 hours per week worked</li>
-            <li><strong>Holiday Bonus:</strong> Work on a company holiday = earn 50% bonus hours added to PTO</li>
-            <li><strong>Usage:</strong> Deducted when time-off requests are approved</li>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 12px; color: #64748b;">
+          <div style="font-weight: 700; color: #334155; margin-bottom: 6px;">📊 How It Works:</div>
+          <ul style="margin: 0; padding-left: 16px; line-height: 1.6;">
+            <li><strong>PTO:</strong> Earn 1.5h/week worked</li>
+            <li><strong>Sick:</strong> Earn 1h/week worked</li>
+            <li><strong>Holiday Bank:</strong> Work a holiday = bank 4h (for 8h shift)</li>
           </ul>
         </div>
       </div>
@@ -2292,47 +2113,13 @@ body.agent-mode .pill.balance {
           <input type="text" id="balanceSearch" placeholder="Search agents..." oninput="filterBalanceList()" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px;">
         </div>
         
-        <div id="balanceList" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <div id="balanceList" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
           <!-- Will be populated by JS -->
         </div>
       </div>
     </div>
   </div>
 </div>
-
-<!-- Add Agent Modal -->
-<div id="addAgentOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAddAgentModal()">
-  <div class="modal" style="width: 480px;">
-    <div class="mHead" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-      <span class="mTitle" style="color: white;">👤 Add New Agent</span>
-      <button type="button" class="btn ghost" style="padding: 6px 12px; color: white; border-color:rgba(255,255,255,0.3);" onclick="closeAddAgentModal()">✕</button>
-    </div>
-    <div class="mBody">
-      <div style="margin-bottom:16px;">
-        <label>Full Name *</label>
-        <input type="text" id="newAgentName" placeholder="e.g., John Smith" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:10px;">
-      </div>
-      <div style="margin-bottom:16px;">
-        <label>Email Address *</label>
-        <input type="email" id="newAgentEmail" placeholder="e.g., john. smith@company.com" style="width:100%; padding:12px; border: 2px solid #e2e8f0; border-radius:10px;">
-      </div>
-      <div style="margin-bottom:16px;">
-        <label>Google Chat User ID (Optional)</label>
-        <input type="text" id="newAgentChatId" placeholder="e.g., users/123456789" style="width: 100%; padding:12px; border:2px solid #e2e8f0; border-radius: 10px;">
-        <div style="font-size:11px; color:#64748b; margin-top:4px;">Used for shift notifications via Google Chat</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
-        <input type="checkbox" id="newAgentActive" checked style="width:18px; height:18px;">
-        <label style="margin: 0; text-transform:none; font-weight:500;">Active (can be scheduled)</label>
-      </div>
-    </div>
-    <div class="mFoot">
-      <button class="btn ghost" onclick="closeAddAgentModal()">Cancel</button>
-      <button class="btn primary" onclick="saveNewAgent()" style="background:#10b981;">+ Add Agent</button>
-    </div>
-  </div>
-</div>
-
 <!-- Agent Overlay - REDESIGNED -->
 <div id="agentOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentModal()">
   <div class="modal" style="width: 460px; border-radius: 20px;">
@@ -2420,7 +2207,7 @@ body.agent-mode .pill.balance {
               Request Time Off
             </div>
             <div style="font-size: 13px; color: #64748b;">
-              Request time off or personal time
+              Report sick leave, emergency, or personal time
             </div>
           </div>
         </button>
@@ -2476,29 +2263,33 @@ body.agent-mode .pill.balance {
       <!-- Time Off Form (Hidden by Default) -->
       <div id="agFormTimeOff" style="display:none; animation: slideIn 0.3s ease;">
         
-        <!-- PTO Balance Display -->
-        <div style="text-align:center; padding:16px; background:linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius:12px; border:2px solid #86efac; margin-bottom:16px;">
-          <div style="font-size:11px; font-weight:700; color:#15803d; text-transform:uppercase; letter-spacing:0.5px;">Your PTO Balance</div>
-          <div id="agPtoHours" style="font-size:32px; font-weight:900; color:#16a34a; margin:4px 0;">--</div>
-          <div style="font-size:11px; color:#22c55e;">hours available</div>
+        <!-- Compact PTO Balance Display -->
+        <div style="display:flex; gap:12px; margin-bottom:16px;">
+          <div style="flex:1; text-align:center; padding:12px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac;">
+            <div style="font-size:10px; font-weight:700; color:#15803d; text-transform:uppercase;">PTO</div>
+            <div id="agPtoHours" style="font-size:22px; font-weight:900; color:#16a34a;">--</div>
+          </div>
+          <div style="flex:1; text-align:center; padding:12px; background:#eff6ff; border-radius:10px; border:1px solid #93c5fd;">
+            <div style="font-size:10px; font-weight:700; color:#1e40af; text-transform:uppercase;">Sick</div>
+            <div id="agSickHours" style="font-size:22px; font-weight:900; color:#2563eb;">--</div>
+          </div>
         </div>
-        
         <!-- Type Selection - Compact Cards -->
         <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Request Type</label>
+          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Type</label>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
             <label class="type-card" onclick="this.querySelector('input').checked=true; updateTypeSelection();" style="display:flex; align-items:center; gap:10px; padding:12px; border:2px solid #e2e8f0; border-radius:10px; cursor:pointer; background:#fff; transition:all 0.2s;">
               <input type="radio" name="timeOffType" value="Make Up" checked style="width:16px; height:16px; accent-color:#3b82f6;" onchange="updateTypeSelection()">
               <div>
                 <div style="font-size:13px; font-weight:600; color:#1e293b;">🔄 Make Up</div>
-                <div style="font-size:10px; color:#64748b;">Work another day</div>
+                <div style="font-size:10px; color:#64748b;">Work another time</div>
               </div>
             </label>
             <label class="type-card" onclick="this.querySelector('input').checked=true; updateTypeSelection();" style="display:flex; align-items:center; gap:10px; padding:12px; border:2px solid #e2e8f0; border-radius:10px; cursor:pointer; background:#fff; transition:all 0.2s;">
               <input type="radio" name="timeOffType" value="PTO" style="width:16px; height:16px; accent-color:#16a34a;" onchange="updateTypeSelection()">
               <div>
                 <div style="font-size:13px; font-weight:600; color:#1e293b;">💰 Use PTO</div>
-                <div style="font-size:10px; color:#64748b;">Deduct from balance</div>
+                <div style="font-size:10px; color:#64748b;">Deduct hours</div>
               </div>
             </label>
           </div>
@@ -2511,7 +2302,7 @@ body.agent-mode .pill.balance {
         <!-- Reason -->
         <div style="margin-bottom:16px;">
           <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Reason</label>
-          <input type="text" id="agToReason" placeholder="e.g., Appointment, Personal..." style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;">
+          <input type="text" id="agToReason" placeholder="e.g., Sick, Appointment..." style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;">
         </div>
         <!-- Actions -->
         <div style="display:flex; gap:10px;">
@@ -2582,95 +2373,23 @@ const CHANNEL_ABBREV = {
   "11Meetings": "1:1"
 };
   const $ = (id) => document.getElementById(id);
-  
-  // ============================================
-  // SESSION PERSISTENCE (15 minutes)
-  // ============================================
-  const SESSION_KEY = 'musely_session';
-  const SESSION_TTL = 15 * 60 * 1000; // 15 minutes
-  
-  function saveSession(data) {
-    const session = {
-      email: data.userEmail,
-      name: data.matchedPerson,
-      isManager: data.isManager,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  }
-  
-  function loadSession() {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (!raw) return null;
-      
-      const session = JSON.parse(raw);
-      const age = Date.now() - session.timestamp;
-      
-      // Check if session is still valid (15 minutes)
-      if (age > SESSION_TTL) {
-        localStorage.removeItem(SESSION_KEY);
-        return null;
-      }
-      
-      return session;
-    } catch (e) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-  }
-  
-  function clearSession() {
-    localStorage.removeItem(SESSION_KEY);
-  }
-  
-  // Check for existing session on page load
-  function restoreSession() {
-    const session = loadSession();
-    if (session) {
-      console.log("🔐 Restoring session for:", session.name);
-      window._myEmail = session.email;
-      window._myName = session.name;
-      window._isManager = session.isManager;
-      window._currentUser = session.name;
-      
-      // Refresh the session timestamp (extend expiry)
-      saveSession({ userEmail: session.email, matchedPerson: session.name, isManager: session.isManager });
-      
-      return true;
-    }
-    return false;
-  }
-  
-async function handleSignIn(response) {
-  console.log("🔐 Sign-in response received:", response ?  "✓" : "✗");
+  async function handleSignIn(response) {
+  console.log("Sign-in response received");
   
   try {
-    const apiBase = window. API_BASE || "";
-    console.log("📡 Calling /config endpoint at:", apiBase);
-    
-    const res = await fetch(`${apiBase}/config`, {
+    const res = await fetch('/config', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'x-preview-key': window.PREVIEW_KEY || ''
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential: response.credential })
     });
     
-    console.log("📡 Response status:", res.status);
-    
     const data = await res.json();
-    console.log("📡 Response data:", data);
     
-    if (!res.ok || data.error) {
-      console.error("❌ Auth error:", data.error);
+    if (data.error) {
+      console.error("Auth error:", data.error);
       toast("Access Denied: " + data.error, "error");
       return;
     }
-    
-    // Save session to localStorage (15 min persistence)
-    saveSession(data);
     
     // Set global identity
     window._myEmail = data.userEmail;
@@ -2678,21 +2397,21 @@ async function handleSignIn(response) {
     window._isManager = data.isManager;
     window._currentUser = data.matchedPerson;
     
-    console.log(`✅ Signed in as: ${window._myName}, Manager: ${window._isManager}`);
+    console.log(`Signed in as: ${window._myName}, Manager: ${window._isManager}`);
     
     // ✅ Remove auth-pending to reveal the app
     document.body.classList.remove("auth-pending");
     
-    // Hide the auth overlay
-    const authOverlay = document.getElementById("authOverlay");
-    if (authOverlay) authOverlay.style.display = "none";
+    // Hide the login button after successful sign-in
+    const loginContainer = document.getElementById("loginContainer");
+    if (loginContainer) loginContainer.style.display = "none";
     
     // Now load the dashboard
     load();
     
   } catch (err) {
-    console.error("❌ Sign-in failed:", err);
-    toast("Sign-in failed:  " + (err?. message || err), "error");
+    console.error("Sign-in failed:", err);
+    toast("Sign-in failed", "error");
   }
 }
 // Expose to global scope IMMEDIATELY
@@ -2712,6 +2431,9 @@ const CACHE_CONFIG = {
   const TZ = "America/Los_Angeles";
   // --- CLOUD RUN BRIDGE START ---
   // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
+  
+  // --- CLOUD RUN BRIDGE START ---
+  // --- CLOUD RUN BRIDGE START ---
   const google = {
     script: {
       // We return a proxy to handle 'run' so we can create a fresh chain for every request
@@ -2904,10 +2626,6 @@ runBoth: async function() {
     if (this._success) this._success(json);
   } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
 },
-uiRestoreAssignment: async function(id) {
-                console.log("Bridge: Restore", id);
-                if(this._success) this._success({ ok: true });
-            },
             handleMasterScheduleEdit: async function(payload) {
                 console.log("Bridge: Master Edit Request", payload);
                 try {
@@ -2985,9 +2703,6 @@ uiRestoreAssignment: async function(id) {
   let _myName = ""; 
   let _masterSelected=new Set(), _masterRawData=[]; // Moved here for safety
   let _lastSelectedPerson = null;
-
-  window.API_BASE = '';
-
   // --- 3. HELPERS (FORMATTING) ---
   function formatCsatDisplay(val) {
     if (val === null || val === undefined || val === "" || val === "--") return "--";
@@ -3171,35 +2886,9 @@ function clearScheduleCache() {
 }
   // --- 4. LOAD SEQUENCE ---
   window.onload = function() {
-  try {
-    // Try to restore session first (15 min persistence)
-    if (restoreSession()) {
-      console.log("✅ Session restored, loading app...");
-      document.body.classList.remove("auth-pending");
-      const loginContainer = document.getElementById("authLoginContainer");
-      if (loginContainer) loginContainer.style.display = "none";
-      load();
-    } else {
-      // No session - ensure auth overlay is visible and wait for sign-in
-      console.log("No session found, showing login screen");
-      document.body.classList.add("auth-pending");
-      // Don't call load() here - wait for handleSignIn callback
-    }
-  } catch (e) { 
-    console.error("Boot Crash:", e);
-    fatal_("Boot Crash", e. message); 
-  }
-};
+    try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
+  };
   function load(force, targetEmail) {
-  // ✅ ADD THIS - Try to restore session first
-  if (! window._myName && !window._myEmail) {
-    const restored = restoreSession();
-    if (! restored) {
-      console.log("No session found, waiting for sign-in");
-      return; // Stop loading if no session
-    }
-  }
-  
   // ✅ Show/hide login button based on auth state
   const loginContainer = document.getElementById("loginContainer");
   if (loginContainer) {
@@ -3251,7 +2940,7 @@ function clearScheduleCache() {
     if ($("btnAdmin")) $("btnAdmin").style.display = "none";
     if ($("btnMasterMode")) $("btnMasterMode").style.display = "none";
     if ($("drawerToggle")) $("drawerToggle").style.display = "none";
-    if ($("btnAgentToggle")) $("btnAgentToggle").style.display = "inline-flex";
+    if ($("btnAgentToggle")) $("btnAgentToggle").style.display = "none";
     
     // ✅ AGENT: FORCE HIDE METRICS BUTTON
     if ($("btnMetrics")) $("btnMetrics").style.display = "none"; 
@@ -3260,7 +2949,7 @@ function clearScheduleCache() {
     if (headerTitle) headerTitle.textContent = "My Schedule";
     
     // Filter to only show agent's own shifts
-    if (myName && !_agentShowingTeam) {
+    if (myName) {
       _selectedPeople.clear(); 
       _selectedPeople.add(myName);
     }
@@ -3659,6 +3348,16 @@ function updateCacheIndicator(fromCache) {
     });
   }
 }
+
+// Master Schedule (Template) Draft Editing
+let _masterOriginalData = null; // snapshot from server
+let _masterDraftData = null;    // editable working copy
+let _masterEditEnabled = false; // must click Edit first
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj || {}));
+}
+
 function renderQuickStats() {
   // Only show for managers
   if (!window._isManager) return;
@@ -3754,6 +3453,54 @@ function renderQuickStats() {
     content.insertBefore(bar, content.firstChild);
   }
 }
+
+async function openAddAgentModal() {
+  const { value: formValues } = await Swal.fire({
+    title: "Add agent",
+    html: `
+      <input id="aaName" class="swal2-input" placeholder="Full name">
+      <input id="aaEmail" class="swal2-input" placeholder="Email">
+      <input id="aaTeam" class="swal2-input" placeholder="Team (optional)">
+      <input id="aaChat" class="swal2-input" placeholder="Chat User ID (optional)">
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: "Add",
+    preConfirm: () => {
+      const name = document.getElementById("aaName").value.trim();
+      const email = document.getElementById("aaEmail").value.trim();
+      const team = document.getElementById("aaTeam").value.trim();
+      const chatUserId = document.getElementById("aaChat").value.trim();
+      if (!name || !email) {
+        Swal.showValidationMessage("Name + email are required.");
+        return;
+      }
+      return { name, email, team, chatUserId };
+    }
+  });
+
+  if (!formValues) return;
+
+  try {
+    Swal.fire({ title: "Adding agent...", allowOutsideClick:false, showConfirmButton:false, didOpen: () => Swal.showLoading() });
+
+    const res = await fetch("./?action=people/add", {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(formValues)
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Failed to add agent");
+
+    // refresh your local metadata (whatever your app uses)
+    await load(true); // if load(true) forces fresh metadata in your setup
+    Swal.fire({ icon:"success", title:"Added!", text:"Agent is now in the system.", confirmButtonColor:"#16a34a" });
+  } catch (e) {
+    console.error(e);
+    Swal.fire({ icon:"error", title:"Add failed", text:e.message, confirmButtonColor:"#ef4444" });
+  }
+}
+
 function calculateCoverageForToday() {
   // Get today's date in PST
   const todayISO = pstISODate();
@@ -4024,7 +3771,16 @@ function parseTimeDecimal(t) {
   const [h, m] = t.split(':').map(Number);
   return h + (m || 0) / 60;
 }
-
+// Helper function if not already defined
+function pstISODate() {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day:  '2-digit'
+  }).format(now);
+}
 async function regenerateAllSchedule() {
   const result = await Swal.fire({
     title: '🔄 Regenerate Entire Schedule?',
@@ -4110,139 +3866,66 @@ async function regenerateAllSchedule() {
     });
   }
 }
-async function saveShift() {
-    const person = document.getElementById("modalEmployee").value;
-    const day = document.getElementById("modalDay").value;
-    const newStart = document.getElementById("modalStart").value;
-    const newEnd = document.getElementById("modalEnd").value;
-    const newTeam = document.getElementById("modalTeam").value;
-    const origStart = document.getElementById("modalOrigStart").value;
-    const origEnd = document.getElementById("modalOrigEnd").value;
-    const isAdding = origStart === "NEW";
-    const actionType = isAdding ? "ADD" : "EDIT";
-    if(!newStart || !newEnd) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Missing Times',
-            text: 'Please enter both start and end times.',
-            confirmButtonColor: '#3b82f6'
-        });
-        return;
+  async function saveShift() {
+  if (!_isMasterMode) {
+    Swal.fire({ icon:"info", title:"Not available here", text:"This editor is only for Master Schedule." });
+    return;
+  }
+
+  const person = document.getElementById("modalEmployee").value;
+  const day = document.getElementById("modalDay").value;
+  const newStart = document.getElementById("modalStart").value;
+  const newEnd = document.getElementById("modalEnd").value;
+  const newTeam = document.getElementById("modalTeam").value;
+  const origStart = document.getElementById("modalOrigStart").value;
+  const origEnd = document.getElementById("modalOrigEnd").value;
+  const isAdding = origStart === "NEW";
+
+  if (!newStart || !newEnd) {
+    Swal.fire({ icon:'warning', title:'Missing Times', text:'Please enter both start and end times.', confirmButtonColor:'#3b82f6' });
+    return;
+  }
+
+  if (!_masterEditEnabled) {
+    toast("Click Edit to make draft changes first.", "info");
+    return;
+  }
+
+  const dayData = _masterRawData[day] || [];
+  if (isAdding) {
+    dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
+    _masterRawData[day] = dayData;
+  } else {
+    const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
+    if (shiftToUpdate) {
+      shiftToUpdate.start = newStart;
+      shiftToUpdate.end = newEnd;
+      shiftToUpdate.team = newTeam;
     }
+  }
 
-    const changePreview = `
-      <div style="text-align:left; line-height:1.5;">
-        <div><strong>👤 Person:</strong> ${person}</div>
-        <div><strong>📅 Day:</strong> ${day}</div>
-        ${isAdding
-          ? `<div><strong>🆕 Add:</strong> ${toAmPm(newStart)} - ${toAmPm(newEnd)}</div>`
-          : `<div><strong>🕐 Time:</strong> ${toAmPm(origStart)} → ${toAmPm(newStart)}<br>${toAmPm(origEnd)} → ${toAmPm(newEnd)}</div>`
-        }
-        <div><strong>👥 Team:</strong> ${newTeam || 'Not specified'}</div>
-      </div>
-    `;
-
-    const preview = await Swal.fire({
-      title: 'Preview Master Change',
-      html: changePreview,
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonText: 'Save',
-      cancelButtonText: 'Keep Editing',
-      focusCancel: true
-    });
-    if (!preview.isConfirmed) return;
-
-    closeModal();
-    Swal.fire({
-        title: isAdding ? 'Adding Shift...' : 'Saving Changes...',
-        html: `<div style="font-size:14px; color:#64748b;">Updating ${person}'s schedule for ${day}</div>`,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    // --- SEND TO BACKEND ---
-    const payload = {
-        action: actionType,
-        person: person,
-        day: day,
-        oldStart: isAdding ? "" : origStart, 
-        oldEnd: isAdding ? "" : origEnd,
-        newStart: newStart,
-        newEnd: newEnd,
-        newTeam: newTeam
-    };
-    
-    try {
-      const response = await fetch('./?action=update-master-schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === "success" || result.ok) {
-        console.log("Saved to database successfully", result);
-
-        // Update local model after successful save
-        const dayData = [...(_masterRawData[day] || [])];
-        if (isAdding) {
-          dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
-        } else {
-          const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
-          if (!shiftToUpdate) throw new Error("Shift not found locally; please refresh.");
-          shiftToUpdate.start = newStart;
-          shiftToUpdate.end = newEnd;
-          shiftToUpdate.team = newTeam;
-        }
-        _masterRawData[day] = dayData;
-        renderMasterView(_masterRawData);
-        
-        Swal.fire({
-            icon: 'success',
-            title: isAdding ? 'Shift Added!' : 'Changes Saved!',
-            html: `
-                <div style="text-align:left; padding:10px; background:#f0fdf4; border-radius:8px; border:1px solid #bbf7d0;">
-                    <div style="margin-bottom:8px;"><strong>👤 Employee:</strong> ${person}</div>
-                    <div style="margin-bottom:8px;"><strong>📅 Day:</strong> ${day}</div>
-                    <div style="margin-bottom:8px;"><strong>🕐 Time:</strong> ${toAmPm(newStart)} - ${toAmPm(newEnd)}</div>
-                    <div><strong>👥 Team:</strong> ${newTeam || 'Not specified'}</div>
-                </div>
-            `,
-            confirmButtonColor: '#16a34a',
-            confirmButtonText: 'Great!',
-            timer: 4000,
-            timerProgressBar: true
-        });
-      } else {
-        throw new Error(result.message || result.error || 'Unknown error');
-      }
-    } catch (err) {
-      console.error("Save failed:", err);
-      
-      Swal.fire({
-          icon: 'error',
-          title: 'Save Failed',
-          html: `
-              <div style="color:#ef4444; font-size:14px; margin-bottom:10px;">
-                  ${err.message || err || 'Unknown error occurred'}
-              </div>
-              <div style="font-size:12px; color:#64748b;">
-                  The local view has been updated, but the database may not have saved.
-                  Try refreshing and making the change again.
-              </div>
-          `,
-          confirmButtonColor: '#ef4444',
-          confirmButtonText: 'OK'
-      });
-    }
+  renderMasterView(_masterRawData);
+  closeModal();
+  toast("Draft updated. Click Preview to apply.", "success");
 }
 
+function getChannelAbbrev(channel) {
+  const abbrevMap = {
+    'livechat': 'LC',
+    'phone': 'Phone',
+    'floater': 'Float',
+    'socials': 'SS',
+    'disputes': 'Dis',
+    'mdsupport': 'MD',
+    'projects': 'Proj',
+    'lunch': 'Lunch',
+    '1:1meetings': '1:1',
+    'other': 'Other'
+  };
+  
+  const normalized = normalizeChannelName(channel);
+  return abbrevMap[normalized] || channel.substring(0, 4);
+}
 // 1. Open the Queue (uses SweetAlert for simplicity)
 async function openTimeOffQueue() {
   closeAdminModal();
@@ -4354,12 +4037,14 @@ async function resolveTimeOff(id, decision, opts = {}) {
       body: JSON.stringify({
         id: id,
         decision: decision,
-        manager: window._myName, 
-
+        manager: window._myName, // Send who made the decision
+        // If caller passes deduct, use it. Otherwise:
+// - deny => never deduct
+// - approve => leave undefined so backend can decide (or your caller can decide)
 deduct: (opts && typeof opts.deduct === "boolean")
   ? opts.deduct
   : (decision === "approved" ? undefined : false),
-
+// allow 0 as a valid amount (your old check would drop it)
 amount: (opts && opts.amount != null) ? opts.amount : null,
       })
     });
@@ -4375,9 +4060,9 @@ amount: (opts && opts.amount != null) ? opts.amount : null,
     if (data.ok) {
       toast(`Request ${decision}!`, "success");
       if(card) card.remove(); // Remove from UI
-     
+      // 1. Reload balances so Admin Tools shows the new numbers
       loadBalances();
-     
+      // 2. Refresh the "Review Queue" Badge Count (THIS WAS MISSING)
       fetch('./?action=timeoff/count')
         .then(r => r.json())
         .then(d => {
@@ -4441,100 +4126,114 @@ function animateDeduction(elementId, startVal, amountToDeduct) {
     window.requestAnimationFrame(step);
 }
 function deleteShift() {
-    const person = document.getElementById("modalEmployee").value;
-    const day = document.getElementById("modalDay").value;
-    const origStart = document.getElementById("modalOrigStart").value;
-    const origEnd = document.getElementById("modalOrigEnd").value;
-    
-    // Use SweetAlert for confirmation instead of basic confirm()
-    Swal.fire({
-        title: 'Delete This Shift?',
-        html: `
-            <div style="text-align:left; padding:12px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
-                <div style="margin-bottom:8px;"><strong>👤 Employee:</strong> ${person}</div>
-                <div style="margin-bottom:8px;"><strong>📅 Day:</strong> ${day}</div>
-                <div><strong>🕐 Time:</strong> ${toAmPm(origStart)} - ${toAmPm(origEnd)}</div>
-            </div>
-            <div style="margin-top:12px; font-size:13px; color:#64748b;">
-                This will permanently remove the shift from the master template.
-            </div>
-        `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: '🗑️ Yes, Delete It',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            executeDeleteShift(person, day, origStart, origEnd);
-        }
-    });
-}
-async function executeDeleteShift(person, day, origStart, origEnd) {
-    // --- 1. REMOVE FROM LOCAL DATA ---
-    const dayData = _masterRawData[day];
-    if (dayData) {
-        const index = dayData.findIndex(s => s.person === person && s.start === origStart && s.end === origEnd);
-        if (index > -1) {
-            dayData.splice(index, 1);
-        }
+  // These MUST be defined before branching, otherwise SweetAlert string interpolation breaks
+  const person = document.getElementById("modalEmployee").value;
+  const day = document.getElementById("modalDay").value;
+  const origStart = document.getElementById("modalOrigStart").value;
+  const origEnd = document.getElementById("modalOrigEnd").value;
+
+  // ✅ MASTER MODE = draft-only delete (no backend)
+  if (_isMasterMode) {
+    if (!_masterEditEnabled) {
+      toast("Click Edit to make draft changes first.", "info");
+      return;
     }
+
+    const dayData = _masterRawData[day] || [];
+    _masterRawData[day] = dayData.filter(s =>
+      !(s.person === person && s.start === origStart && s.end === origEnd)
+    );
+
     renderMasterView(_masterRawData);
     closeModal();
-    // --- 2. SHOW LOADING STATE ---
+    toast("Draft updated. Click Preview to apply.", "success");
+    return;
+  }
+
+  // ✅ NON-MASTER MODE = delete LIVE assignment (Firestore scheduleDays)
+  // Requires modal to hold docId + assignmentId (see section 3)
+  const docId = document.getElementById("modalDocId")?.value || "";
+  const assignmentId = document.getElementById("modalAssignmentId")?.value || "";
+
+  if (!docId || !assignmentId) {
     Swal.fire({
-        title: 'Deleting Shift...',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
+      icon: "error",
+      title: "Missing delete info",
+      text: "Could not find docId/assignmentId for this shift. Re-open the shift and try again.",
+      confirmButtonColor: "#ef4444"
     });
-    // --- 3. SEND TO BACKEND ---
-    const payload = {
-        action: "DELETE",
-        person: person,
-        day: day,
-        oldStart: origStart,
-        oldEnd: origEnd
-    };
-    
-    try {
-      const response = await fetch('./?action=update-master-schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === "success" || result.ok) {
-        console.log("Deleted from database successfully", result);
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'Shift Deleted!',
-            html: `<div style="color:#16a34a;">Removed ${person}'s shift on ${day}</div>`,
-            confirmButtonColor: '#16a34a',
-            timer: 2500,
-            timerProgressBar: true
-        });
-      } else {
-        throw new Error(result.message || result.error || 'Unknown error');
-      }
-    } catch (err) {
-      console.error("Delete failed:", err);
-      
-      Swal.fire({
-          icon: 'error',
-          title: 'Delete Failed',
-          text: err.message || err || 'Could not delete from database',
-          confirmButtonColor: '#ef4444'
-      });
+    return;
+  }
+
+  Swal.fire({
+    title: "Delete This Shift?",
+    html: `
+      <div style="text-align:left; padding:12px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
+        <div style="margin-bottom:8px;"><strong>👤 Employee:</strong> ${person}</div>
+        <div style="margin-bottom:8px;"><strong>📅 Day:</strong> ${day}</div>
+        <div><strong>🕐 Time:</strong> ${toAmPm(origStart)} - ${toAmPm(origEnd)}</div>
+      </div>
+      <div style="margin-top:12px; font-size:13px; color:#64748b;">
+        This will permanently remove the shift from the live schedule.
+      </div>
+    `,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#ef4444",
+    cancelButtonColor: "#64748b",
+    confirmButtonText: "🗑️ Yes, Delete It",
+    cancelButtonText: "Cancel"
+  }).then((result) => {
+    if (result.isConfirmed) {
+      executeDeleteAssignmentShift(docId, assignmentId);
     }
+  });
 }
+async function executeDeleteAssignmentShift(docId, assignmentId) {
+  Swal.fire({
+    title: "Deleting Shift...",
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => Swal.showLoading()
+  });
+
+  try {
+    const res = await fetch("./?action=assignment/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docId, assignmentId })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Delete failed");
+    }
+
+    // ✅ Refresh UI (pick the one you already use after changes)
+    // Option 1: full reload (simple + reliable)
+    closeModal();
+await load(true);;
+
+    Swal.fire({
+      icon: "success",
+      title: "Shift Deleted!",
+      text: "Removed from the live schedule.",
+      confirmButtonColor: "#16a34a",
+      timer: 2200,
+      timerProgressBar: true
+    });
+  } catch (e) {
+    console.error("Live delete failed:", e);
+    Swal.fire({
+      icon: "error",
+      title: "Delete Failed",
+      text: e.message || "Could not delete",
+      confirmButtonColor: "#ef4444"
+    });
+  }
+}
+
 function checkTimeMatch(targetTime, compareTime) {
   const normalize = (t) => {
     if (!t) return "";
@@ -4734,7 +4433,12 @@ async function logAuditEntry(entry) {
         e.preventDefault(); 
         card.classList.remove("dropTarget"); 
         if(_dragPerson && _dragPerson !== it.person) { 
-          _editing = it; 
+          _editing.docId = it.docId || "";
+_editing.assignmentId = it.assignmentId || it.id || "";
+
+// ✅ Show delete button for managers only
+const delBtn = document.getElementById("btnDeleteShift");
+if (delBtn) delBtn.style.display = window._isManager ? "inline-flex" : "none";
           openReplaceModal(it); 
           setTimeout(() => $("mNewPerson").value = _dragPerson, 50); 
         } 
@@ -4744,6 +4448,50 @@ async function logAuditEntry(entry) {
   
   return card;
 }
+
+function deleteLiveShiftFromReplace() {
+  if (!_editing?.docId || !_editing?.assignmentId) {
+    Swal.fire({
+      icon: "error",
+      title: "Missing delete info",
+      text: "docId/assignmentId not found for this shift.",
+      confirmButtonColor: "#ef4444"
+    });
+    return;
+  }
+
+  const person = _editing.person || "Unassigned";
+  const day = _editing.dateLabel || "";
+  const time = `${_editing.startLabel || _editing.start || ""} - ${_editing.endLabel || _editing.end || ""}`;
+
+  Swal.fire({
+    title: "Delete This Shift?",
+    html: `
+      <div style="text-align:left; padding:12px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
+        <div style="margin-bottom:8px;"><strong>👤 Employee:</strong> ${person}</div>
+        <div style="margin-bottom:8px;"><strong>📅 Date:</strong> ${day}</div>
+        <div><strong>🕐 Time:</strong> ${time}</div>
+      </div>
+      <div style="margin-top:12px; font-size:13px; color:#64748b;">
+        This will permanently remove the shift from the live schedule.
+      </div>
+    `,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#ef4444",
+    cancelButtonColor: "#64748b",
+    confirmButtonText: "🗑️ Yes, Delete It",
+    cancelButtonText: "Cancel"
+  }).then((r) => {
+    if (r.isConfirmed) {
+      // close the replace modal first for smoother UX
+      const overlay = document.getElementById("modalOverlay");
+      if (overlay) overlay.style.display = "none";
+      executeDeleteAssignmentShift(_editing.docId, _editing.assignmentId);
+    }
+  });
+}
+
   // --- 6. AGENT ACTIONS (MOVED TO GLOBAL SCOPE) ---
   // These functions are now accessible by the HTML buttons
  function openAgentActionModal(it) {
@@ -4791,101 +4539,18 @@ async function logAuditEntry(entry) {
     alert("Error: The 'agentOverlay' HTML is missing.");
   }
 }
-
-// --- Add Agent Function ---
-async function addAgent() {
-  // Get values from the modal form
-  const name = document.getElementById("agentName")?.value?. trim();
-  const email = document.getElementById("agentEmail")?.value?.trim();
-  const chatUserId = document.getElementById("agentChatUserId")?.value?.trim();
-  const rolesStr = document.getElementById("agentRoles")?.value?.trim();
-  const teamsStr = document.getElementById("agentTeams")?.value?.trim();
-  const active = document.getElementById("agentActive")?.checked ?? true;
-
-  // Validate required fields
-  if (!name) {
-    toast("Name is required", "error");
-    return;
-  }
-  if (!email) {
-    toast("Email is required", "error");
-    return;
-  }
-
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    toast("Please enter a valid email address", "error");
-    return;
-  }
-
-  // Parse comma-separated values
-  const roles = rolesStr ?  rolesStr.split(',').map(r => r.trim()).filter(r => r) : [];
-  const teams = teamsStr ? teamsStr.split(',').map(t => t.trim()).filter(t => t) : [];
-
-  // Build payload
-  const payload = {
-    name,
-    email,
-    roles,
-    teams,
-    active
-  };
-  
-  if (chatUserId) {
-    payload.chatUserId = chatUserId;
-  }
-
-  // Show loading state
-  const submitBtn = document.querySelector('#addAgentOverlay .btn.primary');
-  const originalText = submitBtn?. textContent;
-  if (submitBtn) {
-    submitBtn.textContent = "Adding...";
-    submitBtn.disabled = true;
-  }
-
-  try {
-    const response = await fetch('./?action=agents/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.ok) {
-      toast(`✅ Agent "${name}" added successfully!`, "success");
-      closeAddAgentModal();
-      
-      // Clear the form
-      document.getElementById("addAgentForm")?.reset();
-      
-      // Refresh the people list
-      clearScheduleCache();
-      await loadSystemData();
-    } else {
-      toast(`❌ Error: ${result.error || 'Failed to add agent'}`, "error");
-    }
-  } catch (err) {
-    console.error("Add agent error:", err);
-    toast(`❌ Error: ${err.message}`, "error");
-  } finally {
-    // Restore button state
-    if (submitBtn) {
-      submitBtn.textContent = originalText || "Add Agent";
-      submitBtn.disabled = false;
-    }
-  }
-}
-// ✅ Function to load and display agent's PTO in the modal
+// ✅ NEW: Function to load and display agent's PTO in the modal
 function loadAgentPtoDisplay() {
   const ptoEl = document.getElementById("agPtoHours");
-  if (!ptoEl) return;
+  const sickEl = document.getElementById("agSickHours");
+  
+  if (!ptoEl || !sickEl) return;
   
   // Get balance from cached data
-  const balance = _balanceData.get(window._myName) || { pto: 0 };
+  const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
   
   ptoEl.textContent = balance.pto || 0;
+  sickEl.textContent = balance.sick || 0;
   
   // Color code based on balance
   if (balance.pto <= 0) {
@@ -4894,6 +4559,14 @@ function loadAgentPtoDisplay() {
     ptoEl.style.color = "#f59e0b"; // Orange if low
   } else {
     ptoEl.style.color = "#16a34a"; // Green if good
+  }
+  
+  if (balance.sick <= 0) {
+    sickEl.style.color = "#ef4444";
+  } else if (balance.sick < 4) {
+    sickEl.style.color = "#f59e0b";
+  } else {
+    sickEl.style.color = "#2563eb";
   }
 }
 // Helper to update visual selection on type radio buttons
@@ -4924,7 +4597,7 @@ function updateTypeSelection() {
 
   // ✅ Show PTO balance warnings based on selection
   if (!isMakeUp) {
-    const balance = _balanceData.get(window._myName) || { pto: 0 };
+    const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
     const currentPto = parseFloat(balance.pto) || 0;
 
     // Update PTO display with warning color
@@ -5017,7 +4690,7 @@ function closeStaffingModal() {
 
     // ✅ VALIDATE PTO BALANCE
     if (timeOffType === "PTO") {
-      const balance = _balanceData.get(window._myName) || { pto: 0 };
+      const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
       const currentPto = parseFloat(balance.pto) || 0;
 
       // Calculate hours needed (rough estimate)
@@ -5133,69 +4806,6 @@ function closeAgentModal() {
     console.error("Agent modal not found!");
   }
 }
-
-async function downloadSchedule() {
-  const startDate = document.getElementById('start-date-picker')?.value || new Date().toISOString().split('T')[0];
-  
-  // 1. Show loading
-  Swal.fire({ title: 'Exporting...', didOpen: () => Swal.showLoading() });
-
-  try {
-    // 2. Request the CSV using POST
-    const response = await fetch('/schedule/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        startDate: startDate,
-        days: 14 // or however many days you want
-      })
-    });
-
-    if (!response.ok) throw new Error('Export failed');
-
-    // 3. Convert response to a Blob (file) and download it
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `schedule_export_${startDate}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    
-    Swal.close();
-  } catch (error) {
-    Swal.fire('Error', 'Could not export schedule', 'error');
-  }
-}
-
-// Agent toggle: "My Schedule" <-> "Team Schedule"
-let _agentShowingTeam = false;
-
-function toggleAgentView() {
-  if (window._isManager) return;
-
-  _agentShowingTeam = !_agentShowingTeam;
-
-  const headerTitle = document.querySelector(".hTitle");
-  const btn = document.getElementById("btnAgentToggle");
-
-  if (_agentShowingTeam) {
-    // Show team (no person filter)
-    _selectedPeople.clear();
-    if (headerTitle) headerTitle.textContent = "Team Schedule";
-    if (btn) btn.textContent = "Show Mine";
-  } else {
-    // Show only me
-    _selectedPeople.clear();
-    if (window._myName) _selectedPeople.add(window._myName);
-    if (headerTitle) headerTitle.textContent = "My Schedule";
-    if (btn) btn.textContent = "Show Team";
-  }
-
-  applyLocalFilters(); // this already re-renders in your build
-}
-
   async function submitSwap() {
     const targetPerson = $("agSwapPerson") ? $("agSwapPerson").value : "";
     const note = $("agSwapNote") ? $("agSwapNote").value : "";
@@ -5631,15 +5241,45 @@ function getHoliday(dateStr) {
 function openHolidayModal() {
   closeAdminModal();
   $("holidayModal").style.display = "flex";
-  renderHolidayListWithAccruals();
+  renderHolidayList();
 }
 // Close holiday modal
 function closeHolidayModal() {
   $("holidayModal").style.display = "none";
 }
-// Render holiday list in modal (wrapper for enhanced version)
+// Render holiday list in modal
 function renderHolidayList() {
-  renderHolidayListWithAccruals();
+  const container = $("holidayList");
+  
+  if (_holidays.size === 0) {
+    container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:20px;">No holidays scheduled</div>`;
+    return;
+  }
+  
+  // Sort by date
+  const sorted = Array.from(_holidays.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  
+  container.innerHTML = sorted.map(([date, h]) => {
+    const displayDate = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day:  "numeric",
+      year: "numeric"
+    });
+    
+    return `
+      <div class="holidayItem">
+        <div class="holidayInfo">
+          <span class="holidayEmoji">${h.emoji}</span>
+          <div>
+            <div class="holidayName">${h.name}</div>
+            <div class="holidayDate">${displayDate}</div>
+          </div>
+        </div>
+        <button class="deleteHolidayBtn" onclick="deleteHoliday('${date}')">🗑️ Delete</button>
+      </div>
+    `;
+  }).join("");
 }
 // Add a new holiday
 async function addHoliday() {
@@ -5673,7 +5313,7 @@ async function addHoliday() {
       $("holidayName").value = "";
       
       // Refresh list and calendar
-      renderHolidayListWithAccruals();
+      renderHolidayList();
       renderView();
     } else {
       showToast(data.error || "Failed to add holiday", "error");
@@ -5703,7 +5343,7 @@ async function deleteHoliday(date) {
       _holidays.delete(date);
       
       // Refresh list and calendar
-      renderHolidayListWithAccruals();
+      renderHolidayList();
       renderView();
     } else {
       showToast(data.error || "Failed to delete", "error");
@@ -5713,161 +5353,6 @@ async function deleteHoliday(date) {
     console.error(err);
   }
 }
-
-// ============================================
-// HOLIDAY HOURS ACCRUAL SYSTEM
-// ============================================
-
-// Accrue holiday hours for an agent who worked on a holiday
-async function accrueHolidayHours(person, date, hoursWorked = 8) {
-  try {
-    const res = await fetch('/?action=holiday/accrue', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ person, date, hoursWorked })
-    });
-    
-    const data = await res.json();
-    
-    if (data.ok) {
-      toast(`🎄 ${data.message}`, "success");
-      // Refresh balances
-      loadBalances();
-      return true;
-    } else {
-      toast(data.error || "Failed to accrue hours", "error");
-      return false;
-    }
-  } catch (err) {
-    console.error("Holiday accrue error:", err);
-    toast("Error accruing holiday hours", "error");
-    return false;
-  }
-}
-
-// Process holiday accruals for all agents who worked on a specific holiday
-async function processHolidayAccruals(holidayDate) {
-  const holiday = _holidays.get(holidayDate);
-  if (!holiday) {
-    toast("Holiday not found", "error");
-    return;
-  }
-  
-  // Find all shifts on this date
-  const holidayShifts = _allData.filter(s => 
-    s.dayKey === holidayDate && 
-    s.person && 
-    !(s.notes || "").includes("[OFF]")
-  );
-  
-  if (holidayShifts.length === 0) {
-    toast("No agents worked on this holiday", "warning");
-    return;
-  }
-  
-  // Group by person to avoid duplicate accruals
-  const peopleWorked = new Map();
-  holidayShifts.forEach(shift => {
-    if (!peopleWorked.has(shift.person)) {
-      // Calculate hours from shift times
-      const startHour = parseTimeDecimal(shift.start || shift.startLabel);
-      const endHour = parseTimeDecimal(shift.end || shift.endLabel);
-      const hours = endHour > startHour ? endHour - startHour : 8;
-      peopleWorked.set(shift.person, hours);
-    } else {
-      // Add hours if multiple shifts
-      const startHour = parseTimeDecimal(shift.start || shift.startLabel);
-      const endHour = parseTimeDecimal(shift.end || shift.endLabel);
-      const hours = endHour > startHour ? endHour - startHour : 0;
-      peopleWorked.set(shift.person, peopleWorked.get(shift.person) + hours);
-    }
-  });
-  
-  // Confirm with manager
-  const result = await Swal.fire({
-    title: `🎄 Process ${holiday.name} Bonus?`,
-    html: `
-      <div style="text-align:left; padding:12px; background:#f0fdf4; border-radius:8px; border:1px solid #86efac; margin-bottom:12px;">
-        <p style="margin:0 0 8px 0; font-weight:600; color:#15803d;">${peopleWorked.size} agents worked on ${holiday.name}:</p>
-        ${Array.from(peopleWorked.entries()).map(([person, hours]) => 
-          `<div style="font-size:13px; padding:4px 0; color:#166534;">• ${person}: ${hours}h worked → <strong>+${(hours * 0.5).toFixed(1)}h PTO</strong></div>`
-        ).join('')}
-      </div>
-      <p style="font-size:13px; color:#64748b;">This will add holiday bonus hours (50% of hours worked) directly to each agent's PTO balance.</p>
-    `,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#16a34a',
-    cancelButtonColor: '#64748b',
-    confirmButtonText: '✅ Add to PTO',
-    cancelButtonText: 'Cancel'
-  });
-  
-  if (!result.isConfirmed) return;
-  
-  // Process each person
-  let success = 0;
-  let failed = 0;
-  
-  for (const [person, hours] of peopleWorked) {
-    const ok = await accrueHolidayHours(person, holidayDate, hours);
-    if (ok) success++;
-    else failed++;
-  }
-  
-  if (failed === 0) {
-    toast(`✅ Processed holiday hours for ${success} agents`, "success");
-  } else {
-    toast(`Processed ${success} of ${success + failed} agents`, "warning");
-  }
-}
-
-// Add button to holiday list items for processing accruals
-function renderHolidayListWithAccruals() {
-  const container = $("holidayList");
-  
-  if (_holidays.size === 0) {
-    container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:20px;">No holidays scheduled</div>`;
-    return;
-  }
-  
-  const today = pstISODate();
-  const sorted = Array.from(_holidays.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  
-  container.innerHTML = sorted.map(([date, h]) => {
-    const displayDate = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day:  "numeric",
-      year: "numeric"
-    });
-    
-    const isPast = date < today;
-    const isToday = date === today;
-    
-    // Show "Add PTO Bonus" button for past holidays
-    const accrueBtn = isPast ? 
-      `<button class="btn ghost" style="font-size:10px; padding:4px 8px; background:#f0fdf4; border-color:#86efac; color:#15803d;" onclick="processHolidayAccruals('${date}')">💰 Add PTO</button>` : 
-      (isToday ? `<span style="font-size:10px; color:#3b82f6; font-weight:600;">Today!</span>` : '');
-    
-    return `
-      <div class="holidayItem" style="${isPast ? 'opacity:0.7;' : ''}">
-        <div class="holidayInfo">
-          <span class="holidayEmoji">${h.emoji}</span>
-          <div>
-            <div class="holidayName">${h.name}</div>
-            <div class="holidayDate">${displayDate}</div>
-          </div>
-        </div>
-        <div style="display:flex; gap:6px; align-items:center;">
-          ${accrueBtn}
-          <button class="deleteHolidayBtn" onclick="deleteHoliday('${date}')" title="Delete holiday">🗑️</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
 // Load 30 days of past schedule
 async function loadPastSchedule() {
   if (_isLoadingMore) return;
@@ -6208,14 +5693,12 @@ async function agentLoadMoreSchedule() {
     }
   }
 }
-
 function updateAgentRangeLabel() {
   const label = document.getElementById("agentRangeLabel");
   if (label) {
     label.textContent = `Today → ${_agentScheduleDays} days`;
   }
 }
-  
   async function runUndo() { 
     if (!_lastUndo) return;
     try {
@@ -6418,18 +5901,6 @@ function handleDateJump(val) {
     if(document.getElementById("mCSAT")) document.getElementById("mCSAT").innerText = formatCsatDisplay(data.csatScore);
     if(document.getElementById("mOpen")) document.getElementById("mOpen").innerText = data.openTickets ?? "--";
     
-    // Show CSAT breakdown (good/bad counts)
-    if(document.getElementById("mCSATDetail")) {
-        const good = data.csatGood || 0;
-        const bad = data.csatBad || 0;
-        const total = good + bad;
-        if (total > 0) {
-            document.getElementById("mCSATDetail").innerText = `${good} good, ${bad} bad`;
-        } else {
-            document.getElementById("mCSATDetail").innerText = "No ratings";
-        }
-    }
-    
     if(document.getElementById("mAvatar")) {
         document.getElementById("mAvatar").src = data.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
     }
@@ -6480,51 +5951,21 @@ function forceRefresh() {
 // Make it globally accessible
 window.forceRefresh = forceRefresh;
   function updateMetricLinks(data) {
-     const openA = document.getElementById("mOpenTicketsLink");
-     const badA = document.getElementById("mBadCsatLink");
-     
-     if (!openA || !badA) return;
-     
-     const userId = data.zendeskUserId || data.id;
-     const agentEmail = data.email;
-     const agentName = data.name;
-     
-     if (!userId && !agentEmail) {
-         openA.style.opacity = "0.5";
-         badA.style.opacity = "0.5";
-         openA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
-         badA.onclick = (e) => { e.preventDefault(); toast("⚠️ No agent info available", "error"); };
-         return;
+     let openQ = "", badCsatQ = "";
+     if (data.zendeskUserId) {
+         openQ = "type:ticket status<solved assignee_id:" + data.zendeskUserId;
+         badCsatQ = "type:ticket satisfaction_rating:bad assignee_id:" + data.zendeskUserId;
+     } else if (data.email) {
+         openQ = "type:ticket status<solved assignee:" + data.email;
+         badCsatQ = "type:ticket satisfaction_rating:bad assignee:" + data.email;
+     } else {
+         openQ = "type:ticket status<solved assignee:\"" + data.name + "\"";
+         badCsatQ = "type:ticket satisfaction_rating:bad assignee:\"" + data.name + "\"";
      }
-     
-     // Build Zendesk search URLs
-     // Per Zendesk docs: assignee can be ID, name, or email
-     // For satisfaction: use "satisfaction:good" or "satisfaction:bad" (not satisfaction_rating)
-     const assigneeFilter = agentEmail ? `assignee:${agentEmail}` : `assignee_id:${userId}`;
-     
-     // Open tickets = status less than solved
-     const openQuery = `${assigneeFilter} status<solved`;
-     const openUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(openQuery)}`;
-     
-     // Bad CSAT tickets - use "satisfaction:bad" per Zendesk search reference
-     // Note: This searches tickets where satisfaction IS bad (includes bad and bad_with_comment)
-     const badQuery = `${assigneeFilter} satisfaction:bad`;
-     const badUrl = `https://musely.zendesk.com/agent/search/1?query=${encodeURIComponent(badQuery)}`;
-     
-     // Set as direct links
-     openA.href = openUrl;
-     openA.target = "_blank";
-     openA.onclick = null;
-     
-     badA.href = badUrl;
-     badA.target = "_blank";
-     badA.onclick = null;
-     
-     // Make sure links are visible and clickable
-     openA.style.pointerEvents = "auto";
-     badA.style.pointerEvents = "auto";
-     openA.style.opacity = "1";
-     badA.style.opacity = "1";
+     const openUrl = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(openQ);
+     const badUrl  = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(badCsatQ);
+     const openA = document.getElementById("mOpenTicketsLink"); if (openA) openA.href = openUrl;
+     const badA = document.getElementById("mBadCsatLink"); if (badA) badA.href = badUrl;
   }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
   function closeProfile() { $("profileOverlay").style.display = "none"; }
@@ -6608,12 +6049,19 @@ window.forceRefresh = forceRefresh;
         fetch('./?action=base-schedule')
           .then(res => res.json())
           .then(data => {
-            if (data.error) {
-              $("masterView").innerHTML = `<div style="color:red;padding:20px;">Error loading template: ${data.error}</div>`;
-              return;
-            }
-            renderMasterView(data);
-          })
+  if (data.error) {
+    $("masterView").innerHTML = `<div style="color:red;padding:20px;">Error loading template: ${data.error}</div>`;
+    return;
+  }
+
+  // ✅ Initialize draft workflow
+  _masterOriginalData = deepClone(data);
+  _masterDraftData = deepClone(data);
+  _masterRawData = _masterDraftData;
+  _masterEditEnabled = false;
+
+  renderMasterView(_masterRawData);
+})
           .catch(err => {
             $("masterView").innerHTML = `<div style="color:red;padding:20px;">Error loading template: ${err.message || err}</div>`;
           });
@@ -6827,127 +6275,6 @@ if (!window._isManager && window._myName) {
   function confirmManagerSelection() { _selectedManagerEmail=$("masterManagerDropdown").value; $("masterContextOverlay").style.display="none"; load(true, _selectedManagerEmail); }
   function openAdminModal() { $("adminOverlay").style.display="flex"; loadRules(); }
   function closeAdminModal() { $("adminOverlay").style.display="none"; }
-  
-  <script>
-// ============================================
-// ADD AGENT MODAL FUNCTIONS
-// ============================================
-
-function openAddAgentModal() {
-  // Clear previous values
-  document.getElementById('newAgentName').value = '';
-  document.getElementById('newAgentEmail').value = '';
-  document. getElementById('newAgentChatId').value = '';
-  document. getElementById('newAgentActive').checked = true;
-  
-  // Show the modal
-  document.getElementById('addAgentOverlay').style.display = 'flex';
-}
-
-function closeAddAgentModal() {
-  document.getElementById('addAgentOverlay').style.display = 'none';
-}
-
-async function saveNewAgent() {
-  const name = document.getElementById('newAgentName').value.trim();
-  const email = document.getElementById('newAgentEmail').value.trim();
-  const chatUserId = document.getElementById('newAgentChatId').value.trim();
-  const active = document. getElementById('newAgentActive').checked;
-  
-  // Validation
-  if (!name) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Name Required',
-      text: 'Please enter the agent\'s full name.',
-      confirmButtonColor: '#3b82f6'
-    });
-    return;
-  }
-  
-  if (!email) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Email Required',
-      text: 'Please enter the agent\'s email address.',
-      confirmButtonColor: '#3b82f6'
-    });
-    return;
-  }
-  
-  // Basic email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Invalid Email',
-      text: 'Please enter a valid email address.',
-      confirmButtonColor: '#3b82f6'
-    });
-    return;
-  }
-  
-  try {
-    // Show loading state
-    Swal.fire({
-      title: 'Adding Agent...',
-      text: 'Please wait while we add the new agent.',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-    
-    // Call the API (Cloud Run endpoint)
-    const response = await fetch('/?action=agents/add', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-preview-key': (window.PREVIEW_KEY || '')
-      },
-      body:  JSON.stringify({
-        name: name,
-        email: email,
-        chatUserId: chatUserId || null,
-        active: active,
-        roles: [],
-        teams: []
-      })
-    });
-    
-    const result = await response.json();
-    
-    if (! response.ok || result.error) {
-      throw new Error(result.error || 'Failed to add agent');
-    }
-    
-    // Success! 
-    closeAddAgentModal();
-    
-    Swal.fire({
-      icon: 'success',
-      title: 'Agent Added! ',
-      text: `${name} has been added to the system.`,
-      confirmButtonColor: '#10b981'
-    });
-    
-    // Refresh data / quick lists
-    if (typeof loadSystemData === 'function') await loadSystemData();
-    if (typeof renderQuickRail === 'function') renderQuickRail();
-    if (typeof renderMetricsList === 'function') renderMetricsList();
-    
-  } catch (err) {
-    console.error('Error adding agent:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: err.message || 'Failed to add agent. Please try again.',
-      confirmButtonColor: '#ef4444'
-    });
-  }
-}
-  
   function loadRules() {
   const list = $("ruleList");
   list.innerHTML = '<div style="padding:10px; color:#94a3b8;">Loading...</div>';
@@ -7016,7 +6343,6 @@ async function addRule() {
   }
 }
 
-// Quick add common rules
 async function addQuickRule(team, min, timeBlock) {
   let startHour = 0, endHour = 24;
   if (timeBlock === "morning") { startHour = 6; endHour = 12; }
@@ -7046,7 +6372,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-
 async function deleteRule(id) {
   if (!confirm("Delete this rule?")) return;
   try {
@@ -7062,14 +6387,12 @@ async function deleteRule(id) {
     toast("Error deleting rule", "error");
   }
 }
-  // Helper: show toast notification
 function toast(msg, type = "info") {
   const host = document.getElementById("toastHost");
   if (! host) {
     console.log("Toast:", msg);
     return;
   }
-  
   const t = document.createElement("div");
   t.className = "toast";
   
@@ -7088,6 +6411,7 @@ function toast(msg, type = "info") {
 }
 // Make it globally available
 window.toast = toast;
+
   function applyLocalFilters() { _filteredData = _allData.filter(x => (!_activeTeam || x.team===_activeTeam) && (!_selectedPeople.size || _selectedPeople.has(x.person))); renderView(); }
   function renderTeamChips() { const c=$("teamChips"); if(c) { c.innerHTML=""; _teams.forEach(t=>{ const d=mkDiv("chip"); d.innerText=t; d.onclick=()=>filterTeam(t); c.appendChild(d); }); } }
   function filterTeam(t) { _activeTeam=t; applyLocalFilters(); }
@@ -7163,30 +6487,47 @@ window.toast = toast;
         list.appendChild(d); 
     }); 
   }
- 
-  
+  async function deleteRule(idx) { 
+    if (!confirm("Delete rule?")) return; 
+    try {
+      await fetch('./?action=staffing/rules/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idx: idx })
+      });
+      toast("Rule deleted");
+      loadRules();
+    } catch (err) {
+      console.error("Delete rule error:", err);
+      toast("Failed to delete rule", "error");
+    }
+  }
   // Master Template Logic
   function renderMasterView(data) {
-    if(!data || data.error) { 
-        $("masterView").innerHTML = "<div style='color:red;padding:20px;'>Failed to load master template</div>"; 
-        return; 
-    }
-    _masterRawData = data; 
-    // CHANGE: Target 'masterView' instead of 'listView'
-    const list = document.getElementById("masterView"); 
-    list.innerHTML = "";
+  if(!data || data.error) { 
+    $("masterView").innerHTML = "<div style='color:red;padding:20px;'>Failed to load master template</div>"; 
+    return; 
+  }
+
+  const list = document.getElementById("masterView");
+  list.innerHTML = "";              // ✅ clear first
+  ensureMasterControls(); 
     
     // Inject styles
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .mst-person-row: hover { background-color: #f8fafc !important; transition: background 0.2s; }
-        .mst-shift-chip: hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .mst-day-cell:hover { background-color: rgba(0,0,0,0.02); }
-        .add-btn { opacity: 0; transition: opacity 0.2s; }
-        .mst-day-cell:hover . add-btn { opacity: 1; }
-    `;
-    list.appendChild(style);
-    
+    let style = document.getElementById("mstStyles");
+if (!style) {
+  style = document.createElement("style");
+  style.id = "mstStyles";
+  style.innerHTML = `
+    .mst-person-row:hover { background-color: #f8fafc !important; transition: background 0.2s; }
+    .mst-shift-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .mst-day-cell:hover { background-color: rgba(0,0,0,0.02); }
+    .add-btn { opacity: 0; transition: opacity 0.2s; }
+    .mst-day-cell:hover .add-btn { opacity: 1; }
+  `;
+  list.appendChild(style);
+}
+
     // 1.  Pivot Data
     const roster = {};
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -7212,7 +6553,7 @@ window.toast = toast;
     headerRow.style.fontWeight = "bold";
     headerRow.style.borderBottom = "2px solid #ddd";
     headerRow.style.position = "sticky";
-    headerRow.style.top = "0";
+    headerRow.style.top = "52px";   // adjust if your bar is taller/shorter
     headerRow.style.zIndex = "10";
     let headerHtml = `<div style="padding:12px; border-right:1px solid #4a6278;">Employee</div>`;
     days.forEach((d, i) => { 
@@ -7239,7 +6580,7 @@ window.toast = toast;
                 border-right:2px solid #e0e0e0; display:flex; align-items:center;">
                 ${person}
             </div>`;
-
+        // Day Columns
         days.forEach((day, i) => {
             const shifts = roster[person][day] || [];
             const borderStyle = i < 6 ?  "border-right:1px solid #eee;" : "";
@@ -7258,8 +6599,8 @@ window.toast = toast;
                     
                     // ✅ NEW: Get channel config for color coding
                     const channelName = shift.team || "Other";
-                    const config = getChannelConfig(channelName);
-                    const abbrev = config.abbrev;
+                    const config = getChannelConfig(channelName) || { abbrev:"—", color:"#f8fafc", border:"#e2e8f0", text:"#475569" };
+const abbrev = config.abbrev || "—";
                     
                     html += `<div class="mst-shift-chip" 
                                 onclick="event.stopPropagation(); handleShiftEdit('${person}', '${day}', '${rawStart}', '${rawEnd}', '${shift.team || ''}')"
@@ -7291,7 +6632,21 @@ window.toast = toast;
     });
 }
 // Triggered when clicking an existing blue chip
-function handleShiftEdit(person, day, start, end, team) {
+function handleShiftEdit(person, day, start, end, team, docId, assignmentId) {
+    if (_isMasterMode && !_masterEditEnabled) {
+  toast("Click Edit to start making draft changes.", "info");
+  return;
+}
+const docEl = document.getElementById("modalDocId");
+const asgEl = document.getElementById("modalAssignmentId");
+
+if (_isMasterMode) {
+  if (docEl) docEl.value = "";
+  if (asgEl) asgEl.value = "";
+} else {
+  if (docEl) docEl.value = docId || "";
+  if (asgEl) asgEl.value = assignmentId || "";
+}
     // Populate the inputs
     document.getElementById("modalEmployee").value = person;
     document.getElementById("modalDay").value = day;
@@ -7314,6 +6669,13 @@ function handleShiftEdit(person, day, start, end, team) {
     document.getElementById("editShiftModal").style.display = "flex";
 }
 function handleCellClick(person, day) {
+    if (_isMasterMode && !_masterEditEnabled) {
+  toast("Click Edit to start making draft changes.", "info");
+  return;
+}
+if (document.getElementById("modalDocId")) document.getElementById("modalDocId").value = "";
+if (document.getElementById("modalAssignmentId")) document.getElementById("modalAssignmentId").value = "";
+
     // 1. Prepare the Modal for a New Entry
     document.getElementById("modalEmployee").value = person;
     document.getElementById("modalDay").value = day;
@@ -7338,7 +6700,7 @@ function handleCellClick(person, day) {
     } else {
         _masterSelected.add(key);
     }
-    renderMasterView(JSON.stringify(_masterRawData));
+    renderMasterView(_masterRawData);
     updateMasterSelectionBar(); 
   }
   function openMasterModal(p,d,s,e,t,r) { 
@@ -7382,11 +6744,11 @@ function toggleNotifPanel(forceClose) {
   }
   
   // If forceClose is true, just close it
-  if (forceClose === false) {
-    panel.style.display = "none";
-    panel.classList.remove("open");
-    return;
-  }
+  if (forceClose === true) {
+  panel.style.display = "none";
+  panel.classList.remove("open");
+  return;
+}
   
   // Toggle visibility
   const isCurrentlyOpen = panel.style.display === "block" || panel.classList.contains("open");
@@ -7853,51 +7215,220 @@ async function clearNotifications() {
 // If your script is type="module" (or you want to be extra safe):
 window.renderNotifList = renderNotifList;
   // Master helper stubs
-  function toggleMasterCheck(k,d){ if(_masterSelected.has(k)) _masterSelected.delete(k); else _masterSelected.add(k); renderMasterView(JSON.stringify(_masterRawData)); }
-  async function saveMasterEdit() { 
-    closeMasterModal(); 
-    toast("Saving...", false); 
-    const p = {
-      person: $("mstPerson").value,
-      dayName: $("mstDay").value,
-      newStart: $("mstStart").value,
-      newEnd: $("mstEnd").value,
-      newTeam: $("mstTeam").value,
-      newRole: $("mstRole").value,
-      applyDate: $("mstSync").checked ? new Date().toISOString() : null
-    }; 
-    
-    try {
-      const res = await fetch('./?action=update-master-schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: "EDIT",
-          person: p.person,
-          day: p.dayName,
-          oldStart: p.newStart,
-          oldEnd: p.newEnd,
-          newStart: p.newStart,
-          newEnd: p.newEnd,
-          newTeam: p.newTeam,
-          newRole: p.newRole
-        })
-      });
-      
-      const data = await res.json();
-      if (data.status === "success" || data.ok) {
-        toast("Saved!"); 
-        toggleMasterMode(); 
-        toggleMasterMode();
-      } else {
-        toast("Save failed: " + (data.message || data.error), "error");
-      }
-    } catch (err) {
-      console.error("Save master edit error:", err);
-      toast("Save failed", "error");
-    }
+  
+  
+
+  function ensureMasterControls() {
+  const host = document.getElementById("masterView");
+  if (!host) return;
+
+  let bar = document.getElementById("mstControlsBar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "mstControlsBar";
+    bar.style.display = "flex";
+    bar.style.gap = "8px";
+    bar.style.alignItems = "center";
+    bar.style.padding = "10px 12px";
+    bar.style.borderBottom = "1px solid #e2e8f0";
+    bar.style.background = "#ffffff";
+    bar.style.position = "sticky";
+    bar.style.top = "0";
+    bar.style.zIndex = "20";
+    host.prepend(bar);
   }
-  function closeMasterModal() { $("masterOverlay").style.display="none"; }
+
+  const status = _masterEditEnabled
+    ? `<span style="font-weight:800; color:#c2410c;">EDITING DRAFT</span>`
+    : `<span style="font-weight:800; color:#475569;">VIEW ONLY</span>`;
+
+  bar.innerHTML = `
+    <div style="margin-right:8px;">${status}</div>
+
+    <button id="btnMasterEdit"
+      onclick="masterStartEdit()"
+      style="padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700;">
+      ✏️ Edit
+    </button>
+
+    <button id="btnMasterPreview"
+      onclick="masterPreviewChanges()"
+      style="padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700;">
+      👀 Preview
+    </button>
+
+    <button id="btnMasterCancel"
+      onclick="masterCancelDraft()"
+      style="padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700;">
+      ↩️ Cancel
+    </button>
+
+    <button id="btnMasterAddAgent"
+      onclick="openAddAgentModal()"
+      style="margin-left:auto; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700;">
+      ➕ Add Agent
+    </button>
+  `;
+
+  // button states
+  const bEdit = document.getElementById("btnMasterEdit");
+  const bPrev = document.getElementById("btnMasterPreview");
+  const bCan = document.getElementById("btnMasterCancel");
+  if (bEdit) bEdit.disabled = _masterEditEnabled;
+  if (bPrev) bPrev.disabled = !_masterEditEnabled;
+  if (bCan) bCan.disabled = !_masterEditEnabled;
+  [bEdit,bPrev,bCan].forEach(b => {
+    if (!b) return;
+    b.style.opacity = b.disabled ? "0.5" : "1";
+    b.style.cursor = b.disabled ? "not-allowed" : "pointer";
+  });
+}
+
+function masterStartEdit() {
+  if (!_masterOriginalData) _masterOriginalData = deepClone(_masterRawData || {});
+  if (!_masterDraftData) _masterDraftData = deepClone(_masterRawData || {});
+  _masterEditEnabled = true;
+  _masterRawData = _masterDraftData;
+  renderMasterView(_masterRawData);
+}
+
+function masterCancelDraft() {
+  _masterDraftData = deepClone(_masterOriginalData || {});
+  _masterRawData = _masterDraftData;
+  _masterEditEnabled = false;
+  renderMasterView(_masterRawData);
+  toast("Draft cancelled. No changes were applied.", "info");
+}
+
+function diffMaster(orig, draft) {
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const key = (x) => `${x.person}|${x.start}|${x.end}|${x.team || ""}|${x.role || ""}`;
+
+  const out = [];
+  days.forEach(day => {
+    const o = Array.isArray(orig?.[day]) ? orig[day] : [];
+    const d = Array.isArray(draft?.[day]) ? draft[day] : [];
+
+    const oMap = new Map();
+    o.forEach(x => oMap.set(key(x), (oMap.get(key(x)) || 0) + 1));
+
+    const dMap = new Map();
+    d.forEach(x => dMap.set(key(x), (dMap.get(key(x)) || 0) + 1));
+
+    const adds = [];
+    const removes = [];
+
+    for (const [k, cnt] of dMap.entries()) {
+      const prev = oMap.get(k) || 0;
+      if (cnt > prev) adds.push({ k, n: cnt - prev });
+    }
+    for (const [k, cnt] of oMap.entries()) {
+      const now = dMap.get(k) || 0;
+      if (cnt > now) removes.push({ k, n: cnt - now });
+    }
+
+    if (adds.length || removes.length) out.push({ day, adds, removes });
+  });
+
+  return out;
+}
+
+async function masterApplyDraft() {
+  try {
+    Swal.fire({
+      title: "Applying template...",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    const res = await fetch("./?action=base-schedule/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days: _masterDraftData || {} })
+    });
+
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Failed to apply template");
+
+    // ✅ commit: original = draft, then reset draft to a fresh clone
+    _masterOriginalData = deepClone(_masterDraftData);
+    _masterDraftData = deepClone(_masterOriginalData);
+    _masterRawData = _masterDraftData;
+    _masterEditEnabled = false;
+
+    renderMasterView(_masterRawData);
+
+    Swal.fire({
+      icon: "success",
+      title: "Applied!",
+      text: "Master Schedule template updated.",
+      confirmButtonColor: "#16a34a"
+    });
+  } catch (e) {
+    console.error(e);
+    Swal.fire({
+      icon: "error",
+      title: "Apply failed",
+      text: e.message,
+      confirmButtonColor: "#ef4444"
+    });
+  }
+}
+
+function masterPreviewChanges() {
+  // ✅ ensure baseline/draft exist BEFORE diff
+  if (!_masterOriginalData) _masterOriginalData = deepClone(_masterRawData || {});
+  if (!_masterDraftData) _masterDraftData = deepClone(_masterRawData || {});
+
+  const diff = diffMaster(_masterOriginalData, _masterDraftData);
+
+  if (!diff.length) {
+    Swal.fire({
+      icon: "info",
+      title: "No changes",
+      text: "Your draft matches the current template.",
+      confirmButtonColor: "#3b82f6"
+    });
+    return;
+  }
+
+  let html = `<div style="text-align:left; max-height:380px; overflow:auto; font-size:13px;">`;
+  diff.forEach(block => {
+    html += `<div style="margin:10px 0; padding:10px; border:1px solid #e2e8f0; border-radius:10px;">
+      <div style="font-weight:900; margin-bottom:6px;">${block.day}</div>`;
+
+    if (block.adds.length) {
+      html += `<div style="color:#166534; font-weight:800;">Added</div><ul style="margin:6px 0 10px 18px;">`;
+      block.adds.forEach(a => html += `<li>${a.k} ${a.n > 1 ? `(x${a.n})` : ""}</li>`);
+      html += `</ul>`;
+    }
+    if (block.removes.length) {
+      html += `<div style="color:#991b1b; font-weight:800;">Removed</div><ul style="margin:6px 0 0 18px;">`;
+      block.removes.forEach(r => html += `<li>${r.k} ${r.n > 1 ? `(x${r.n})` : ""}</li>`);
+      html += `</ul>`;
+    }
+
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  Swal.fire({
+    title: "Preview changes",
+    html,
+    showCancelButton: true,
+    confirmButtonText: "Apply changes",
+    cancelButtonText: "Keep editing",
+    confirmButtonColor: "#16a34a"
+  }).then((r) => {
+    if (r.isConfirmed) masterApplyDraft();
+  });
+}
+
+function closeMasterModal() {
+  $("masterOverlay").style.display = "none";
+}
+
   // ============================================
 // AGENT NOTIFICATIONS SYSTEM
 // ============================================
@@ -8242,9 +7773,9 @@ async function respondToSwap(swapId, response) {
   }
 }
   // ============================================
-// ACCRUED HOURS SYSTEM (PTO Only)
+// ACCRUED HOURS SYSTEM
 // ============================================
-let _balanceData = new Map(); // person -> {pto}
+let _balanceData = new Map(); // person -> {pto, sick}
 async function loadBalances() {
   try {
     const res = await fetch('/?action=balances/list');
@@ -8253,7 +7784,10 @@ async function loadBalances() {
     if (data.ok) {
       _balanceData.clear();
       (data.balances || []).forEach(b => {
-        _balanceData.set(b.person, { pto: b.pto || 0 });
+        _balanceData.set(b.person, {
+          pto: b.pto || 0,
+          sick: b.sick || 0
+        });
       });
       
       updateBalancePill();
@@ -8271,7 +7805,7 @@ function updateBalancePill() {
   } else if (window._myName) {
     const balance = _balanceData.get(window._myName);
     if (balance) {
-      $("balanceText").textContent = `PTO: ${balance.pto}h`;
+      $("balanceText").textContent = `PTO: ${balance.pto}h | Sick: ${balance.sick}h`;
       pill.style.display = "flex";
     }
   }
@@ -8288,8 +7822,12 @@ function openBalanceModal() {
     managerView.style.display = "none";
     agentView.style.display = "block";
     
-    const balance = _balanceData.get(window._myName) || {pto: 0};
+    const balance = _balanceData.get(window._myName) || {pto: 0, sick: 0, holiday_bank: 0};
     $("agentPtoBalance").textContent = balance.pto;
+    $("agentSickBalance").textContent = balance.sick;
+    if ($("agentHolidayBalance")) {
+      $("agentHolidayBalance").textContent = balance.holiday_bank || 0;
+    }
   }
   
   $("balanceModal").style.display = "flex";
@@ -8306,27 +7844,33 @@ function renderBalanceList() {
   _people
     .filter(p => !search || p.toLowerCase().includes(search))
     .forEach(person => {
-      const balance = _balanceData.get(person) || {pto: 0};
+      const balance = _balanceData.get(person) || {pto: 0, sick: 0, holiday_bank: 0};
       
       const item = document.createElement("div");
-      item.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;";
-      item.onmouseover = () => { item.style.borderColor = "#86efac"; item.style.background = "#f0fdf4"; };
-      item.onmouseout = () => { item.style.borderColor = "#e2e8f0"; item.style.background = "#f8fafc"; };
+      item.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; transition: border-color 0.2s;";
+      item.onmouseover = () => item.style.borderColor = "#cbd5e1";
+      item.onmouseout = () => item.style.borderColor = "#e2e8f0";
       
       item.innerHTML = `
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 700; color: #1e293b;">${person}</div>
-          <div style="font-size: 12px; color: #16a34a; font-weight: 600; margin-top: 2px;">
-            ${balance.pto} hours available
+        <div style="flex: 1;">
+          <div style="font-weight: 700; color: #1e293b; margin-bottom: 4px;">${person}</div>
+          <div style="font-size: 11px; color: #64748b;">
+            PTO: ${balance.pto}h | Sick: ${balance.sick}h | Holiday: ${balance.holiday_bank || 0}h
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <div style="text-align: center;">
-            <div style="font-size: 9px; color: #16a34a; font-weight: 700;">PTO</div>
-            <input type="number" value="${balance.pto}" min="0" step="0.5" 
-                   onchange="updateBalance('${person}', 'pto', this.value)"
-                   style="width: 70px; padding: 8px; border: 2px solid #86efac; border-radius: 8px; text-align: center; font-size: 14px; font-weight: 700; background: #f0fdf4; color: #16a34a;">
-          <span style="font-size: 12px; color: #64748b; margin-left: 4px;">hrs</span>
+        <div style="display: flex; gap: 6px;">
+          <input type="number" value="${balance.pto}" min="0" step="0.5" 
+                 onchange="updateBalance('${person}', 'pto', this.value)"
+                 style="width: 60px; padding: 5px; border: 1px solid #86efac; border-radius: 6px; text-align: center; font-size: 12px; background: #f0fdf4;"
+                 title="PTO Hours">
+          <input type="number" value="${balance.sick}" min="0" step="0.5"
+                 onchange="updateBalance('${person}', 'sick', this.value)"
+                 style="width: 60px; padding: 5px; border: 1px solid #93c5fd; border-radius: 6px; text-align: center; font-size: 12px; background: #eff6ff;"
+                 title="Sick Hours">
+          <input type="number" value="${balance.holiday_bank || 0}" min="0" step="0.5"
+                 onchange="updateBalance('${person}', 'holiday_bank', this.value)"
+                 style="width: 60px; padding: 5px; border: 1px solid #fcd34d; border-radius: 6px; text-align: center; font-size: 12px; background: #fef3c7;"
+                 title="Holiday Bank">
         </div>
       `;
       
@@ -8345,7 +7889,7 @@ async function updateBalance(person, type, value) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         person: person,
-        type: 'pto',
+        type: type,
         hours: hours
       })
     });
@@ -8355,11 +7899,11 @@ async function updateBalance(person, type, value) {
     if (data.ok) {
       // Update local cache
       if (!_balanceData.has(person)) {
-        _balanceData.set(person, {pto: 0});
+        _balanceData.set(person, {pto: 0, sick: 0});
       }
-      _balanceData.get(person).pto = hours;
+      _balanceData.get(person)[type] = hours;
       
-      toast(`Updated ${person}'s PTO to ${hours}h`, "success");
+      toast(`Updated ${person}'s ${type.toUpperCase()} to ${hours} hours`, "success");
     } else {
       toast(`Failed to update balance`, "error");
     }
@@ -8656,27 +8200,42 @@ function renderDayDetail(dateKey, shifts) {
   });
 }
 function exitMasterMode() {
-    _isMasterMode = false;
-    const btn = document.getElementById("btnMasterMode");
-    const title = document.querySelector(".hTitle");
-    const contextPill = document.getElementById("managerContextPill");
-    
-    if (btn) {
-        btn.innerText = "Edit Master Schedule";
-        btn.style.backgroundColor = "";
-        btn.style.color = "";
+  _isMasterMode = false;
+  const btn = document.getElementById("btnMasterMode");
+  const title = document.querySelector(".hTitle");
+  const contextPill = document.getElementById("managerContextPill");
+
+  if (btn) {
+    btn.innerText = "Edit Master Schedule";
+    btn.style.backgroundColor = "";
+    btn.style.color = "";
+  }
+  if (title) title.innerText = "Scheduling Manager";
+  if (contextPill) {
+    if (_currentManagerName) {
+      contextPill.innerText = "Viewing: " + _currentManagerName;
+      contextPill.style.backgroundColor = "#7e22ce";
+      contextPill.style.borderColor = "#6b21a8";
+    } else {
+      contextPill.style.display = "none";
     }
-    if (title) title.innerText = "Scheduling Manager";
-    if (contextPill) {
-        if (_currentManagerName) {
-            contextPill.innerText = "Viewing: " + _currentManagerName;
-            contextPill.style.backgroundColor = "#7e22ce";
-            contextPill.style.borderColor = "#6b21a8";
-        } else {
-            contextPill.style.display = "none";
-        }
-    }
+  }
+
+  // ✅ Reset master draft/edit state
+  _masterOriginalData = null;
+  _masterDraftData = null;
+  _masterRawData = null;
+  _masterEditEnabled = false;
+
+  if (typeof _masterSelected !== "undefined" && _masterSelected && _masterSelected.clear) {
+    _masterSelected.clear();
+  }
+  updateMasterSelectionBar?.();
+
+  const mv = document.getElementById("masterView");
+  if (mv) mv.innerHTML = "";
 }
+
   function resetAllFilters() {
     _activeTeam = '';
     _selectedPeople.clear();
@@ -9067,220 +8626,5 @@ document.addEventListener("DOMContentLoaded", function() {
   border-radius: 50%;
 }
 </style>
-
-<!-- Coverage Dashboard Modal -->
-<div id="coverageDashboardOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeCoverageDashboard()">
-  <div class="modal" style="width: 600px; max-width: 90%;">
-    <div class="mHead">
-      <span class="mTitle">📊 Team Coverage Dashboard</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeCoverageDashboard()">✕</button>
-    </div>
-    <div class="mBody" style="max-height: 70vh; overflow-y: auto;">
-      <div id="coverageDashboardContent"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Export Modal -->
-<div id="exportOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeExportModal()">
-  <div class="modal" style="width: 420px;">
-    <div class="mHead">
-      <span class="mTitle">📥 Export Schedule to CSV</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeExportModal()">✕</button>
-    </div>
-    <div class="mBody">
-      <div style="margin-bottom:20px;">
-        <label>Start Date</label>
-        <input type="date" id="exportStartDate" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label>Number of Days</label>
-        <input type="number" id="exportDays" value="14" min="1" max="90" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label>Team (Optional - leave blank for all)</label>
-        <select id="exportTeam" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
-          <option value="">All Teams</option>
-        </select>
-      </div>
-    </div>
-    <div class="mFoot">
-      <button class="btn ghost" onclick="closeExportModal()">Cancel</button>
-      <button class="btn primary" onclick="performExport()">📥 Export CSV</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// Export Modal Functions
-function openExportModal() {
-  const modal = document.getElementById('exportOverlay');
-  if (!modal) return;
-  
-  // Set default start date to today
-  const today = new Date().toISOString().split('T')[0];
-  const dateInput = document.getElementById('exportStartDate');
-  if (dateInput) dateInput.value = today;
-  
-  // Populate team dropdown
-  const teamSelect = document.getElementById('exportTeam');
-  if (teamSelect && window._teams) {
-    teamSelect.innerHTML = '<option value="">All Teams</option>';
-    window._teams.forEach(team => {
-      const opt = document.createElement('option');
-      opt.value = team;
-      opt.textContent = team;
-      teamSelect.appendChild(opt);
-    });
-  }
-  
-  modal.style.display = 'flex';
-}
-
-function closeExportModal() {
-  const modal = document.getElementById('exportOverlay');
-  if (modal) modal.style.display = 'none';
-}
-
-async function performExport() {
-  const startDate = document.getElementById('exportStartDate')?.value;
-  const days = parseInt(document.getElementById('exportDays')?.value || '14');
-  const teamKey = document.getElementById('exportTeam')?.value || '';
-  
-  if (!startDate) {
-    toast('Please select a start date', 'error');
-    return;
-  }
-  
-  try {
-    const res = await fetch('./?action=schedule/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startDate, days, teamKey })
-    });
-    
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || 'Export failed');
-    }
-    
-    // Download the CSV file
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `schedule_${startDate}_${days}days${teamKey ? '_' + teamKey : ''}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    closeExportModal();
-    toast('✅ Schedule exported successfully!', 'success');
-    
-  } catch (err) {
-    console.error('Export error:', err);
-    toast('Export failed: ' + err.message, 'error');
-  }
-}
-
-// Coverage Dashboard Functions
-function openCoverageDashboard() {
-  if (!window._isManager) return;
-  
-  const modal = document.getElementById('coverageDashboardOverlay');
-  const content = document.getElementById('coverageDashboardContent');
-  if (!modal || !content) return;
-  
-  // Build detailed coverage report
-  const todayKey = pstISODate();
-  const todayShifts = _filteredData.filter(s => 
-    s.dayKey === todayKey && !(s.notes || '').includes('[OFF]')
-  );
-  
-  const blocks = [
-    { label: "6am-8am", start: 6, end: 8 },
-    { label: "8am-10am", start: 8, end: 10 },
-    { label: "10am-12pm", start: 10, end: 12 },
-    { label: "12pm-2pm", start: 12, end: 14 },
-    { label: "2pm-4pm", start: 14, end: 16 },
-    { label: "4pm-6pm", start: 16, end: 18 },
-    { label: "6pm-8pm", start: 18, end: 20 }
-  ];
-  
-  const coversBlock = (shift, blockStart, blockEnd) => {
-    if (!shift.start || !shift.end) return false;
-    const s = parseTimeDecimal(shift.start);
-    const e = parseTimeDecimal(shift.end);
-    return s <= blockStart && e >= blockEnd;
-  };
-  
-  let html = '<div style="margin-bottom:20px; padding:12px; background:#f0f9ff; border-radius:8px; border:1px solid #bfdbfe;">';
-  html += '<div style="font-weight:700; color:#1e40af; margin-bottom:4px;">📅 ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '</div>';
-  html += '<div style="font-size:12px; color:#64748b;">Real-time staffing levels per channel</div>';
-  html += '</div>';
-  
-  const todayDOW = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-  
-  if (_staffingRules && _staffingRules.length > 0) {
-    _staffingRules.forEach(rule => {
-      if (rule.day !== 'All' && rule.day !== todayDOW) return;
-      
-      const channel = rule.team;
-      const min = parseInt(rule.min) || 0;
-      const config = getChannelConfig(channel);
-      const [openHour, closeHour] = config.hours || [8, 17];
-      
-      html += '<div style="margin-bottom:24px; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">';
-      html += '<div style="padding:16px; background:' + config.color + '; border-bottom:2px solid ' + config.border + ';">';
-      html += '<div style="font-weight:800; font-size:16px; color:' + config.text + ';">' + channel + '</div>';
-      html += '<div style="font-size:12px; color:' + config.text + '; opacity:0.8; margin-top:4px;">Hours: ' + openHour + ':00 - ' + closeHour + ':00 | Minimum: ' + min + ' agents</div>';
-      html += '</div>';
-      
-      html += '<div style="padding:16px;">';
-      html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
-      html += '<thead><tr style="background:#f8fafc;"><th style="padding:8px; text-align:left; border-bottom:2px solid #e2e8f0;">Time Block</th><th style="padding:8px; text-align:center; border-bottom:2px solid #e2e8f0;">Coverage</th><th style="padding:8px; text-align:center; border-bottom:2px solid #e2e8f0;">Status</th></tr></thead>';
-      html += '<tbody>';
-      
-      // Calculate current hour once outside the loop for better performance
-      const currentHourPST = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"})).getHours();
-      
-      blocks.forEach(blk => {
-        if (blk.start < openHour || blk.end > closeHour) return; // Skip closed hours
-        
-        const count = todayShifts.filter(s => 
-          (s.team === channel) && coversBlock(s, blk.start, blk.end)
-        ).length;
-        
-        const isPast = blk.end <= currentHourPST;
-        const status = count >= min ? '✓ Good' : '⚠️ Low';
-        const statusColor = count >= min ? '#22c55e' : '#ef4444';
-        const bgColor = isPast ? '#f8fafc' : (count >= min ? '#f0fdf4' : '#fef2f2');
-        
-        html += '<tr style="background:' + bgColor + ';">';
-        html += '<td style="padding:10px; border-bottom:1px solid #e2e8f0;">' + blk.label + (isPast ? ' <span style="font-size:10px; color:#94a3b8;">(past)</span>' : '') + '</td>';
-        html += '<td style="padding:10px; text-align:center; font-weight:700; border-bottom:1px solid #e2e8f0;">' + count + ' / ' + min + '</td>';
-        html += '<td style="padding:10px; text-align:center; font-weight:700; color:' + statusColor + '; border-bottom:1px solid #e2e8f0;">' + status + '</td>';
-        html += '</tr>';
-      });
-      
-      html += '</tbody></table>';
-      html += '</div>';
-      html += '</div>';
-    });
-  } else {
-    html += '<div style="text-align:center; padding:40px; color:#94a3b8;">No staffing rules configured for today.</div>';
-  }
-  
-  content.innerHTML = html;
-  modal.style.display = 'flex';
-}
-
-function closeCoverageDashboard() {
-  const modal = document.getElementById('coverageDashboardOverlay');
-  if (modal) modal.style.display = 'none';
-}
-</script>
-
 </body>
 </html>
