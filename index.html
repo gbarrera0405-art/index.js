@@ -2642,19 +2642,23 @@ const CHANNEL_ABBREV = {
     return false;
   }
   
-  async function handleSignIn(response) {
+async function handleSignIn(response) {
   console.log("Sign-in response received");
   
   try {
-    const res = await fetch('/config', {
+    const apiBase = window.API_BASE || "";
+    const res = await fetch(`${apiBase}/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-preview-key': window.PREVIEW_KEY || ''
+      },
       body: JSON.stringify({ credential: response.credential })
     });
     
     const data = await res.json();
     
-    if (data.error) {
+    if (!res.ok || data.error) {
       console.error("Auth error:", data.error);
       toast("Access Denied: " + data.error, "error");
       return;
@@ -2683,7 +2687,7 @@ const CHANNEL_ABBREV = {
     
   } catch (err) {
     console.error("Sign-in failed:", err);
-    toast("Sign-in failed", "error");
+    toast("Sign-in failed: " + (err?.message || err), "error");
   }
 }
 // Expose to global scope IMMEDIATELY
@@ -2703,9 +2707,6 @@ const CACHE_CONFIG = {
   const TZ = "America/Los_Angeles";
   // --- CLOUD RUN BRIDGE START ---
   // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
-  
-  // --- CLOUD RUN BRIDGE START ---
-  // --- CLOUD RUN BRIDGE START ---
   const google = {
     script: {
       // We return a proxy to handle 'run' so we can create a fresh chain for every request
@@ -4087,7 +4088,7 @@ async function regenerateAllSchedule() {
     });
   }
 }
-  async function saveShift() {
+async function saveShift() {
     const person = document.getElementById("modalEmployee").value;
     const day = document.getElementById("modalDay").value;
     const newStart = document.getElementById("modalStart").value;
@@ -4106,22 +4107,31 @@ async function regenerateAllSchedule() {
         });
         return;
     }
-    // --- 1. UPDATE LOCAL DATA (Immediate UI Refresh) ---
-    const dayData = _masterRawData[day] || [];
-    if (isAdding) {
-        dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
-        _masterRawData[day] = dayData;
-    } else {
-        const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
-        if (shiftToUpdate) {
-            shiftToUpdate.start = newStart;
-            shiftToUpdate.end = newEnd;
-            shiftToUpdate.team = newTeam;
+
+    const changePreview = `
+      <div style="text-align:left; line-height:1.5;">
+        <div><strong>👤 Person:</strong> ${person}</div>
+        <div><strong>📅 Day:</strong> ${day}</div>
+        ${isAdding
+          ? `<div><strong>🆕 Add:</strong> ${toAmPm(newStart)} - ${toAmPm(newEnd)}</div>`
+          : `<div><strong>🕐 Time:</strong> ${toAmPm(origStart)} → ${toAmPm(newStart)}<br>${toAmPm(origEnd)} → ${toAmPm(newEnd)}</div>`
         }
-    }
-    renderMasterView(_masterRawData);
+        <div><strong>👥 Team:</strong> ${newTeam || 'Not specified'}</div>
+      </div>
+    `;
+
+    const preview = await Swal.fire({
+      title: 'Preview Master Change',
+      html: changePreview,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Save',
+      cancelButtonText: 'Keep Editing',
+      focusCancel: true
+    });
+    if (!preview.isConfirmed) return;
+
     closeModal();
-    // --- 2. SHOW LOADING STATE ---
     Swal.fire({
         title: isAdding ? 'Adding Shift...' : 'Saving Changes...',
         html: `<div style="font-size:14px; color:#64748b;">Updating ${person}'s schedule for ${day}</div>`,
@@ -4132,7 +4142,8 @@ async function regenerateAllSchedule() {
             Swal.showLoading();
         }
     });
-    // --- 3. SEND TO BACKEND ---
+
+    // --- SEND TO BACKEND ---
     const payload = {
         action: actionType,
         person: person,
@@ -4155,6 +4166,20 @@ async function regenerateAllSchedule() {
       
       if (result.status === "success" || result.ok) {
         console.log("Saved to database successfully", result);
+
+        // Update local model after successful save
+        const dayData = [...(_masterRawData[day] || [])];
+        if (isAdding) {
+          dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
+        } else {
+          const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
+          if (!shiftToUpdate) throw new Error("Shift not found locally; please refresh.");
+          shiftToUpdate.start = newStart;
+          shiftToUpdate.end = newEnd;
+          shiftToUpdate.team = newTeam;
+        }
+        _masterRawData[day] = dayData;
+        renderMasterView(_masterRawData);
         
         Swal.fire({
             icon: 'success',
@@ -4792,7 +4817,7 @@ async function addAgent() {
   }
 
   // Show loading state
-  const submitBtn = document.querySelector('#addAgentOverlay .btn. primary');
+  const submitBtn = document.querySelector('#addAgentOverlay .btn.primary');
   const originalText = submitBtn?. textContent;
   if (submitBtn) {
     submitBtn.textContent = "Adding...";
@@ -4800,7 +4825,7 @@ async function addAgent() {
   }
 
   try {
-    const response = await fetch('. /? action=agents/add', {
+    const response = await fetch('./?action=agents/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -6854,12 +6879,12 @@ async function saveNewAgent() {
       }
     });
     
-    // Call the API
-    const response = await fetch(window.API_BASE + '/agents/add', {
+    // Call the API (Cloud Run endpoint)
+    const response = await fetch('/?action=agents/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-preview-key': window. PREVIEW_KEY || ''
+        'x-preview-key': (window.PREVIEW_KEY || '')
       },
       body:  JSON.stringify({
         name: name,
@@ -6887,20 +6912,10 @@ async function saveNewAgent() {
       confirmButtonColor: '#10b981'
     });
     
-    // Refresh the people list if you have a function for that
-    if (typeof loadMetadata === 'function') {
-      await loadMetadata();
-    }
-    
-    // Also refresh the quick rail if it exists
-    if (typeof renderQuickRail === 'function') {
-      renderQuickRail();
-    }
-    
-    // Refresh metrics list if visible
-    if (typeof renderMetricsList === 'function') {
-      renderMetricsList();
-    }
+    // Refresh data / quick lists
+    if (typeof loadSystemData === 'function') await loadSystemData();
+    if (typeof renderQuickRail === 'function') renderQuickRail();
+    if (typeof renderMetricsList === 'function') renderMetricsList();
     
   } catch (err) {
     console.error('Error adding agent:', err);
