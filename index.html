@@ -8,13 +8,47 @@
   <style>
   /* --- RESET & BASICS --- */
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  body { margin: 0; padding: 0; background: #f3f4f6; color: #1e293b; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* --- DARK MODE VARIABLES --- */
+  :root {
+    --bg-primary: #f3f4f6;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-tertiary: #94a3b8;
+    --header-bg: #ffffff;
+    --card-bg: #ffffff;
+    --input-bg: #ffffff;
+    --shadow-sm: rgba(0,0,0,0.04);
+    --shadow-md: rgba(0,0,0,0.1);
+    --shadow-lg: rgba(0,0,0,0.15);
+  }
+  
+  body.dark-mode {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --border-color: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --header-bg: #1e293b;
+    --card-bg: #1e293b;
+    --input-bg: #0f172a;
+    --shadow-sm: rgba(0,0,0,0.2);
+    --shadow-md: rgba(0,0,0,0.3);
+    --shadow-lg: rgba(0,0,0,0.4);
+  }
+  
+  body { margin: 0; padding: 0; background: var(--bg-primary); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.2s, color 0.2s; }
   
   /* --- HEADER --- */
   .header { 
     height: 64px; 
-    background: #ffffff; /* White background */
-    border-bottom: 1px solid #e2e8f0; 
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
     display: flex; 
     align-items: center; 
     justify-content: space-between; 
@@ -22,14 +56,16 @@
     flex: 0 0 64px; 
     box-shadow: none; 
     z-index: 600; 
-    position: relative; 
+    position: relative;
+    transition: background-color 0.2s, border-color 0.2s;
   }
   .hLeft { display: flex; align-items: center; gap: 16px; }
   .hTitle { 
     font-size: 18px; 
     font-weight: 800; 
-    color: #0f172a; /* Dark text */
-    letter-spacing: -0.5px; 
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    transition: color 0.2s;
   }
   .metaGroup { display: flex; gap: 8px; align-items: center; }
   .pill { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -1146,15 +1182,97 @@ body.agent-mode .pill.balance {
    ============================================ */
 .coverage-banner {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
   padding: 12px 20px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-tertiary) 100%);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   margin-bottom: 16px;
-  box-shadow:  0 2px 8px rgba(0,0,0,0.04);
-  overflow-x: auto;
+  box-shadow: 0 2px 8px var(--shadow-sm);
+  overflow: visible;
+  transition: all 0.3s ease;
+}
+
+.coverage-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.coverage-chevron {
+  transition: transform 0.3s ease;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.coverage-banner.expanded .coverage-chevron {
+  transform: rotate(180deg);
+}
+
+.coverage-chips {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.coverage-details {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.coverage-details-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.coverage-details-row:last-child {
+  border-bottom: none;
+}
+
+.coverage-details-label {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.coverage-details-value {
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .coverage-banner {
+    padding: 10px 14px;
+  }
+  
+  .coverage-chips {
+    gap: 8px;
+  }
+  
+  .coverage-details-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
   scrollbar-width: none;
 }
 .coverage-banner::-webkit-scrollbar {
@@ -1385,6 +1503,11 @@ body.agent-mode .pill.balance {
       <button id="btnAdmin" type="button" class="iconBtn" title="Admin Settings" onclick="openAdminModal()">
         <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       </button>
+      <button id="btnDarkMode" type="button" class="iconBtn" title="Toggle Dark Mode" onclick="toggleDarkMode()">
+        <svg id="darkModeIcon" viewBox="0 0 24 24">
+          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" fill="none"/>
+        </svg>
+      </button>
 <button type="button" class="iconBtn" title="Refresh (clears cache)" onclick="forceRefresh()">
         <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
       </button>
@@ -1500,8 +1623,16 @@ body.agent-mode .pill.balance {
   <div class="main">
     <div class="content">
         <div id="coverageBanner" class="coverage-banner hidden">
-  <div class="coverage-banner-title">📊 Coverage</div>
+  <div class="coverage-banner-header" onclick="toggleCoverageDetails()">
+    <div class="coverage-banner-title">📊 Coverage</div>
+    <svg id="coverageChevron" class="coverage-chevron" viewBox="0 0 24 24" width="20" height="20">
+      <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+    </svg>
+  </div>
   <div id="coverageChips" class="coverage-chips"></div>
+  <div id="coverageDetails" class="coverage-details" style="display:none;">
+    <div id="coverageDetailsContent"></div>
+  </div>
 </div>
       <div id="scheduleView" class="schedule-container">
   <div class="day-tabs" id="dayTabs"></div>
@@ -1928,19 +2059,6 @@ body.agent-mode .pill.balance {
     </div>
   </div>
 </div>
-        <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; display:block;">Generation Tools</label>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-          <button type="button" class="btn ghost" style="border-color:#3b82f6; color:#3b82f6;" onclick="runGenerate()">Generate 14 Days</button>
-          <button type="button" class="btn ghost" onclick="runArchive()">Archive Old Data</button>
-          <button type="button" class="btn ghost" style="grid-column: span 2;" onclick="runBoth()">Full Sync (Gen + Archive)</button>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px; border-radius:10px;">
-          <span style="font-size:13px; font-weight:700; color:#334155;">Daily Automation</span>
-          <div style="display:flex; gap:8px;">
-            <button type="button" class="btn" id="btnEnable" style="padding:6px 12px; font-size:11px;">Enable</button>
-            <button type="button" class="btn" id="btnDisable" style="padding:6px 12px; font-size:11px;">Disable</button>
-          </div>
-        </div>
       </div>
       <div id="staffingModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeStaffingModal()">
   <div class="modal" style="width: 500px;">
@@ -2399,8 +2517,14 @@ const CHANNEL_ABBREV = {
     
     console.log(`Signed in as: ${window._myName}, Manager: ${window._isManager}`);
     
+    // ✅ Save auth session to cache
+    saveAuthSession(data.userEmail, data.matchedPerson, data.isManager);
+    
     // ✅ Remove auth-pending to reveal the app
     document.body.classList.remove("auth-pending");
+    
+    // Show fresh login indicator
+    showSessionIndicator(false);
     
     // Hide the login button after successful sign-in
     const loginContainer = document.getElementById("loginContainer");
@@ -2425,6 +2549,152 @@ const CACHE_CONFIG = {
   TTL: 5 * 60 * 1000,  // 5 minutes in milliseconds
   VERSION: '1.0'       // Increment to invalidate old caches
 };
+
+// ============================================
+// SESSION PERSISTENCE (15-minute auth cache)
+// ============================================
+const SESSION_CONFIG = {
+  KEY: 'musely_auth_session',
+  TTL: 15 * 60 * 1000, // 15 minutes in milliseconds
+  VERSION: '1.0'
+};
+
+function saveAuthSession(email, name, isManager) {
+  const sessionData = {
+    email,
+    name,
+    isManager,
+    timestamp: Date.now(),
+    version: SESSION_CONFIG.VERSION,
+    cached: true
+  };
+  try {
+    localStorage.setItem(SESSION_CONFIG.KEY, JSON.stringify(sessionData));
+    console.log('✅ Auth session saved to cache');
+  } catch (err) {
+    console.warn('Failed to save auth session:', err);
+  }
+}
+
+function loadAuthSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_CONFIG.KEY);
+    if (!raw) return null;
+
+    const data = JSON.parse(raw);
+    
+    // Check version
+    if (data.version !== SESSION_CONFIG.VERSION) {
+      console.log('Session cache version mismatch, clearing...');
+      clearAuthSession();
+      return null;
+    }
+
+    // Check TTL (15 minutes)
+    const age = Date.now() - data.timestamp;
+    if (age > SESSION_CONFIG.TTL) {
+      console.log('Session cache expired, clearing...');
+      clearAuthSession();
+      return null;
+    }
+
+    console.log(`✅ Loaded cached session (age: ${Math.floor(age / 1000)}s)`);
+    return data;
+  } catch (err) {
+    console.warn('Failed to load auth session:', err);
+    clearAuthSession();
+    return null;
+  }
+}
+
+function clearAuthSession() {
+  try {
+    localStorage.removeItem(SESSION_CONFIG.KEY);
+    console.log('🗑️ Auth session cleared');
+  } catch (err) {
+    console.warn('Failed to clear auth session:', err);
+  }
+}
+
+function showSessionIndicator(isCached) {
+  const authOverlay = document.getElementById('authOverlay');
+  if (!authOverlay) return;
+  
+  const indicator = document.createElement('div');
+  indicator.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: ${isCached ? 'rgba(34, 197, 94, 0.9)' : 'rgba(59, 130, 246, 0.9)'};
+    color: white;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 100000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideIn 0.3s ease-out;
+  `;
+  indicator.textContent = isCached ? '🔒 Using cached session' : '🔑 Fresh login';
+  
+  document.body.appendChild(indicator);
+  
+  setTimeout(() => {
+    indicator.style.transition = 'opacity 0.3s, transform 0.3s';
+    indicator.style.opacity = '0';
+    indicator.style.transform = 'translateX(20px)';
+    setTimeout(() => indicator.remove(), 300);
+  }, 2500);
+}
+
+// ============================================
+// DARK MODE TOGGLE
+// ============================================
+const DARK_MODE_KEY = 'musely_dark_mode';
+
+function initDarkMode() {
+  // Check for saved preference or use prefers-color-scheme
+  const savedMode = localStorage.getItem(DARK_MODE_KEY);
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  const shouldUseDarkMode = savedMode === 'true' || (savedMode === null && prefersDark);
+  
+  if (shouldUseDarkMode) {
+    document.body.classList.add('dark-mode');
+    updateDarkModeIcon(true);
+  }
+}
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem(DARK_MODE_KEY, isDark.toString());
+  updateDarkModeIcon(isDark);
+  
+  // Show feedback
+  toast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled', 'info');
+}
+
+function updateDarkModeIcon(isDark) {
+  const icon = document.getElementById('darkModeIcon');
+  if (!icon) return;
+  
+  if (isDark) {
+    // Moon icon for dark mode
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>';
+  } else {
+    // Sun icon for light mode
+    icon.innerHTML = '<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" fill="none"/>';
+  }
+}
+
+// Initialize dark mode on page load
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDarkMode);
+  } else {
+    initDarkMode();
+  }
+}
   
   const PST_TZ = "America/Los_Angeles";
   const pad2 = (n) => String(n).padStart(2, "0");
@@ -2886,6 +3156,28 @@ function clearScheduleCache() {
 }
   // --- 4. LOAD SEQUENCE ---
   window.onload = function() {
+    // ✅ Check for cached session before requiring login
+    const cachedSession = loadAuthSession();
+    if (cachedSession) {
+      console.log('🔓 Restoring cached session:', cachedSession.name);
+      
+      // Set global identity from cache
+      window._myEmail = cachedSession.email;
+      window._myName = cachedSession.name;
+      window._isManager = cachedSession.isManager;
+      window._currentUser = cachedSession.name;
+      
+      // Remove auth-pending to reveal the app
+      document.body.classList.remove("auth-pending");
+      
+      // Show cached session indicator
+      showSessionIndicator(true);
+      
+      // Hide login container
+      const loginContainer = document.getElementById("loginContainer");
+      if (loginContainer) loginContainer.style.display = "none";
+    }
+    
     try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
   };
   function load(force, targetEmail) {
@@ -3563,6 +3855,7 @@ function calculateCoverageForToday() {
 function renderCoverageBanner() {
   const banner = document.getElementById('coverageBanner');
   const chipsContainer = document.getElementById('coverageChips');
+  const detailsContainer = document.getElementById('coverageDetailsContent');
   
   if (!banner || !chipsContainer || !window._isManager) {
     if (banner) banner.classList.add('hidden');
@@ -3585,6 +3878,7 @@ function renderCoverageBanner() {
   const nowPST = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
   const currentHour = nowPST.getHours(); 
   let chipsHTML = '';
+  let detailsHTML = '';
   let globalCritical = false;
   let hasActiveRules = false;
   const coversBlock = (shift, blockStart, blockEnd) => {
@@ -3606,6 +3900,7 @@ function renderCoverageBanner() {
       const [openHour, closeHour] = config.hours || [8, 17];
       
       const gaps = [];
+      const blockDetails = [];
       
       blocks.forEach(blk => {
         // 1. Skip if block is in the past
@@ -3616,10 +3911,30 @@ function renderCoverageBanner() {
         const count = todayShifts.filter(s => 
           (s.team === channel) && coversBlock(s, blk.start, blk.end)
         ).length;
+        
+        blockDetails.push({ block: blk.label, count, min });
+        
         if (count < min) {
           gaps.push(`${blk.label} (${count}/${min})`);
         }
       });
+      
+      // Build details HTML for this channel
+      if (blockDetails.length > 0) {
+        detailsHTML += `
+          <div class="coverage-details-row">
+            <div class="coverage-details-label">${config.abbrev} (${channel})</div>
+            <div class="coverage-details-value">
+              ${blockDetails.map(bd => 
+                `<span style="color: ${bd.count >= bd.min ? '#15803d' : '#dc2626'}; margin-right: 12px;">
+                  ${bd.block}: ${bd.count}/${bd.min}
+                </span>`
+              ).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
       if (gaps.length > 0) {
         globalCritical = true;
         const gapText = gaps.length > 2 ? `${gaps.length} Time Gaps` : gaps.join(", ");
@@ -3650,12 +3965,24 @@ function renderCoverageBanner() {
   // Adjust "Day Complete" to be dynamic based on the latest closing time (Phone = 20/8pm)
   if (!hasActiveRules) {
      chipsHTML = `<div style="font-size:12px; color:#64748b; font-style:italic;">No rules for today.</div>`;
+     detailsHTML = `<div style="font-size:12px; color:var(--text-secondary); font-style:italic;">No staffing rules configured for today.</div>`;
   } else if (currentHour >= 20 && !globalCritical) {
      chipsHTML = `<div class="coverage-all-good" style="background:#f1f5f9; border-color:#e2e8f0; color:#64748b;">Day Complete 🌙</div>`;
   } else if (chipsHTML === '') {
      chipsHTML = `<div class="coverage-all-good">All Systems Go</div>`;
   }
+  
   chipsContainer.innerHTML = chipsHTML;
+  
+  // Set details content
+  if (detailsContainer) {
+    if (detailsHTML) {
+      detailsContainer.innerHTML = detailsHTML;
+    } else {
+      detailsContainer.innerHTML = `<div style="font-size:12px; color:var(--text-secondary); text-align:center; padding:8px;">Expand to see coverage details by time block.</div>`;
+    }
+  }
+  
   banner.classList.remove('hidden');
   if (globalCritical) {
     banner.classList.add('critical-state');
@@ -3664,6 +3991,22 @@ function renderCoverageBanner() {
     banner.style.animation = null; 
   } else {
     banner.classList.remove('critical-state');
+  }
+}
+
+// Toggle coverage details expansion
+function toggleCoverageDetails() {
+  const banner = document.getElementById('coverageBanner');
+  const details = document.getElementById('coverageDetails');
+  
+  if (!banner || !details) return;
+  
+  const isExpanded = banner.classList.toggle('expanded');
+  
+  if (isExpanded) {
+    details.style.display = 'block';
+  } else {
+    details.style.display = 'none';
   }
 }
 function normalizeChannelName(name) {
@@ -5919,7 +6262,9 @@ function handleDateJump(val) {
 function forceRefresh() {
   console.log("🔄 Force refresh triggered");
   
-  // Clear the local storage cache
+  // Clear the local storage cache including auth session
+  clearAuthSession();
+  
   if (typeof clearScheduleCache === 'function') {
     clearScheduleCache();
   } else {
