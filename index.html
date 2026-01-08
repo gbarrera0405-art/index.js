@@ -2646,8 +2646,8 @@ async function handleSignIn(response) {
   console.log("Sign-in response received");
   
   try {
-    const base = window.API_BASE || "";
-    const res = await fetch(`${base}/config`, {
+    const apiBase = window.API_BASE || "";
+    const res = await fetch(`${apiBase}/config`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
