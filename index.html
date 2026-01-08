@@ -4207,7 +4207,6 @@ function renderCoverageBanner() {
           <div class="coverage-chip gap-alert" title="Missing coverage: ${gaps.join(', ')}. Required: ${min} agents minimum. Hours: ${openHour}:00-${closeHour}:00">
             <span class="status-dot"></span>
             <span class="channel-abbrev">${config.abbrev}</span>
-            <span class="coverage-count">⚠️ Low: ${gapText}</span>
             <span class="coverage-count">⚠️ Low: ${gapText} (min: ${min})</span>
           </div>
         `;
@@ -4219,7 +4218,6 @@ function renderCoverageBanner() {
           <div class="coverage-chip good" title="Coverage meets requirement. Min: ${min} agents. Hours: ${openHour}:00-${closeHour}:00">
             <span class="status-dot"></span>
             <span class="channel-abbrev">${config.abbrev}</span>
-            <span class="coverage-count">Safe (${totalAgents})</span>
             <span class="coverage-count">Safe (${totalAgents}, min: ${min})</span>
           </div>
         `;
@@ -7467,7 +7465,7 @@ function renderNotifications() {
           ${isLocal ? `
             <!-- Local queue buttons -->
             ${hasError ? `
-            <button onclick="clearNotificationError(${originalIdx}); sendQueuedNotification(${originalIdx})" style="
+            <button onclick="retryNotification(${originalIdx})" style="
               flex: 1; min-width:70px; background:#f59e0b; color:#fff; border:none; padding:8px 10px; 
               border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;
             ">🔄 Retry</button>
@@ -7573,6 +7571,12 @@ function clearNotificationError(idx) {
     delete notif.error;
     localStorage.setItem("musely_notif_queue", JSON.stringify(_notifQueue));
   }
+}
+
+async function retryNotification(idx) {
+  // Clear error first, then retry sending
+  clearNotificationError(idx);
+  await sendQueuedNotification(idx);
 }
 
 function removeFromQueue(idx) {
