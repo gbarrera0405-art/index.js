@@ -1,10 +1,232 @@
 const functions = require("@google-cloud/functions-framework");
-const { Firestore } = require("@google-cloud/firestore");
+const { Firestore, FieldValue } = require("@google-cloud/firestore");
 const pathMod = require("path");
 const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
 const client = new OAuth2Client(CLIENT_ID);
+
+// ============================================
+// APPLICATION CONFIGURATION
+// ============================================
+const APP_CONFIG = {
+  version: "1.0.0",
+  environment: process.env.NODE_ENV || "production",
+  startTime: new Date().toISOString()
+};
+
+// ============================================
+// STRUCTURED LOGGING
+// ============================================
+const LOG_LEVELS = { DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3 };
+const CURRENT_LOG_LEVEL = LOG_LEVELS[process.env.LOG_LEVEL] || LOG_LEVELS.INFO;
+
+function structuredLog(level, message, data = {}) {
+  if (LOG_LEVELS[level] < CURRENT_LOG_LEVEL) return;
+  
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...data,
+    service: "scheduler-api",
+    version: APP_CONFIG.version
+  };
+  
+  const logMethod = level === 'ERROR' ? console.error : 
+                   level === 'WARN' ? console.warn : console.log;
+  logMethod(JSON.stringify(logEntry));
+}
+
+// ============================================
+// STANDARDIZED ERROR HANDLING
+// ============================================
+class APIError extends Error {
+  constructor(message, statusCode = 500, errorCode = 'INTERNAL_ERROR', details = null) {
+    super(message);
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+    this.details = details;
+    this.timestamp = new Date().toISOString();
+  }
+}
+
+function sendError(res, error) {
+  const statusCode = error.statusCode || 500;
+  const response = {
+    ok: false,
+    error: {
+      message: error.message || 'An unexpected error occurred',
+      code: error.errorCode || 'INTERNAL_ERROR',
+      timestamp: new Date().toISOString()
+    }
+  };
+  
+  if (error.details) {
+    response.error.details = error.details;
+  }
+  
+  structuredLog('ERROR', error.message, { 
+    errorCode: error.errorCode, 
+    statusCode, 
+    details: error.details 
+  });
+  
+  return res.status(statusCode).json(response);
+}
+
+function sendSuccess(res, data = {}, statusCode = 200) {
+  return res.status(statusCode).json({
+    ok: true,
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+}
+
+// ============================================
+// INPUT VALIDATION HELPERS
+// ============================================
+function validateRequired(body, fields) {
+  const missing = [];
+  for (const field of fields) {
+    if (body[field] === undefined || body[field] === null || body[field] === '') {
+      missing.push(field);
+    }
+  }
+  if (missing.length > 0) {
+    throw new APIError(
+      `Missing required fields: ${missing.join(', ')}`,
+      400, 'VALIDATION_ERROR', { missingFields: missing }
+    );
+  }
+  return true;
+}
+
+function validateDateString(dateStr, fieldName = 'date') {
+  if (!dateStr) return null;
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(dateStr)) {
+    throw new APIError(`Invalid date format for ${fieldName}. Expected YYYY-MM-DD`, 400, 'VALIDATION_ERROR');
+  }
+  const date = new Date(dateStr + 'T00:00:00Z');
+  if (isNaN(date.getTime())) {
+    throw new APIError(`Invalid date value for ${fieldName}`, 400, 'VALIDATION_ERROR');
+  }
+  return dateStr;
+}
+
+function validateTimeString(timeStr, fieldName = 'time') {
+  if (!timeStr) return null;
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  if (!timeRegex.test(timeStr)) {
+    throw new APIError(`Invalid time format for ${fieldName}. Expected HH:MM`, 400, 'VALIDATION_ERROR');
+  }
+  return timeStr;
+}
+
+function validateNumber(value, fieldName, min = null, max = null) {
+  const num = Number(value);
+  if (isNaN(num)) {
+    throw new APIError(`${fieldName} must be a valid number`, 400, 'VALIDATION_ERROR');
+  }
+  if (min !== null && num < min) {
+    throw new APIError(`${fieldName} must be at least ${min}`, 400, 'VALIDATION_ERROR');
+  }
+  if (max !== null && num > max) {
+    throw new APIError(`${fieldName} must be at most ${max}`, 400, 'VALIDATION_ERROR');
+  }
+  return num;
+}
+
+function sanitizeString(str, maxLength = 1000) {
+  if (!str) return '';
+  return String(str).slice(0, maxLength).replace(/[<>]/g, '').trim();
+}
+
+// ============================================
+// RATE LIMITING (In-memory)
+// ============================================
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 100;
+
+function checkRateLimit(identifier) {
+  const now = Date.now();
+  const key = String(identifier);
+  
+  if (!rateLimitStore.has(key)) {
+    rateLimitStore.set(key, { count: 1, windowStart: now });
+    return true;
+  }
+  
+  const record = rateLimitStore.get(key);
+  if (now - record.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitStore.set(key, { count: 1, windowStart: now });
+    return true;
+  }
+  
+  if (record.count >= RATE_LIMIT_MAX) return false;
+  record.count++;
+  return true;
+}
+
+// Clean up old entries every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (now - record.windowStart > RATE_LIMIT_WINDOW * 2) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, RATE_LIMIT_WINDOW * 2);
+
+// ============================================
+// IDEMPOTENCY SUPPORT
+// ============================================
+const idempotencyStore = new Map();
+const IDEMPOTENCY_TTL = 5 * 60 * 1000;
+
+function checkIdempotency(key) {
+  if (!key) return null;
+  const record = idempotencyStore.get(key);
+  if (record && Date.now() - record.timestamp < IDEMPOTENCY_TTL) {
+    return record.response;
+  }
+  return null;
+}
+
+function storeIdempotency(key, response) {
+  if (!key) return;
+  idempotencyStore.set(key, { response, timestamp: Date.now() });
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of idempotencyStore.entries()) {
+    if (now - record.timestamp > IDEMPOTENCY_TTL) {
+      idempotencyStore.delete(key);
+    }
+  }
+}, IDEMPOTENCY_TTL);
+
+// ============================================
+// REQUEST METRICS
+// ============================================
+const requestMetrics = {
+  totalRequests: 0,
+  successfulRequests: 0,
+  failedRequests: 0,
+  endpointCounts: {},
+  lastReset: Date.now()
+};
+
+function trackRequest(endpoint, success) {
+  requestMetrics.totalRequests++;
+  if (success) requestMetrics.successfulRequests++;
+  else requestMetrics.failedRequests++;
+  requestMetrics.endpointCounts[endpoint] = (requestMetrics.endpointCounts[endpoint] || 0) + 1;
+}
+
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
 // ============================================
@@ -115,6 +337,57 @@ async function getCachedMetadata() {
   metadataCache.lastFetch = now;
   
   return { people: metadataCache.people, teams: metadataCache.teams };
+}
+
+/**
+ * Invalidate metadata cache (call after people/teams updates)
+ */
+function invalidateMetadataCache() {
+  metadataCache.people = null;
+  metadataCache.teams = null;
+  metadataCache.lastFetch = 0;
+  structuredLog('INFO', 'Metadata cache invalidated');
+}
+
+/**
+ * Run Firestore transaction with automatic retry
+ */
+async function runTransaction(updateFunction, maxRetries = 3) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await db.runTransaction(updateFunction);
+    } catch (err) {
+      lastError = err;
+      structuredLog('WARN', `Transaction attempt ${attempt}/${maxRetries} failed`, { error: err.message });
+      if (err.code !== 10 && err.code !== 'ABORTED') throw err;
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Validate PTO balance before approval
+ */
+async function validatePTOBalance(personName, requestedHours) {
+  const balanceDoc = await db.collection("balances").doc(personName).get();
+  if (!balanceDoc.exists) {
+    return { valid: false, error: "No balance record found for this person" };
+  }
+  const balance = balanceDoc.data();
+  const currentPTO = balance.pto || 0;
+  if (requestedHours > currentPTO) {
+    return { 
+      valid: false, 
+      error: `Insufficient PTO balance. Requested: ${requestedHours}h, Available: ${currentPTO}h`,
+      current: currentPTO,
+      requested: requestedHours
+    };
+  }
+  return { valid: true, current: currentPTO };
 }
 
 const ZD_CONFIG = {
@@ -484,13 +757,17 @@ functions.http("helloHttp", async (req, res) => {
     if (action) {
       path = "/" + action;
     }
-    // Gate (optional)
-    if (path !== "/health") {
+    // Gate (optional) - skip for health endpoints
+    if (!path.startsWith("/health") && path !== "/metrics/summary") {
       if (!requirePreviewKey(req, res)) return;
     }
     // Static first (anything not in the API list)
     const isApi = [
       "/health",
+      "/health/live",
+      "/health/ready",
+      "/health/detailed",
+      "/metrics/summary",
       "/people",
       "/teams",
       "/roles",
@@ -557,8 +834,98 @@ functions.http("helloHttp", async (req, res) => {
     if (!isApi) {
       if (servePublicFile(req.path || "/", res)) return;
     }
-    // Health
-    if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
+    
+    // ============================================
+    // HEALTH CHECK ENDPOINTS
+    // ============================================
+    
+    // Basic liveness check
+    if (path === "/health" || path === "/health/live") {
+      return sendSuccess(res, { 
+        service: "scheduler-api",
+        status: "alive",
+        uptime: process.uptime(),
+        version: APP_CONFIG.version
+      });
+    }
+    
+    // Readiness check - confirms service can handle requests
+    if (path === "/health/ready") {
+      try {
+        const testStart = Date.now();
+        await db.collection("_health_check").doc("test").get();
+        const firestoreLatency = Date.now() - testStart;
+        
+        return sendSuccess(res, {
+          service: "scheduler-api",
+          status: "ready",
+          checks: {
+            firestore: { status: "healthy", latencyMs: firestoreLatency },
+            cache: { 
+              status: metadataCache.lastFetch > 0 ? "warm" : "cold",
+              lastFetch: metadataCache.lastFetch ? new Date(metadataCache.lastFetch).toISOString() : null
+            }
+          },
+          uptime: process.uptime()
+        });
+      } catch (err) {
+        return res.status(503).json({ ok: false, status: "not_ready", error: err.message });
+      }
+    }
+    
+    // Detailed health check
+    if (path === "/health/detailed") {
+      const healthReport = {
+        service: "scheduler-api",
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: APP_CONFIG.version,
+        environment: APP_CONFIG.environment,
+        startTime: APP_CONFIG.startTime,
+        checks: {}
+      };
+      
+      // Check Firestore
+      try {
+        const start = Date.now();
+        await db.collection("_health_check").doc("test").get();
+        healthReport.checks.firestore = { status: "healthy", latencyMs: Date.now() - start };
+      } catch (err) {
+        healthReport.checks.firestore = { status: "unhealthy", error: err.message };
+        healthReport.status = "degraded";
+      }
+      
+      // Memory usage
+      const mem = process.memoryUsage();
+      healthReport.memory = {
+        heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+        rssMB: Math.round(mem.rss / 1024 / 1024)
+      };
+      
+      // Rate limit status
+      healthReport.checks.rateLimit = {
+        activeClients: rateLimitStore.size,
+        windowMs: RATE_LIMIT_WINDOW,
+        maxRequests: RATE_LIMIT_MAX
+      };
+      
+      return res.status(healthReport.status === "healthy" ? 200 : 503).json(healthReport);
+    }
+    
+    // Metrics summary endpoint
+    if (path === "/metrics/summary") {
+      return sendSuccess(res, {
+        requests: requestMetrics,
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        cache: {
+          isCached: metadataCache.lastFetch > 0,
+          age: metadataCache.lastFetch ? Date.now() - metadataCache.lastFetch : null
+        }
+      });
+    }
     
     // Debug endpoint for base_schedule
     if (path === "/debug/base-schedule" && req.method === "GET") {
