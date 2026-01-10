@@ -9,6 +9,7 @@ const client = new OAuth2Client(CLIENT_ID);
 // GOOGLE CHAT BOT INTEGRATION
 // ============================================
 const CHAT_BOT_URL = process.env.CHAT_BOT_URL || "https://musely-chat-bot-63798769550.us-central1.run.app";
+const SCHEDULER_URL = process.env.SCHEDULER_URL || "https://scheduler-api-63798769550.us-central1.run.app";
 
 /**
  * Send a shift notification to an agent via Google Chat
@@ -45,7 +46,8 @@ async function sendShiftNotification(agentEmail, shiftData) {
           end: shiftData.end || "N/A",
           role: shiftData.role || "Agent",
           team: shiftData.team || "Support",
-          notes: shiftData.notes || "Your shift has been updated."
+          notes: shiftData.notes || "Your shift has been updated.",
+          schedulerUrl: SCHEDULER_URL // Include link to scheduler
         }
       })
     });
@@ -278,6 +280,63 @@ function toIsoNow() {
 }
 
 /**
+ * Sanitize team name for use in Firestore document IDs
+ * Replaces "/" with "-" to avoid path separator issues
+ */
+function sanitizeTeamName(team) {
+  if (!team) return "Unknown";
+  return String(team).replace(/\//g, "-").replace(/\s+/g, "");
+}
+
+/**
+ * Normalize team name to a canonical key (for document IDs and grouping)
+ * This ensures "Email/Floater", "EmailFloater", "Email-Floater" all become "EmailFloater"
+ */
+function getCanonicalTeamKey(team) {
+  if (!team) return "Other";
+  const t = String(team).toLowerCase().replace(/[\s\-_\/]+/g, '');
+  
+  // Map variations to canonical keys
+  if (t.includes('livechat') || t === 'lc' || t === 'chat') return 'LiveChat';
+  if (t.includes('phone')) return 'PhoneSupport';
+  if (t.includes('email') || t.includes('floater') || t === 'float') return 'EmailFloater';
+  if (t.includes('social') || t === 'ss') return 'Socials';
+  if (t.includes('dispute') || t === 'dis') return 'Disputes';
+  if (t.includes('md') || t.includes('medical')) return 'MDSupport';
+  if (t.includes('project') || t === 'proj') return 'Projects';
+  if (t.includes('lunch')) return 'Lunch';
+  if (t.includes('1:1') || t.includes('11') && t.includes('meeting')) return '1-1Meetings';
+  if (t.includes('meeting') || t === 'mtg') return 'Meeting';
+  if (t.includes('defcon')) return 'Defcon';
+  if (t.includes('custom')) return 'Custom';
+  
+  // Default: capitalize first letter, remove special chars
+  return String(team).replace(/[\s\-_\/]+/g, '');
+}
+
+/**
+ * Get the display name for a team (for UI and stored team field)
+ */
+function getCanonicalTeamDisplay(team) {
+  const key = getCanonicalTeamKey(team);
+  const displayMap = {
+    'LiveChat': 'Live Chat',
+    'PhoneSupport': 'Phone Support',
+    'EmailFloater': 'Email/Floater',
+    'Socials': 'Socials',
+    'Disputes': 'Disputes',
+    'MDSupport': 'MD Support',
+    'Projects': 'Projects',
+    'Lunch': 'Lunch',
+    '1-1Meetings': '1:1 Meetings',
+    'Meeting': 'Meeting',
+    'Defcon': 'Defcon',
+    'Custom': 'Custom'
+  };
+  return displayMap[key] || team;
+}
+
+/**
  * Structured logging helper with trace ID support
  */
 function logWithTrace(traceId, level, operation, message, metadata = {}) {
@@ -483,8 +542,16 @@ functions.http("helloHttp", async (req, res) => {
       "/schedule/check-conflict",
       "/manager/heartbeat",
       "/manager/presence",
+      "/manager/notifications",
+      "/manager/notifications/read",
+      "/timeoff/approve",
+      "/timeoff/deny",
       "/people/add",
-      "/base-schedule/save"
+      "/people/update",
+      "/people/list",
+      "/base-schedule/save",
+      "/agent/notifications/clear",
+      "/debug/base-schedule"
     ].includes(path);
 
     if (!isApi) {
@@ -492,6 +559,35 @@ functions.http("helloHttp", async (req, res) => {
     }
     // Health
     if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
+    
+    // Debug endpoint for base_schedule
+    if (path === "/debug/base-schedule" && req.method === "GET") {
+      try {
+        const snap = await db.collection("base_schedule").get();
+        const data = {};
+        let totalItems = 0;
+        
+        snap.forEach(doc => {
+          const items = doc.data().items || [];
+          totalItems += items.length;
+          data[doc.id] = {
+            itemCount: items.length,
+            teams: [...new Set(items.map(i => i.team))],
+            sampleItems: items.slice(0, 3) // Show first 3 items as sample
+          };
+        });
+        
+        return res.status(200).json({
+          ok: true,
+          documentCount: snap.size,
+          totalItems: totalItems,
+          days: data,
+          message: snap.size === 0 ? "No base_schedule documents found! Please set up Master Template first." : `Found ${totalItems} shifts across ${snap.size} days`
+        });
+      } catch (err) {
+        return res.status(500).json({ error: err.message });
+      }
+    }
     // ============================================
     // NEW: OPTIMIZED AGENT SCHEDULE ENDPOINT
     // Only reads the specific assignments for one agent
@@ -573,38 +669,54 @@ functions.http("helloHttp", async (req, res) => {
     if (path === "/admin/wipe-future" && req.method === "POST") {
       const body = readJsonBody(req);
       const confirmWipe = body.confirm === true;
+      const includePast = body.includePast === true;
       
       if (!confirmWipe) {
         return res.status(400).json({ 
           error: "Safety check failed", 
-          message: "You must pass confirm: true to wipe future days" 
+          message: "You must pass confirm: true to wipe schedule days" 
         });
       }
       try {
         // Get today's date in YYYY-MM-DD format
         const today = new Date().toISOString().split("T")[0];
         
-        console.log(`🗑️ WIPE REQUEST: Deleting all scheduleDays from ${today} onwards...`);
-        // Find all future schedule days
-        const futureDocs = await db.collection("scheduleDays")
-          .where("date", ">=", today)
-          .get();
-        if (futureDocs.empty) {
+        let query;
+        let logMessage;
+        
+        if (includePast) {
+          // Delete ALL schedule days (past + future)
+          query = db.collection("scheduleDays");
+          logMessage = `🗑️ WIPE REQUEST: Deleting ALL scheduleDays...`;
+        } else {
+          // Delete only future days (from today onwards)
+          query = db.collection("scheduleDays").where("date", ">=", today);
+          logMessage = `🗑️ WIPE REQUEST: Deleting scheduleDays from ${today} onwards...`;
+        }
+        
+        console.log(logMessage);
+        
+        const docsToDelete = await query.get();
+        
+        if (docsToDelete.empty) {
           return res.status(200).json({ 
             ok: true, 
             deleted: 0, 
-            message: "No future schedule days found to delete." 
+            message: includePast ? "No schedule days found to delete." : "No future schedule days found to delete." 
           });
         }
+        
         // Delete in batches (Firestore limit is 500 per batch)
         const batchSize = 450;
         let deleted = 0;
         let batch = db.batch();
         let batchCount = 0;
-        for (const doc of futureDocs.docs) {
+        
+        for (const doc of docsToDelete.docs) {
           batch.delete(doc.ref);
           batchCount++;
           deleted++;
+          
           // Commit batch if we hit the limit
           if (batchCount >= batchSize) {
             await batch.commit();
@@ -613,19 +725,28 @@ functions.http("helloHttp", async (req, res) => {
             console.log(`  Deleted ${deleted} docs so far...`);
           }
         }
+        
         // Commit any remaining
         if (batchCount > 0) {
           await batch.commit();
         }
-        console.log(`✅ WIPE COMPLETE: Deleted ${deleted} future schedule days`);
+        
+        const completeMsg = includePast 
+          ? `✅ WIPE COMPLETE: Deleted ALL ${deleted} schedule days`
+          : `✅ WIPE COMPLETE: Deleted ${deleted} future schedule days`;
+        console.log(completeMsg);
+        
         return res.status(200).json({ 
           ok: true, 
           deleted: deleted,
-          fromDate: today,
-          message: `Successfully deleted ${deleted} future schedule days.`
+          fromDate: includePast ? "all" : today,
+          includedPast: includePast,
+          message: includePast 
+            ? `Successfully deleted ALL ${deleted} schedule days.`
+            : `Successfully deleted ${deleted} future schedule days.`
         });
       } catch (err) {
-        console.error("Wipe Future Error:", err);
+        console.error("Wipe Schedule Error:", err);
         return res.status(500).json({ error: err.message });
       }
     }
@@ -635,22 +756,90 @@ functions.http("helloHttp", async (req, res) => {
     const body = readJsonBody(req);
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim().toLowerCase();
-    const team = String(body.team || "").trim();
+    const role = String(body.role || "agent").trim().toLowerCase();
     const chatUserId = String(body.chatUserId || "").trim();
 
     if (!name || !email) return res.status(400).json({ ok:false, error:"Missing name or email" });
 
-    const docId = email.replace(/[^\w.@-]/g, "_"); // stable, avoids dupes
+    // Use lowercase first name as document ID (matching existing structure)
+    const docId = name.toLowerCase().split(" ")[0];
+    
+    // Check if document already exists
+    const existingDoc = await db.collection("people").doc(docId).get();
+    if (existingDoc.exists) {
+      return res.status(400).json({ ok:false, error:`Agent "${name}" already exists (doc ID: ${docId})` });
+    }
+    
     await db.collection("people").doc(docId).set({
       name,
       email,
-      team: team || "Support",
+      active: true,
+      role: role, // 'admin' or 'agent'
       chatUserId: chatUserId || "",
-      isActive: true,
-      createdAt: toIsoNow()
-    }, { merge: true });
+      roles: [],
+      teams: []
+    });
 
-    return res.status(200).json({ ok:true });
+    // Clear metadata cache so the new agent appears immediately
+    metadataCache.people = null;
+    metadataCache.lastFetch = 0;
+
+    return res.status(200).json({ ok:true, docId });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok:false, error:e.message });
+  }
+}
+
+// Update/Modify an existing agent
+if (path === "/people/update" && req.method === "POST") {
+  try {
+    const body = readJsonBody(req);
+    const docId = String(body.docId || "").trim().toLowerCase();
+    
+    if (!docId) return res.status(400).json({ ok:false, error:"Missing docId" });
+    
+    const docRef = db.collection("people").doc(docId);
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      return res.status(404).json({ ok:false, error:`Agent not found: ${docId}` });
+    }
+    
+    // Build update object with only provided fields
+    const updates = {};
+    if (body.name !== undefined) updates.name = String(body.name).trim();
+    if (body.email !== undefined) updates.email = String(body.email).trim().toLowerCase();
+    if (body.role !== undefined) updates.role = String(body.role).trim().toLowerCase();
+    if (body.chatUserId !== undefined) updates.chatUserId = String(body.chatUserId).trim();
+    if (body.active !== undefined) updates.active = Boolean(body.active);
+    
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ ok:false, error:"No fields to update" });
+    }
+    
+    await docRef.update(updates);
+    
+    // Clear metadata cache
+    metadataCache.people = null;
+    metadataCache.lastFetch = 0;
+    
+    return res.status(200).json({ ok:true, updated: updates });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok:false, error:e.message });
+  }
+}
+
+// Get all agents with full details (for admin management)
+if (path === "/people/list" && req.method === "GET") {
+  try {
+    const snap = await db.collection("people").get();
+    const people = snap.docs.map(doc => ({
+      docId: doc.id,
+      ...doc.data()
+    }));
+    return res.status(200).json({ ok:true, people });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ ok:false, error:e.message });
@@ -736,33 +925,61 @@ if (path === "/base-schedule/save" && req.method === "POST") {
         const allTeams = new Set();
         baseSnap.forEach(doc => {
           const items = doc.data().items || [];
+          // Use exact doc.id (Mon, Tue, Wed, etc.)
           templates[doc.id] = items;
+          console.log(`  📅 ${doc.id}: ${items.length} items`);
           items.forEach(i => {
-            if (i.team) allTeams.add(i.team);
+            if (i.team) {
+              allTeams.add(i.team);
+            }
           });
         });
         const teamsToProcess = Array.from(allTeams);
         log.push(`Found ${teamsToProcess.length} teams: ${teamsToProcess.join(", ")}`);
-        console.log(`  ✓ Loaded templates for teams: ${teamsToProcess.join(", ")}`);
+        console.log(`  ✓ Teams found: ${teamsToProcess.join(", ")}`);
+        
         // ========== STEP 3: GENERATE NEW DAYS ==========
         console.log(`🔄 REGENERATE: Step 3 - Generating ${daysForward} days...`);
         const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const todayDate = new Date();
         let generated = 0;
+        let totalAssignments = 0;
+        
         for (let i = 0; i < daysForward; i++) {
           const d = new Date(todayDate);
           d.setDate(todayDate.getDate() + i);
           const dateStr = d.toISOString().split("T")[0];
           const dow = dayMap[d.getDay()];
           const rawItems = templates[dow] || [];
-          if (rawItems.length === 0) continue;
-          for (const team of teamsToProcess) {
-            const dailyItems = rawItems.filter(item => item.team === team);
-            if (dailyItems.length === 0) continue;
-            const docId = `${dateStr}__${team}`;
+          
+          if (rawItems.length === 0) {
+            console.log(`  ⏭️ ${dateStr} (${dow}): No template items`);
+            continue;
+          }
+          
+          // Group items by CANONICAL team key (normalizes variations)
+          const itemsByTeam = {};
+          rawItems.forEach(item => {
+            // Use canonical key to group all variations together
+            const canonicalKey = getCanonicalTeamKey(item.team);
+            if (!itemsByTeam[canonicalKey]) {
+              itemsByTeam[canonicalKey] = {
+                displayName: getCanonicalTeamDisplay(item.team),
+                items: []
+              };
+            }
+            itemsByTeam[canonicalKey].items.push(item);
+          });
+          
+          console.log(`  📅 ${dateStr} (${dow}): ${Object.keys(itemsByTeam).length} teams - ${Object.keys(itemsByTeam).join(', ')}`);
+          
+          // Create a document for each team
+          for (const [teamKey, teamData] of Object.entries(itemsByTeam)) {
+            const docId = `${dateStr}__${teamKey}`;
             const docRef = db.collection("scheduleDays").doc(docId);
             const now = toIsoNow();
-            const assignments = dailyItems.map(tmpl => ({
+            
+            const assignments = teamData.items.map(tmpl => ({
               id: "gen_" + Math.random().toString(36).substr(2, 9),
               start: tmpl.start,
               end: tmpl.end,
@@ -773,27 +990,34 @@ if (path === "/base-schedule/save" && req.method === "POST") {
               notes: tmpl.focus || "",
               updatedAt: now
             }));
+            
             await docRef.set({
               id: docId,
               date: dateStr,
-              team: team,
+              team: teamData.displayName, // Use canonical display name
               assignments: assignments,
               createdAt: now,
               updatedAt: now
             });
+            
             generated++;
+            totalAssignments += assignments.length;
+            console.log(`  ✅ ${docId}: ${assignments.length} shifts`);
           }
         }
-        log.push(`Generated ${generated} new schedule day documents`);
-        console.log(`✅ REGENERATE COMPLETE: Created ${generated} new schedule days`);
+        
+        log.push(`Generated ${generated} schedule documents with ${totalAssignments} total shifts`);
+        console.log(`✅ REGENERATE COMPLETE: ${generated} docs, ${totalAssignments} shifts`);
+        
         return res.status(200).json({
           ok: true,
           deleted: deleted,
           generated: generated,
+          totalAssignments: totalAssignments,
           daysForward: daysForward,
           teams: teamsToProcess,
           log: log,
-          message: `Wiped ${deleted} old days and generated ${generated} new days for ${daysForward} days forward.`
+          message: `Wiped ${deleted} old days and generated ${generated} new days with ${totalAssignments} shifts.`
         });
       } catch (err) {
         console.error("Regenerate All Error:", err);
@@ -844,7 +1068,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
       try {
         const body = readJsonBody(req);
         // NEW: Extract 'team' from the body
-        const { person, reason, type, date, shiftStart, shiftEnd, duration, team, makeUpDate } = body;
+        const { person, reason, type, date, shiftStart, shiftEnd, duration, team, makeUpDate, dateRange } = body;
         const typeKey = normalizeTimeOffType(type); 
         if (typeKey === "make_up" && !String(makeUpDate || "").trim()) {
         return res.status(400).json({ error: "Make Up Time requires a make-up date." });
@@ -852,7 +1076,8 @@ if (path === "/base-schedule/save" && req.method === "POST") {
         
         if (!person || !reason) return res.status(400).json({ error: "Missing fields" });
         const docRef = db.collection("time_off_requests").doc();
-        await docRef.set({
+        
+        const requestData = {
           id: docRef.id,
           person: person,
           reason: reason,
@@ -864,9 +1089,34 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           duration: duration || "shift",
           team: team || "",
           typeKey,                 // "make_up" or "pto" (stable for logic)
-          makeUpDate: makeUpDate || "", // <--- Saving the Team now
+          makeUpDate: makeUpDate || "",
+          dateRange: dateRange || null, // For multi-day requests
           createdAt: new Date().toISOString()
+        };
+        
+        await docRef.set(requestData);
+        
+        // Create notification for managers (add to manager_notifications collection)
+        const displayDate = dateRange ? 
+          `${dateRange.start} to ${dateRange.end}` : 
+          (date || new Date().toISOString().split('T')[0]);
+        
+        await db.collection("manager_notifications").add({
+          type: "timeoff_request",
+          requestId: docRef.id,
+          agentName: person,
+          message: `${person} requested ${type || 'PTO'} for ${displayDate}`,
+          reason: reason,
+          date: date,
+          dateRange: dateRange || null,
+          timeOffType: type || "PTO",
+          status: "pending",
+          createdAt: new Date().toISOString(),
+          read: false
         });
+        
+        console.log(`📝 Time off request created: ${person} - ${type} for ${displayDate}`);
+        
         return res.status(200).json({ ok: true, id: docRef.id });
       } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -1427,35 +1677,68 @@ if (path === "/audit/logs" && req.method === "GET") {
       });
     }
     // legacy: assignment status
-    if (path === "/assignment/status" && req.method === "POST") {
-      const body = readJsonBody(req);
-      const docId = String(body.docId || "").trim();
-      const assignmentId = String(body.assignmentId || "").trim();
-      const status = String(body.status || "").trim(); // Active | Completed
-      if (!docId || !assignmentId || !status) {
-        return res.status(400).json({ error: "Missing docId, assignmentId, or status" });
+    // legacy: assignment status (extended to support markOff)
+if (path === "/assignment/status" && req.method === "POST") {
+  const body = readJsonBody(req);
+  const docId = String(body.docId || "").trim();
+  const assignmentId = String(body.assignmentId || "").trim();
+
+  // New: allow markOff flow
+  const hasMarkOff = typeof body.markOff === "boolean";
+  const status = String(body.status || "").trim(); // Active | Completed
+
+  if (!docId || !assignmentId) {
+    return res.status(400).json({ error: "Missing docId or assignmentId" });
+  }
+  if (!hasMarkOff && !status) {
+    return res.status(400).json({ error: "Missing status (or markOff boolean)" });
+  }
+
+  const docRef = db.collection("scheduleDays").doc(docId);
+
+  const applyOffTag = (notes, markOff) => {
+    const s = String(notes || "");
+    const stripped = s.replace(/\s*\[OFF\]\s*/gi, " ").replace(/\s+/g, " ").trim();
+    if (!markOff) return stripped;
+    return (stripped ? `${stripped} [OFF]` : "[OFF]").trim();
+  };
+
+  try {
+    const updated = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists) throw new Error(`scheduleDays doc not found: ${docId}`);
+      const data = snap.data() || {};
+      const assignments = Array.isArray(data.assignments) ? data.assignments : [];
+      const idx = assignments.findIndex((a) => String(a.id || "").trim() === assignmentId);
+      if (idx === -1) throw new Error(`Assignment not found: ${assignmentId}`);
+
+      const now = toIsoNow();
+      const next = assignments.slice();
+      const cur = next[idx] || {};
+
+      if (hasMarkOff) {
+        const nextNotes = applyOffTag(cur.notes, body.markOff);
+        next[idx] = { ...cur, notes: nextNotes, updatedAt: now };
+      } else {
+        next[idx] = { ...cur, status, updatedAt: now };
       }
-      const docRef = db.collection("scheduleDays").doc(docId);
-      try {
-        const updated = await db.runTransaction(async (tx) => {
-          const snap = await tx.get(docRef);
-          if (!snap.exists) throw new Error(`scheduleDays doc not found: ${docId}`);
-          const data = snap.data() || {};
-          const assignments = Array.isArray(data.assignments) ? data.assignments : [];
-          const idx = assignments.findIndex((a) => String(a.id || "").trim() === assignmentId);
-          if (idx === -1) throw new Error(`Assignment not found: ${assignmentId}`);
-          const now = toIsoNow();
-          const next = assignments.slice();
-          next[idx] = { ...next[idx], status, updatedAt: now };
-          tx.update(docRef, { assignments: next, updatedAt: now });
-          return next[idx];
-        });
-        return res.status(200).json({ ok: true, docId, assignmentId, updated: normalizeValue(updated) });
-      } catch (e) {
-        console.error("status error:", e);
-        return res.status(500).json({ error: e.message || "Status update failed" });
-      }
-    }
+
+      tx.update(docRef, { assignments: next, updatedAt: now });
+      return next[idx];
+    });
+
+    return res.status(200).json({
+      ok: true,
+      docId,
+      assignmentId,
+      updated: normalizeValue(updated),
+    });
+  } catch (e) {
+    console.error("status error:", e);
+    return res.status(500).json({ error: e.message || "Status update failed" });
+  }
+}
+
    
     if (path === "/schedule/extended" && req.method === "POST") {
       const body = req.body || {};
@@ -1572,159 +1855,60 @@ if (path === "/audit/logs" && req.method === "GET") {
       const startDate = startFrom ? new Date(startFrom + "T00:00:00Z") : today;
       const startISO = startDate.toISOString().split("T")[0];
       
+      console.log(`📅 SCHEDULE/FUTURE: Loading ${futureDays} days starting ${startISO} (agent: ${agentName || 'N/A'}, isManager: ${isManager})`);
+      
       try {
-        // 1. Get all teams (1 read)
-        const teamsSnap = await db.collection("teams").get();
-        const teams = teamsSnap.docs.map(d => d.id);
+        // Calculate end date for query
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + futureDays);
+        const endISO = endDate.toISOString().split("T")[0];
         
-        // 2. Build list of all expected doc IDs for the date range
-        const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        const expectedDocs = [];
-        for (let i = 0; i < futureDays; i++) {
-          const d = new Date(startDate);
-          d.setDate(startDate.getDate() + i);
-          const dateStr = d.toISOString().split("T")[0];
-          const dow = dayMap[d.getDay()];
+        // Query existing schedule days in the date range
+        const existingSnap = await db.collection("scheduleDays")
+          .where("date", ">=", startISO)
+          .where("date", "<", endISO)
+          .get();
+        
+        console.log(`  ✓ Found ${existingSnap.size} existing schedule documents`);
+        
+        const results = [];
+        
+        existingSnap.forEach(snap => {
+          const data = snap.data();
           
-          teams.forEach(team => {
-            expectedDocs.push({
-              docId: `${dateStr}__${team}`,
-              date: dateStr,
-              dow: dow,
-              team: team
+          // Filter assignments for agents
+          let assignments = (data.assignments || []).map(normalizeAssignment);
+          if (!isManager && agentName) {
+            assignments = assignments.filter(a => {
+              const assignedPerson = String(a.person || "").toLowerCase().trim();
+              return assignedPerson === String(agentName).toLowerCase().trim();
             });
-          });
-        }
-        
-        // 3. Batch fetch existing docs (efficient - 1 read per doc, batched)
-        const docRefs = expectedDocs.map(e => db.collection("scheduleDays").doc(e.docId));
-        const existingSnaps = await db.getAll(...docRefs);
-        
-        // 4. Find which docs exist and which are missing
-        const existingIds = new Set();
-        const existingResults = [];
-        
-        existingSnaps.forEach((snap, idx) => {
-          if (snap.exists) {
-            existingIds.add(expectedDocs[idx].docId);
-            const data = snap.data();
-            
-            // Filter assignments for agents
-            let assignments = (data.assignments || []).map(normalizeAssignment);
-            if (!isManager && agentName) {
-              assignments = assignments.filter(a => {
-                const assignedPerson = String(a.person || "").toLowerCase().trim();
-                return assignedPerson === String(agentName).toLowerCase().trim();
-              });
-            }
-            
-            // Only include if manager or has agent's shifts
-            if (isManager || assignments.length > 0) {
-              existingResults.push({
-                id: snap.id,
-                ...normalizeValue(data),
-                assignments: assignments
-              });
-            }
+          }
+          
+          // Only include if manager or has agent's shifts
+          if (isManager || assignments.length > 0) {
+            results.push({
+              id: snap.id,
+              ...normalizeValue(data),
+              assignments: assignments
+            });
           }
         });
         
-        // 5. Load base_schedule templates (1 read for collection)
-        const baseSnap = await db.collection("base_schedule").get();
-        const templates = {};
-        baseSnap.forEach(doc => {
-          templates[doc.id] = doc.data().items || [];
-        });
+        // Sort by date
+        results.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
         
-        // 6. Generate missing future days (only if they don't exist)
-        const missingDocs = expectedDocs.filter(e => !existingIds.has(e.docId));
-        let generated = 0;
-        const newResults = [];
-        
-        if (missingDocs.length > 0) {
-          // Batch writes for efficiency (max 500 per batch)
-          const batchSize = 450;
-          let batch = db.batch();
-          let batchCount = 0;
-          
-          for (const missing of missingDocs) {
-            const rawItems = templates[missing.dow] || [];
-            const dailyItems = rawItems.filter(item => item.team === missing.team);
-            
-            if (dailyItems.length === 0) continue;
-            
-            const docRef = db.collection("scheduleDays").doc(missing.docId);
-            const now = toIsoNow();
-            
-            const assignments = dailyItems.map(tmpl => ({
-              id: "gen_" + Math.random().toString(36).substr(2, 9),
-              start: tmpl.start,
-              end: tmpl.end,
-              role: tmpl.role || "Agent",
-              person: tmpl.person,
-              status: "Active",
-              notifyStatus: "Generated",
-              notes: tmpl.focus || "",
-              updatedAt: now
-            }));
-            
-            const docData = {
-              id: missing.docId,
-              date: missing.date,
-              team: missing.team,
-              assignments: assignments,
-              createdAt: now,
-              updatedAt: now
-            };
-            
-            batch.set(docRef, docData);
-            batchCount++;
-            generated++;
-            
-            // Add to results - filter for agents
-            let resultAssignments = assignments.map(normalizeAssignment);
-            if (!isManager && agentName) {
-              resultAssignments = resultAssignments.filter(a => {
-                const assignedPerson = String(a.person || "").toLowerCase().trim();
-                return assignedPerson === String(agentName).toLowerCase().trim();
-              });
-            }
-            
-            if (isManager || resultAssignments.length > 0) {
-              newResults.push({
-                id: missing.docId,
-                ...docData,
-                assignments: resultAssignments
-              });
-            }
-            
-            // Commit batch if we hit the limit
-            if (batchCount >= batchSize) {
-              await batch.commit();
-              batch = db.batch();
-              batchCount = 0;
-            }
-          }
-          
-          // Commit any remaining
-          if (batchCount > 0) {
-            await batch.commit();
-          }
-          
-          console.log(`📅 Generated ${generated} missing future schedule days`);
-        }
-        
-        // 7. Combine and return all results
-        const allResults = [...existingResults, ...newResults];
+        console.log(`  ✓ Returning ${results.length} schedule days (no generation - use Regenerate for that)`);
         
         return res.status(200).json({
           ok: true,
-          results: allResults,
+          results: results,
           meta: {
             startDate: startISO,
+            endDate: endISO,
             daysForward: futureDays,
-            existingDays: existingResults.length,
-            generatedDays: generated
+            loadedDays: results.length,
+            note: "Use 'Regenerate' in Admin Tools to create missing schedules"
           }
         });
         
@@ -1747,10 +1931,9 @@ if (path === "/audit/logs" && req.method === "GET") {
           return res.status(400).json({ error: "Missing agentName" });
         }
         
+        // Get all notifications for this agent (avoid index requirement)
         const snap = await db.collection("agent_notifications")
           .where("recipientName", "==", agentName)
-          .orderBy("createdAt", "desc")
-          .limit(50)
           .get();
         
         const notifications = [];
@@ -1758,11 +1941,20 @@ if (path === "/audit/logs" && req.method === "GET") {
           notifications.push({ id: doc.id, ...doc.data() });
         });
         
-        const unreadCount = notifications.filter(n => !n.read).length;
+        // Sort by createdAt desc in memory
+        notifications.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
+        
+        // Limit to 50
+        const limited = notifications.slice(0, 50);
+        const unreadCount = limited.filter(n => !n.read).length;
         
         return res.status(200).json({ 
           ok: true, 
-          notifications,
+          notifications: limited,
           unreadCount
         });
         
@@ -1794,10 +1986,42 @@ if (path === "/audit/logs" && req.method === "GET") {
         return res.status(500).json({ error: err.message });
       }
     }
-    // ============================================
-    // SHIFT SWAP REQUESTS
-    // ============================================
-    
+    /// Clear all notifications for an agent
+// Clear all notifications for an agent
+// Clear all notifications for an agent
+if (path === "/agent/notifications/clear" && req.method === "POST") {
+  try {
+    const body = await readJsonBody(req); // IMPORTANT: await if your helper returns a Promise
+    const agentName = String(body.agentName || "").trim();
+
+    if (!agentName) return res.status(400).json({ ok: false, error: "Missing agentName" });
+
+    const col = db.collection("agent_notifications");
+    let deleted = 0;
+
+    while (true) {
+      const snap = await col
+        .where("recipientName", "==", agentName) // ✅ matches your schema
+        .limit(400)
+        .get();
+
+      if (snap.empty) break;
+
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+
+      deleted += snap.size;
+      if (snap.size < 400) break;
+    }
+
+    return res.json({ ok: true, deleted });
+  } catch (err) {
+    console.error("agent/notifications/clear failed:", err);
+    return res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+}
+
     // Submit a swap request
     if (path === "/swap/request" && req.method === "POST") {
       try {
@@ -1835,7 +2059,7 @@ if (path === "/audit/logs" && req.method === "GET") {
         
         const swapRef = await db.collection("swap_requests").add(swapData);
         
-        // Create notification for the target person
+        // Create in-app notification for the target person
         await db.collection("agent_notifications").add({
           recipientName: toPerson,
           type: "swap_request",
@@ -1848,6 +2072,23 @@ if (path === "/audit/logs" && req.method === "GET") {
           createdAt: new Date().toISOString(),
           read: false
         });
+        
+        // Also send Chat notification to target agent
+        try {
+          const toEmail = await getAgentEmailByName(toPerson);
+          if (toEmail) {
+            await sendShiftNotification(toEmail, {
+              date: shiftDate,
+              start: shiftStart || "N/A",
+              end: shiftEnd || "N/A",
+              team: team || "Support",
+              notes: `🔄 Swap Request from ${fromPerson}: "${note || 'Would you like to swap shifts?'}"`
+            });
+            console.log(`📱 Chat notification sent to ${toPerson} for swap request`);
+          }
+        } catch (chatErr) {
+          console.warn("Chat notification failed (non-fatal):", chatErr.message);
+        }
         
         console.log(`🔄 Swap request created: ${fromPerson} -> ${toPerson} for ${shiftDate}`);
         
@@ -2040,22 +2281,31 @@ if (path === "/audit/logs" && req.method === "GET") {
     // GET /manager/presence - Get active manager presence
     if (path === "/manager/presence" && req.method === "GET") {
       try {
-        // Consider managers active if heartbeat within last 2 minutes
-        const cutoffTime = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        // Consider managers active if heartbeat within last 5 minutes
+        const cutoffTime = Date.now() - 5 * 60 * 1000;
 
-        const snap = await db.collection("manager_presence")
-          .where("lastHeartbeat", ">=", cutoffTime)
-          .get();
+        // Get all presence docs and filter in memory (avoids index requirement)
+        const snap = await db.collection("manager_presence").get();
 
         const activeManagers = [];
         snap.forEach(doc => {
           const data = doc.data();
-          activeManagers.push({
-            managerName: data.managerName,
-            view: data.view,
-            area: data.area,
-            lastHeartbeat: data.lastHeartbeat
-          });
+          const heartbeatTime = new Date(data.lastHeartbeat).getTime();
+          
+          // Only include managers with recent heartbeats
+          if (heartbeatTime >= cutoffTime) {
+            activeManagers.push({
+              managerName: data.managerName,
+              view: data.view,
+              area: data.area,
+              lastHeartbeat: data.lastHeartbeat
+            });
+          }
+        });
+
+        logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
+          total: activeManagers.length,
+          managers: activeManagers.map(m => m.managerName)
         });
 
         return res.status(200).json({ ok: true, activeManagers });
@@ -2067,6 +2317,215 @@ if (path === "/audit/logs" && req.method === "GET") {
         return res.status(500).json({ error: err.message });
       }
     }
+    
+    // ============================================
+    // MANAGER NOTIFICATIONS
+    // ============================================
+    
+    // GET manager notifications
+    if (path === "/manager/notifications" && req.method === "POST") {
+      try {
+        // Get all manager notifications (no filter by name since all managers see all)
+        const snap = await db.collection("manager_notifications").get();
+        
+        const notifications = [];
+        snap.forEach(doc => {
+          notifications.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Sort by createdAt desc
+        notifications.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
+        
+        const limited = notifications.slice(0, 50);
+        const unreadCount = limited.filter(n => !n.read && n.status === "pending").length;
+        
+        return res.status(200).json({ 
+          ok: true, 
+          notifications: limited,
+          unreadCount
+        });
+        
+      } catch (err) {
+        console.error("Manager notifications error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // Mark manager notification as read
+    if (path === "/manager/notifications/read" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const notifId = String(body.notifId || "").trim();
+        
+        if (!notifId) {
+          return res.status(400).json({ error: "Missing notifId" });
+        }
+        
+        await db.collection("manager_notifications").doc(notifId).update({
+          read: true,
+          readAt: new Date().toISOString()
+        });
+        
+        return res.status(200).json({ ok: true });
+        
+      } catch (err) {
+        console.error("Mark notification read error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // ============================================
+    // TIME OFF APPROVE / DENY
+    // ============================================
+    
+    // Approve time off request
+    if (path === "/timeoff/approve" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { requestId, managerName, notifId } = body;
+        
+        if (!requestId) {
+          return res.status(400).json({ error: "Missing requestId" });
+        }
+        
+        // Get the request details
+        const requestDoc = await db.collection("time_off_requests").doc(requestId).get();
+        if (!requestDoc.exists) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+        
+        const requestData = requestDoc.data();
+        
+        // Update the request status
+        await db.collection("time_off_requests").doc(requestId).update({
+          status: "approved",
+          approvedBy: managerName || "Manager",
+          approvedAt: new Date().toISOString()
+        });
+        
+        // Update the manager notification
+        if (notifId) {
+          await db.collection("manager_notifications").doc(notifId).update({
+            status: "approved",
+            resolvedBy: managerName,
+            resolvedAt: new Date().toISOString()
+          });
+        }
+        
+        // Create notification for the agent
+        await db.collection("agent_notifications").add({
+          recipientName: requestData.person,
+          type: "timeoff_approved",
+          message: `✅ Your ${requestData.type || 'PTO'} request for ${requestData.date} has been approved`,
+          requestId: requestId,
+          approvedBy: managerName || "Manager",
+          createdAt: new Date().toISOString(),
+          read: false
+        });
+        
+        // Send Chat notification to agent
+        try {
+          const agentEmail = await getAgentEmailByName(requestData.person);
+          if (agentEmail) {
+            await sendShiftNotification(agentEmail, {
+              date: requestData.date,
+              start: requestData.shiftStart || "All Day",
+              end: requestData.shiftEnd || "",
+              team: requestData.team || "Support",
+              notes: `✅ Your ${requestData.type || 'PTO'} request has been APPROVED by ${managerName || 'your manager'}`
+            });
+          }
+        } catch (chatErr) {
+          console.warn("Chat notification failed (non-fatal):", chatErr.message);
+        }
+        
+        console.log(`✅ Time off approved: ${requestData.person} - ${requestData.date} by ${managerName}`);
+        
+        return res.status(200).json({ ok: true });
+        
+      } catch (err) {
+        console.error("Approve time off error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // Deny time off request
+    if (path === "/timeoff/deny" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { requestId, managerName, reason, notifId } = body;
+        
+        if (!requestId) {
+          return res.status(400).json({ error: "Missing requestId" });
+        }
+        
+        // Get the request details
+        const requestDoc = await db.collection("time_off_requests").doc(requestId).get();
+        if (!requestDoc.exists) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+        
+        const requestData = requestDoc.data();
+        
+        // Update the request status
+        await db.collection("time_off_requests").doc(requestId).update({
+          status: "denied",
+          deniedBy: managerName || "Manager",
+          deniedAt: new Date().toISOString(),
+          denialReason: reason || ""
+        });
+        
+        // Update the manager notification
+        if (notifId) {
+          await db.collection("manager_notifications").doc(notifId).update({
+            status: "denied",
+            resolvedBy: managerName,
+            resolvedAt: new Date().toISOString()
+          });
+        }
+        
+        // Create notification for the agent
+        await db.collection("agent_notifications").add({
+          recipientName: requestData.person,
+          type: "timeoff_denied",
+          message: `❌ Your ${requestData.type || 'PTO'} request for ${requestData.date} was not approved${reason ? ': ' + reason : ''}`,
+          requestId: requestId,
+          deniedBy: managerName || "Manager",
+          reason: reason || "",
+          createdAt: new Date().toISOString(),
+          read: false
+        });
+        
+        // Send Chat notification to agent
+        try {
+          const agentEmail = await getAgentEmailByName(requestData.person);
+          if (agentEmail) {
+            await sendShiftNotification(agentEmail, {
+              date: requestData.date,
+              start: requestData.shiftStart || "All Day",
+              end: requestData.shiftEnd || "",
+              team: requestData.team || "Support",
+              notes: `❌ Your ${requestData.type || 'PTO'} request was NOT APPROVED${reason ? '. Reason: ' + reason : '. Please contact your manager.'}`
+            });
+          }
+        } catch (chatErr) {
+          console.warn("Chat notification failed (non-fatal):", chatErr.message);
+        }
+        
+        console.log(`❌ Time off denied: ${requestData.person} - ${requestData.date} by ${managerName}`);
+        
+        return res.status(200).json({ ok: true });
+        
+      } catch (err) {
+        console.error("Deny time off error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
     // ============================================
     // DOUBLE-BOOKING / CONFLICT CHECK
     // ============================================
@@ -2683,19 +3142,19 @@ if (path === "/holiday/bank" && req.method === "POST") {
     
     const docRef = db.collection("accrued_hours").doc(person);
     const snap = await docRef.get();
-    const current = snap.exists ? snap.data() : { pto: 0, sick: 0, holiday_bank: 0 };
+    const current = snap.exists ? snap.data() : { pto: 0 };
     
     let hoursChange = 0;
     let message = "";
     
     if (action === "worked") {
-      // Worked holiday: bank 0.5x extra hours (the 0.5x bonus on top of regular pay)
+      // Worked holiday: add bonus hours directly to PTO (0.5x bonus)
       const worked = parseFloat(hoursWorked) || 8;
-      hoursChange = worked * 0.5; // Bank half the hours worked
-      current.holiday_bank = (current.holiday_bank || 0) + hoursChange;
-      message = `Banked ${hoursChange}h for working holiday`;
+      hoursChange = worked * 0.5; // Add half the hours worked as bonus PTO
+      current.pto = (current.pto || 0) + hoursChange;
+      message = `Added ${hoursChange}h PTO bonus for working holiday`;
     } else if (action === "off") {
-      // Didn't work: deduct from PTO (not holiday bank)
+      // Didn't work: deduct from PTO
       hoursChange = parseFloat(hoursWorked) || 8;
       current.pto = Math.max(0, (current.pto || 0) - hoursChange);
       message = `Deducted ${hoursChange}h PTO for holiday absence`;
@@ -2710,7 +3169,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
       date,
       action,
       hoursChange,
-      newBalance: action === "worked" ? current.holiday_bank : current.pto,
+      newBalance: current.pto,
       createdAt: toIsoNow()
     });
     
@@ -2720,7 +3179,6 @@ if (path === "/holiday/bank" && req.method === "POST") {
       action,
       hoursChange,
       newPtoBalance: current.pto,
-      newHolidayBank: current.holiday_bank,
       message 
     });
   } catch (err) {
@@ -2734,19 +3192,22 @@ if (path === "/holiday/bank" && req.method === "POST") {
       const reqTeam = String(body.teamKey || "ALL").trim(); // Default to ALL
       const baseSnap = await db.collection("base_schedule").get();
       const templates = {}; 
-      const allTeams = new Set();
+      const allCanonicalTeams = new Set();
+      
       baseSnap.forEach(doc => {
         const items = doc.data().items || [];
         templates[doc.id.substring(0, 3)] = items; 
-        // dynamically find all teams mentioned in your templates
+        // Collect canonical team keys
         items.forEach(i => {
-           if(i.team) allTeams.add(i.team);
+           if(i.team) allCanonicalTeams.add(getCanonicalTeamKey(i.team));
         });
       });
-      // If specific team requested, use it. Otherwise, loop through ALL teams found.
+      
+      // If specific team requested, normalize it. Otherwise, use all canonical teams found.
       const teamsToProcess = (reqTeam !== "ALL" && reqTeam !== "") 
-        ? [reqTeam] 
-        : Array.from(allTeams);
+        ? [getCanonicalTeamKey(reqTeam)] 
+        : Array.from(allCanonicalTeams);
+      
       const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const log = [];
       const today = new Date();
@@ -2759,11 +3220,26 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const dow = dayMap[d.getDay()]; 
         const rawItems = templates[dow] || [];
         if (rawItems.length === 0) continue;
-        // Loop Teams (This is the new "ALL" magic)
-        for (const team of teamsToProcess) {
-            const dailyItems = rawItems.filter(item => item.team === team);
-            if (dailyItems.length === 0) continue;
-            const docId = `${dateStr}__${team}`;
+        
+        // Group raw items by canonical team key
+        const itemsByCanonicalTeam = {};
+        rawItems.forEach(item => {
+          const canonicalKey = getCanonicalTeamKey(item.team);
+          if (!itemsByCanonicalTeam[canonicalKey]) {
+            itemsByCanonicalTeam[canonicalKey] = {
+              displayName: getCanonicalTeamDisplay(item.team),
+              items: []
+            };
+          }
+          itemsByCanonicalTeam[canonicalKey].items.push(item);
+        });
+        
+        // Loop canonical teams
+        for (const teamKey of teamsToProcess) {
+            const teamData = itemsByCanonicalTeam[teamKey];
+            if (!teamData || teamData.items.length === 0) continue;
+            
+            const docId = `${dateStr}__${teamKey}`;
             const docRef = db.collection("scheduleDays").doc(docId);
             await db.runTransaction(async (tx) => {
               const snap = await tx.get(docRef);
@@ -2772,12 +3248,15 @@ if (path === "/holiday/bank" && req.method === "POST") {
               let assignments = [];
               if (snap.exists) assignments = snap.data().assignments || [];
               let addedCount = 0;
-              dailyItems.forEach(tmpl => {
-                 const isDupe = assignments.some(exist => 
-                    exist.person === tmpl.person && 
-                    exist.start === tmpl.start
+              teamData.items.forEach(tmpl => {
+                 // FIX: Check by TIME SLOT only, not by person+time
+                 // This prevents recreating shifts when someone was replaced
+                 // A slot is considered filled if ANY person has a shift at that start time
+                 const slotFilled = assignments.some(exist => 
+                    exist.start === tmpl.start && 
+                    exist.status !== "Deleted" // Ignore soft-deleted shifts
                  );
-                 if (!isDupe) {
+                 if (!slotFilled) {
                    assignments.push({
                      id: "gen_" + Math.random().toString(36).substr(2, 9),
                      start: tmpl.start,
@@ -2796,13 +3275,13 @@ if (path === "/holiday/bank" && req.method === "POST") {
                 tx.set(docRef, { 
                   id: docId,
                   date: dateStr, 
-                  team: team, // Correctly saves the team name
+                  team: teamData.displayName, // Use canonical display name
                   assignments, 
                   updatedAt: now 
                 }, { merge: true });
               }
             });
-            log.push(`Checked ${dateStr} for ${team}`);
+            log.push(`Checked ${dateStr} for ${teamKey}`);
         }
       }
       return res.status(200).json({ ok: true, daysGenerated: daysForward, details: log });
