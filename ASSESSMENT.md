@@ -64,9 +64,9 @@ The frontend provides core scheduling functionality but lacks polish and robustn
 
 #### Findings
 1. **Hard-coded credentials in source code** (Lines 122-124 in index.js)
-   - Zendesk API token exposed: `bUBkQG96B50GVworY7rxKT6b0qFyfpirLeoKVXGS`
-   - Admin email exposed: `genaro.barrera@trusper.com`
-   - Google OAuth Client ID exposed: `63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com`
+   - Zendesk API token exposed: `[REDACTED]`
+   - Admin email exposed: `[REDACTED]`
+   - Google OAuth Client ID exposed: `[REDACTED]`
 
 2. **Insufficient authentication validation**
    - PREVIEW_KEY check can be bypassed if environment variable is not set (lines 258-267)
@@ -111,7 +111,7 @@ The frontend provides core scheduling functionality but lacks polish and robustn
 
 3. **Data validation gaps**
    - Shift times not validated (can create invalid time ranges)
-   - Double-booking check is advisory only, not enforced (lines 153-205)
+   - Double-booking detection exists but not enforced - conflicts are detected (lines 153-205) but don't prevent overlapping assignments
    - No validation of PTO balance before approval
 
 4. **Caching issues**
@@ -182,7 +182,7 @@ The frontend provides core scheduling functionality but lacks polish and robustn
    - Different defaults between local and production
 
 2. **No health checks or readiness probes**
-   - `/health` endpoint too simple (line 561)
+   - `/health` endpoint too simple (line 561) - only returns `{ok: true}` without checking dependencies
    - No checks for Firestore connectivity
    - No dependency health validation (Zendesk, Chat Bot, etc.)
 
