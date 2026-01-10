@@ -76,6 +76,449 @@
     --coverage-title-color: #94a3b8;
   }
   
+  /* ============================================
+     LOADING STATES & SKELETON SCREENS
+     ============================================ */
+  
+  /* Skeleton loading animation */
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-color) 50%, var(--bg-tertiary) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 4px;
+  }
+  
+  .skeleton-text {
+    height: 1em;
+    margin-bottom: 0.5em;
+    border-radius: 4px;
+  }
+  
+  .skeleton-card {
+    height: 60px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  
+  .skeleton-circle {
+    border-radius: 50%;
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  .loading-spinner.large {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Full page loading overlay */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+  }
+  
+  .loading-overlay-content {
+    background: var(--card-bg);
+    padding: 24px 32px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+  
+  .loading-overlay-content .loading-spinner {
+    margin-bottom: 12px;
+  }
+  
+  .loading-overlay-content .loading-text {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  
+  /* Button loading state */
+  .btn-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+  }
+  
+  .btn-loading::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  /* ============================================
+     ACCESSIBILITY IMPROVEMENTS
+     ============================================ */
+  
+  /* Focus visible for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+  
+  /* Skip link for screen readers */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #3b82f6;
+    color: white;
+    padding: 8px 16px;
+    z-index: 10000;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 0 0 4px 0;
+  }
+  
+  .skip-link:focus {
+    top: 0;
+  }
+  
+  /* Screen reader only text */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .shiftCard {
+      border-width: 2px;
+    }
+    .btn, button {
+      border-width: 2px;
+    }
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* ============================================
+     IMPROVED ERROR MESSAGING
+     ============================================ */
+  
+  .error-banner {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+    border-left: 4px solid #ef4444;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  body.dark-mode .error-banner {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  
+  .error-banner-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  
+  .error-banner-content {
+    flex: 1;
+  }
+  
+  .error-banner-title {
+    font-weight: 700;
+    color: #b91c1c;
+    margin-bottom: 4px;
+  }
+  
+  body.dark-mode .error-banner-title {
+    color: #fca5a5;
+  }
+  
+  .error-banner-message {
+    color: #7f1d1d;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  body.dark-mode .error-banner-message {
+    color: #fecaca;
+  }
+  
+  .error-banner-action {
+    margin-top: 12px;
+  }
+  
+  .error-banner-action button {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  
+  .error-banner-action button:hover {
+    background: #dc2626;
+  }
+  
+  /* Success banner */
+  .success-banner {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #bbf7d0;
+    border-left: 4px solid #22c55e;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  body.dark-mode .success-banner {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.1) 100%);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  
+  /* Warning banner */
+  .warning-banner {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  body.dark-mode .warning-banner {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  
+  /* ============================================
+     IMPROVED MOBILE RESPONSIVENESS
+     ============================================ */
+  
+  @media (max-width: 768px) {
+    .header {
+      padding: 0 12px;
+      height: 56px;
+      flex: 0 0 56px;
+    }
+    
+    .hTitle {
+      font-size: 16px;
+    }
+    
+    .metaGroup {
+      display: none;
+    }
+    
+    .navGroup {
+      gap: 4px;
+    }
+    
+    .navBtn {
+      width: 36px;
+      height: 36px;
+    }
+    
+    .dayTitle {
+      font-size: 14px !important;
+    }
+    
+    .dayBody {
+      padding: 8px !important;
+    }
+    
+    .shiftCard {
+      padding: 8px !important;
+    }
+    
+    .shiftCard .scName {
+      font-size: 13px !important;
+    }
+    
+    .overlay .modal {
+      width: calc(100vw - 16px) !important;
+      max-height: calc(100vh - 32px);
+      margin: 16px 8px;
+    }
+    
+    .mBody {
+      padding: 12px !important;
+    }
+    
+    /* Stack toolbar items vertically on mobile */
+    .agent-toolbar {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 8px !important;
+    }
+    
+    .agent-toolbar-item {
+      justify-content: center;
+    }
+    
+    .agent-toolbar-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .dayCard {
+      margin: 0 8px 8px 8px !important;
+    }
+    
+    .segBtn {
+      padding: 6px 10px !important;
+      font-size: 12px !important;
+    }
+    
+    .adminModal {
+      width: 100% !important;
+    }
+    
+    .tool-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  
+  /* Touch-friendly targets */
+  @media (pointer: coarse) {
+    .shiftCard {
+      min-height: 48px;
+    }
+    
+    button, .btn, .segBtn {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    .navBtn {
+      width: 44px;
+      height: 44px;
+    }
+  }
+  
+  /* ============================================
+     TOAST IMPROVEMENTS
+     ============================================ */
+  
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .toast-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: toast-in 0.3s ease;
+    max-width: 350px;
+  }
+  
+  .toast-item.success {
+    background: #22c55e;
+    color: white;
+  }
+  
+  .toast-item.error {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .toast-item.warning {
+    background: #f59e0b;
+    color: white;
+  }
+  
+  .toast-item.info {
+    background: #3b82f6;
+    color: white;
+  }
+  
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes toast-out {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+  
   body { margin: 0; padding: 0; background: var(--bg-primary); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.2s, color 0.2s; }
   
   /* --- HEADER --- */
@@ -4156,8 +4599,11 @@ body.dark-mode .modalDangerSoft{ color:#fca5a5; }
      It keeps all your IDs/structure, fixes the broken nesting + removes the duplicate adminOverlay,
      and puts notifPanel in the right place (not trapped inside another div/overlay). -->
 <body class="auth-pending">
+  <!-- Skip Link for Keyboard Users -->
+  <a href="#mainContent" class="skip-link">Skip to main content</a>
+  
   <!-- AUTH OVERLAY - Blocks all interaction until signed in -->
-  <div id="authOverlay" style="
+  <div id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle" style="
     position: fixed;
     top: 0;
     left: 0;
@@ -4171,8 +4617,8 @@ body.dark-mode .modalDangerSoft{ color:#fca5a5; }
     justify-content: center;
     gap: 24px;
   ">
-    <div style="width:64px; height:64px; background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius:16px; display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:32px; box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);">M</div>
-    <div style="font-size: 24px; font-weight: 700; color: #0f172a;">Scheduling Manager</div>
+    <div style="width:64px; height:64px; background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius:16px; display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:32px; box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);" aria-hidden="true">M</div>
+    <h1 id="authTitle" style="font-size: 24px; font-weight: 700; color: #0f172a; margin: 0;">Scheduling Manager</h1>
     <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;">Sign in to continue</div>
     <div id="authLoginContainer">
       <div id="g_id_onload"
@@ -4184,7 +4630,7 @@ body.dark-mode .modalDangerSoft{ color:#fca5a5; }
     <div style="margin-top: 32px; font-size: 11px; color: #94a3b8;">Musely Support Team</div>
   </div>
   <!-- HEADER -->
-  <div class="header">
+  <header class="header" role="banner">
     <div class="hLeft">
       <div style="width:32px; height:32px; background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius:8px; display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:18px; margin-right:12px;">M</div>
       
@@ -5321,6 +5767,309 @@ const CHANNEL_ABBREV = {
   "Other": "Other"
 };
   const $ = (id) => document.getElementById(id);
+  
+  // ============================================
+  // LOADING STATE UTILITIES
+  // ============================================
+  
+  /**
+   * Show loading overlay with optional message
+   */
+  function showLoadingOverlay(message = 'Loading...') {
+    let overlay = document.getElementById('globalLoadingOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'globalLoadingOverlay';
+      overlay.className = 'loading-overlay';
+      overlay.innerHTML = `
+        <div class="loading-overlay-content">
+          <div class="loading-spinner large"></div>
+          <div class="loading-text">${message}</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.querySelector('.loading-text').textContent = message;
+      overlay.style.display = 'flex';
+    }
+  }
+  
+  /**
+   * Hide loading overlay
+   */
+  function hideLoadingOverlay() {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+  
+  /**
+   * Set button to loading state
+   */
+  function setButtonLoading(button, loading = true) {
+    if (!button) return;
+    if (loading) {
+      button.classList.add('btn-loading');
+      button.dataset.originalText = button.textContent;
+      button.disabled = true;
+    } else {
+      button.classList.remove('btn-loading');
+      if (button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
+      }
+      button.disabled = false;
+    }
+  }
+  
+  /**
+   * Show skeleton loading placeholders
+   */
+  function showSkeletonLoading(container, count = 5) {
+    if (!container) return;
+    container.innerHTML = Array(count).fill(0).map(() => 
+      '<div class="skeleton skeleton-card"></div>'
+    ).join('');
+  }
+  
+  // ============================================
+  // IMPROVED TOAST NOTIFICATION SYSTEM
+  // ============================================
+  
+  const toastQueue = [];
+  let toastContainer = null;
+  
+  /**
+   * Show enhanced toast notification
+   */
+  function showToast(message, type = 'info', duration = 4000, options = {}) {
+    // Create container if needed
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.className = 'toast-container';
+      toastContainer.setAttribute('role', 'alert');
+      toastContainer.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toastContainer);
+    }
+    
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-item ${type}`;
+    toast.innerHTML = `
+      <span class="toast-icon">${icons[type] || icons.info}</span>
+      <span class="toast-message">${message}</span>
+      ${options.action ? `<button class="toast-action" onclick="${options.action.callback}">${options.action.label}</button>` : ''}
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto remove
+    setTimeout(() => {
+      toast.style.animation = 'toast-out 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+    
+    return toast;
+  }
+  
+  // Backwards compatible toast function
+  function toast(msg, type = "info") {
+    showToast(msg, type);
+  }
+  
+  // ============================================
+  // ERROR HANDLING UTILITIES
+  // ============================================
+  
+  /**
+   * Show error banner with actionable guidance
+   */
+  function showErrorBanner(container, title, message, actionButton = null) {
+    const banner = document.createElement('div');
+    banner.className = 'error-banner';
+    banner.setAttribute('role', 'alert');
+    banner.innerHTML = `
+      <span class="error-banner-icon">⚠️</span>
+      <div class="error-banner-content">
+        <div class="error-banner-title">${title}</div>
+        <div class="error-banner-message">${message}</div>
+        ${actionButton ? `
+          <div class="error-banner-action">
+            <button onclick="${actionButton.onclick}">${actionButton.label}</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    if (typeof container === 'string') {
+      container = document.getElementById(container);
+    }
+    
+    if (container) {
+      container.prepend(banner);
+    }
+    
+    return banner;
+  }
+  
+  /**
+   * Handle API errors with user-friendly messages
+   */
+  function handleAPIError(error, context = 'operation') {
+    console.error(`API Error during ${context}:`, error);
+    
+    let userMessage = 'An unexpected error occurred. Please try again.';
+    let actionGuidance = '';
+    
+    if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      userMessage = 'Unable to connect to the server.';
+      actionGuidance = 'Check your internet connection and try again.';
+    } else if (error.message?.includes('401') || error.message?.includes('403')) {
+      userMessage = 'Your session may have expired.';
+      actionGuidance = 'Try refreshing the page to sign in again.';
+    } else if (error.message?.includes('404')) {
+      userMessage = 'The requested item was not found.';
+      actionGuidance = 'It may have been deleted or moved.';
+    } else if (error.message?.includes('500')) {
+      userMessage = 'A server error occurred.';
+      actionGuidance = 'Please try again in a few moments.';
+    } else if (error.message) {
+      userMessage = error.message;
+    }
+    
+    showToast(`${userMessage}${actionGuidance ? ' ' + actionGuidance : ''}`, 'error', 6000);
+    
+    return { userMessage, actionGuidance };
+  }
+  
+  // ============================================
+  // ACCESSIBILITY HELPERS
+  // ============================================
+  
+  /**
+   * Announce message to screen readers
+   */
+  function announceToScreenReader(message, priority = 'polite') {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', priority);
+    announcement.className = 'sr-only';
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+    setTimeout(() => announcement.remove(), 1000);
+  }
+  
+  /**
+   * Enable keyboard navigation for a list
+   */
+  function enableKeyboardNavigation(container, itemSelector = 'button, [tabindex="0"]') {
+    if (!container) return;
+    
+    container.addEventListener('keydown', (e) => {
+      const items = Array.from(container.querySelectorAll(itemSelector));
+      const currentIndex = items.indexOf(document.activeElement);
+      
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const nextIndex = (currentIndex + 1) % items.length;
+        items[nextIndex]?.focus();
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prevIndex = (currentIndex - 1 + items.length) % items.length;
+        items[prevIndex]?.focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        items[0]?.focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        items[items.length - 1]?.focus();
+      }
+    });
+  }
+  
+  // ============================================
+  // FORM VALIDATION HELPERS
+  // ============================================
+  
+  /**
+   * Validate form fields and show errors
+   */
+  function validateForm(fields) {
+    const errors = [];
+    
+    for (const field of fields) {
+      const element = typeof field.element === 'string' ? $(field.element) : field.element;
+      if (!element) continue;
+      
+      const value = element.value?.trim() || '';
+      
+      // Required check
+      if (field.required && !value) {
+        errors.push({ field: field.name, message: `${field.label || field.name} is required` });
+        element.classList.add('input-error');
+        continue;
+      }
+      
+      // Type checks
+      if (value && field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        errors.push({ field: field.name, message: `${field.label || field.name} must be a valid email` });
+        element.classList.add('input-error');
+      }
+      
+      if (value && field.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        errors.push({ field: field.name, message: `${field.label || field.name} must be a valid date` });
+        element.classList.add('input-error');
+      }
+      
+      if (value && field.min !== undefined && Number(value) < field.min) {
+        errors.push({ field: field.name, message: `${field.label || field.name} must be at least ${field.min}` });
+        element.classList.add('input-error');
+      }
+      
+      if (!errors.some(e => e.field === field.name)) {
+        element.classList.remove('input-error');
+      }
+    }
+    
+    return { valid: errors.length === 0, errors };
+  }
+  
+  // ============================================
+  // DEBOUNCE UTILITY
+  // ============================================
+  
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+  
+  // ============================================
+  // RETRY UTILITY
+  // ============================================
+  
+  async function withRetry(fn, maxRetries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (attempt === maxRetries) throw err;
+        console.warn(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay * attempt));
+      }
+    }
+  }
+  
   async function handleSignIn(response) {
   console.log("Sign-in response received");
   
