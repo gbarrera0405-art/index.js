@@ -969,13 +969,13 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     transition: all 0.2s;
   }
   .metricsTop input { max-width: 260px; margin:0; }
-  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; }
+  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; flex:1; min-height:0; }
   .metricsRow { 
     display:flex; 
     align-items:center; 
     justify-content:space-between; 
     gap:12px; 
-    padding:10px 12px; 
+    padding:8px 10px; 
     border:1px solid var(--border-color); 
     border-radius:12px; 
     cursor:pointer; 
@@ -986,14 +986,96 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     border-color: var(--text-tertiary); 
   }
   .metricsRow .left { display:flex; align-items:center; gap:10px; min-width:0; }
-  .metricsRow .avatar { width:34px; height:34px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex: 0 0 auto; }
+  .metricsRow .avatar { width:28px; height:28px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px; flex: 0 0 auto; }
   .metricsRow .name { 
     font-weight:800; 
     color: var(--text-primary); 
+    font-size:13px;
     white-space:nowrap; 
     overflow:hidden; 
     text-overflow:ellipsis;
     transition: color 0.2s;
+  }
+  .metricsSummary {
+    padding:12px 16px;
+    border-bottom:1px solid var(--border-color);
+    background: var(--card-bg);
+  }
+  .metricsSummaryHead {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .metricsSummaryTitle {
+    font-weight:800;
+    color: var(--text-primary);
+    font-size:13px;
+  }
+  .metricsSummaryToggle { display:flex; gap:6px; }
+  .metricsSummaryToggle .btn {
+    padding:4px 8px;
+    font-size:11px;
+  }
+  .metricsSummaryGrid {
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:8px;
+  }
+  .metricsSummaryCard {
+    border:1px solid var(--border-color);
+    border-radius:10px;
+    padding:8px 10px;
+    background: var(--bg-tertiary);
+  }
+  .metricsSummaryLabel {
+    font-size:10px;
+    font-weight:800;
+    color: var(--text-secondary);
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+  }
+  .metricsSummaryValue {
+    margin-top:4px;
+    font-size:16px;
+    font-weight:900;
+    color: var(--text-primary);
+  }
+  .metricsSummaryNote {
+    margin-top:8px;
+    font-size:11px;
+    color: var(--text-secondary);
+  }
+  .metricsTrend {
+    margin-top:10px;
+    display:grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap:6px;
+  }
+  .metricsTrendDay {
+    border:1px solid var(--border-color);
+    border-radius:8px;
+    padding:6px;
+    text-align:center;
+    background: var(--card-bg);
+  }
+  .metricsTrendDay .label {
+    font-size:10px;
+    color: var(--text-secondary);
+    font-weight:700;
+  }
+  .metricsTrendDay .value {
+    font-size:12px;
+    font-weight:800;
+    color: var(--text-primary);
+    margin-top:2px;
+  }
+  .metricsTrendDay .sub {
+    font-size:10px;
+    font-weight:700;
+    color: var(--text-secondary);
+    margin-top:2px;
   }
   .metricsRow .sub { 
     font-size:11px; 
@@ -4806,6 +4888,31 @@ body.dark-mode .open-shift {
 </div>
               <input id="metricsSearch" class="qrSearch" placeholder="Search agent..." oninput="renderMetricsList()" />
             </div>
+            <div id="metricsSummary" class="metricsSummary">
+              <div class="metricsSummaryHead">
+                <div class="metricsSummaryTitle">Team Summary</div>
+                <div class="metricsSummaryToggle">
+                  <button id="metricsSummary7" type="button" class="btn primary" onclick="loadTeamSummary(7)">7d</button>
+                  <button id="metricsSummary30" type="button" class="btn ghost" onclick="loadTeamSummary(30)">30d</button>
+                </div>
+              </div>
+              <div class="metricsSummaryGrid">
+                <div class="metricsSummaryCard">
+                  <div class="metricsSummaryLabel">Avg CSAT</div>
+                  <div id="metricsSummaryCsat" class="metricsSummaryValue">--</div>
+                </div>
+                <div class="metricsSummaryCard">
+                  <div class="metricsSummaryLabel">Avg Solved/Day</div>
+                  <div id="metricsSummarySolved" class="metricsSummaryValue">--</div>
+                </div>
+                <div class="metricsSummaryCard">
+                  <div class="metricsSummaryLabel">Avg Created/Day</div>
+                  <div id="metricsSummaryCreated" class="metricsSummaryValue">--</div>
+                </div>
+              </div>
+              <div id="metricsSummaryNote" class="metricsSummaryNote"></div>
+              <div id="metricsSummaryTrend" class="metricsTrend"></div>
+            </div>
             <div id="metricsList" class="metricsList"></div>
           </div>
           <div id="metricsDrawer" class="metricsDrawer">
@@ -4841,7 +4948,7 @@ body.dark-mode .open-shift {
                   <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
                   <div style="margin-top:10px; font-size:11px; color:#64748b;">Zendesk activity is shown in the hourly breakdown below.</div>
                   <div id="mActivitySection" style="margin-top:16px; max-width:360px; text-align:left;">
-                    <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Hourly Activity (Solved)</div>
+                    <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Hourly Activity (Solved · last 7 days)</div>
                     <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
                       <input type="date" id="mActivityDate" style="flex:1; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px;" onchange="refreshMetricsActivity()">
                       <button type="button" class="btn ghost" style="padding:6px 10px; font-size:11px;" onclick="refreshMetricsActivity()">Load</button>
@@ -6028,6 +6135,11 @@ if (typeof window !== 'undefined') {
       day: "2-digit",
     }).format(d);
   }
+  function pstISODateOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return pstISODate(d);
+  }
   
   // --- CLOUD RUN BRIDGE START ---
   // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
@@ -6293,6 +6405,9 @@ runBoth: async function() {
   let _isMasterMode = false;
   let _activeProfileRequest = "";
   let _activeMetricsRequest = "";
+  let _metricsSummaryRange = 7;
+  let _metricsSummaryLastFetch = 0;
+  let _metricsSummaryCache = null;
 // Schedule date range tracking
   let _scheduleLoadedPast = 0;      // How many past days are loaded
   let _scheduleLoadedFuture = 14;   // How many future days are loaded
@@ -7164,6 +7279,7 @@ function updateCacheIndicator(fromCache) {
     $("scheduleView").style.display = "none";
     $("metricsView").style.display = "block";
     renderMetricsList();
+    loadTeamSummary(_metricsSummaryRange);
     return; // Stop here
   }
   // Otherwise, default to the new SCHEDULE view
@@ -10172,6 +10288,94 @@ function handleDateJump(val) {
          host.appendChild(row);
      });
   }
+  function formatSummaryNumber(value, digits = 1) {
+    if (value === null || value === undefined || Number.isNaN(value)) return "--";
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "--";
+    return num % 1 === 0 ? String(num) : num.toFixed(digits);
+  }
+  function formatSummaryDateLabel(dateStr) {
+    const d = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  function setSummaryToggle(rangeDays) {
+    const btn7 = $("metricsSummary7");
+    const btn30 = $("metricsSummary30");
+    if (!btn7 || !btn30) return;
+    if (rangeDays === 30) {
+      btn30.classList.add("primary");
+      btn30.classList.remove("ghost");
+      btn7.classList.add("ghost");
+      btn7.classList.remove("primary");
+    } else {
+      btn7.classList.add("primary");
+      btn7.classList.remove("ghost");
+      btn30.classList.add("ghost");
+      btn30.classList.remove("primary");
+    }
+  }
+  function renderTeamSummary(data) {
+    const csatEl = $("metricsSummaryCsat");
+    const solvedEl = $("metricsSummarySolved");
+    const createdEl = $("metricsSummaryCreated");
+    const noteEl = $("metricsSummaryNote");
+    const trendEl = $("metricsSummaryTrend");
+    if (!csatEl || !solvedEl || !createdEl || !noteEl || !trendEl) return;
+
+    if (!data || !data.ok) {
+      noteEl.textContent = data?.error || "Unable to load summary.";
+      csatEl.textContent = "--";
+      solvedEl.textContent = "--";
+      createdEl.textContent = "--";
+      trendEl.innerHTML = "";
+      return;
+    }
+
+    csatEl.textContent = data.csatPct ? `${data.csatPct}%` : "--";
+    solvedEl.textContent = formatSummaryNumber(data.solvedAvgPerDay);
+    createdEl.textContent = formatSummaryNumber(data.createdAvgPerDay);
+
+    const totals = `Last ${data.rangeDays} days • Solved ${data.solvedTotal} • Created ${data.createdTotal}`;
+    noteEl.textContent = data.partial ? `${totals} (partial)` : totals;
+
+    if (Array.isArray(data.days)) {
+      trendEl.innerHTML = data.days.map(day => `
+        <div class="metricsTrendDay">
+          <div class="label">${formatSummaryDateLabel(day.date)}</div>
+          <div class="value">C ${day.created}</div>
+          <div class="sub">S ${day.solved}</div>
+        </div>
+      `).join("");
+    } else {
+      trendEl.innerHTML = "";
+    }
+  }
+  function loadTeamSummary(rangeDays = 7) {
+    const now = Date.now();
+    _metricsSummaryRange = rangeDays;
+    setSummaryToggle(rangeDays);
+
+    if (_metricsSummaryCache && _metricsSummaryCache.range === rangeDays && now - _metricsSummaryLastFetch < 5 * 60 * 1000) {
+      renderTeamSummary(_metricsSummaryCache.data);
+      return;
+    }
+
+    const noteEl = $("metricsSummaryNote");
+    if (noteEl) noteEl.textContent = "Loading summary...";
+
+    fetch(`./?action=zendesk/team-summary&range=${rangeDays}`)
+      .then(res => res.json())
+      .then(data => {
+        _metricsSummaryLastFetch = now;
+        _metricsSummaryCache = { range: rangeDays, data };
+        renderTeamSummary(data);
+      })
+      .catch(err => {
+        console.error("Summary load error:", err);
+        renderTeamSummary({ ok: false, error: "Failed to load summary." });
+      });
+  }
   function openMetricsProfile(name) {
     _activeMetricsRequest = name;
     
@@ -10248,10 +10452,7 @@ function handleDateJump(val) {
     }
     // Zendesk link buttons removed; activity panel handles quick insights
     // Load hourly activity after profile renders
-    const activityDate = document.getElementById("mActivityDate");
-    if (activityDate && !activityDate.value) {
-      activityDate.value = pstISODate();
-    }
+    applyActivityDateRange();
     refreshMetricsActivity();
   }
   function formatHourLabel(hour) {
@@ -10264,6 +10465,17 @@ function handleDateJump(val) {
     const next = (hour + 1) % 24;
     return `${formatHourLabel(hour)}-${formatHourLabel(next)}`;
   }
+  function applyActivityDateRange() {
+    const input = document.getElementById("mActivityDate");
+    if (!input) return;
+    const max = pstISODate();
+    const min = pstISODateOffset(-6);
+    input.max = max;
+    input.min = min;
+    if (!input.value || input.value < min || input.value > max) {
+      input.value = max;
+    }
+  }
   async function refreshMetricsActivity() {
     const name = (_activeMetricsRequest || document.getElementById("mName")?.innerText || "").trim();
     const dateInput = document.getElementById("mActivityDate");
@@ -10273,6 +10485,7 @@ function handleDateJump(val) {
 
     if (!name || !summaryEl || !listEl || !emptyEl || !dateInput) return;
 
+    applyActivityDateRange();
     const date = dateInput.value || pstISODate();
     if (!dateInput.value) dateInput.value = date;
 

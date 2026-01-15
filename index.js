@@ -130,6 +130,48 @@ const zdFetch = async (url) => {
     if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
     return res.json();
 };
+const ZENDESK_USER_CACHE_MS = 6 * 60 * 60 * 1000;
+const zendeskUserCache = new Map();
+async function getZendeskUserByEmail(email) {
+  if (!email) return null;
+  const key = String(email).toLowerCase();
+  const cached = zendeskUserCache.get(key);
+  if (cached && Date.now() - cached.cachedAt < ZENDESK_USER_CACHE_MS) {
+    return cached;
+  }
+
+  const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${email}`)}`;
+  const userRes = await zdFetch(userSearchUrl);
+  const user = userRes.users?.[0];
+  if (!user) return null;
+
+  const entry = { id: user.id, name: user.name, email: user.email, cachedAt: Date.now() };
+  zendeskUserCache.set(key, entry);
+  return entry;
+}
+async function getZendeskUserIdsForPeople(people) {
+  const emails = (people || []).map(p => p.email).filter(Boolean);
+  const settled = await Promise.allSettled(emails.map(getZendeskUserByEmail));
+  const ids = new Set();
+  for (const res of settled) {
+    if (res.status === "fulfilled" && res.value?.id) {
+      ids.add(Number(res.value.id));
+    }
+  }
+  return ids;
+}
+async function zdSearchAll(url, maxPages = 10) {
+  let results = [];
+  let pages = 0;
+  let next = url;
+  while (next && pages < maxPages) {
+    pages++;
+    const data = await zdFetch(next);
+    results = results.concat(data.results || []);
+    next = data.next_page || null;
+  }
+  return { results, incomplete: Boolean(next) };
+}
 /** ------------------------
  * Helpers
  * ------------------------ */
@@ -297,6 +339,17 @@ function getPstHour(isoDate) {
   }).formatToParts(dt);
   const hourPart = parts.find(p => p.type === 'hour');
   return hourPart ? Number(hourPart.value) : null;
+}
+function getRecentPstDates(days) {
+  const list = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = getPstDateKey(d.toISOString());
+    if (key) list.push(key);
+  }
+  return list;
 }
 
 /**
@@ -600,6 +653,7 @@ if (action) path = "/" + action;
       "/schedule/past", 
       "/schedule/future",
       "/zendesk/activity",
+      "/zendesk/team-summary",
       "/agent/notifications",
       "/agent/notifications/read",
       "/swap/request",
@@ -3760,19 +3814,16 @@ if (path === "/holiday/bank" && req.method === "POST") {
           throw new Error(`Agent ${name} found in Firestore, but they are missing an email address.`);
         }
         // 2. Lookup User in Zendesk
-        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
-        const userRes = await zdFetch(userSearchUrl);
-        if (!userRes.users?.length) throw new Error("Email not found in Zendesk.");
-        
-        const user = userRes.users[0];
+        const user = await getZendeskUserByEmail(agentEmail);
+        if (!user) throw new Error("Email not found in Zendesk.");
         
         // 3 & 4. Fetch Open and Solved Tickets with per_page=100 for efficiency
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         const date7 = oneWeekAgo.toISOString().split('T')[0];
         
-        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status<solved`)}&per_page=100`;
-        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status:solved solved>${date7}`)}&per_page=100`;
+        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${user.id} status<solved`)}&per_page=100`;
+        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${user.id} status:solved solved>${date7}`)}&per_page=100`;
         // 5. Fetch CSAT (Last 30 Days - optimized for speed)
         const daysBack = 30;
         const endSec = Math.floor(Date.now() / 1000) - 120;
@@ -3827,6 +3878,99 @@ if (path === "/holiday/bank" && req.method === "POST") {
         return res.status(500).json({ error: error.message });
       }
     }
+    if (path === "/zendesk/team-summary" && req.method === "GET") {
+      try {
+        const rangeRaw = Number(req.query.range || 7);
+        const rangeDays = rangeRaw === 30 ? 30 : 7;
+        const dateKeys = getRecentPstDates(rangeDays);
+        if (!dateKeys.length) {
+          return res.status(500).json({ ok: false, error: "Unable to build date range." });
+        }
+
+        const startDateStr = dateKeys[0];
+        const endDate = new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00Z`);
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+        const endDateStr = endDate.toISOString().split('T')[0];
+
+        const { people } = await getCachedMetadata();
+        const teamIds = await getZendeskUserIdsForPeople(people);
+
+        const solvedByDay = {};
+        const createdByDay = {};
+        dateKeys.forEach(d => { solvedByDay[d] = 0; createdByDay[d] = 0; });
+
+        const solvedQuery = `type:ticket status:solved solved>=${startDateStr} solved<${endDateStr}`;
+        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(solvedQuery)}&per_page=100`;
+        const solvedRes = await zdSearchAll(solvedUrl, 10);
+
+        for (const ticket of solvedRes.results) {
+          const assigneeId = Number(ticket.assignee_id);
+          if (teamIds.size && !teamIds.has(assigneeId)) continue;
+          const solvedAt = ticket.solved_at || ticket.updated_at || ticket.created_at;
+          const day = getPstDateKey(solvedAt);
+          if (day && solvedByDay[day] !== undefined) solvedByDay[day] += 1;
+        }
+
+        const createdQuery = `type:ticket created>=${startDateStr} created<${endDateStr}`;
+        const createdUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(createdQuery)}&per_page=100`;
+        const createdRes = await zdSearchAll(createdUrl, 10);
+
+        for (const ticket of createdRes.results) {
+          const day = getPstDateKey(ticket.created_at);
+          if (day && createdByDay[day] !== undefined) createdByDay[day] += 1;
+        }
+
+        const solvedTotal = Object.values(solvedByDay).reduce((sum, val) => sum + val, 0);
+        const createdTotal = Object.values(createdByDay).reduce((sum, val) => sum + val, 0);
+
+        const endSec = Math.floor(Date.now() / 1000) - 120;
+        const startSec = endSec - (rangeDays * 24 * 60 * 60);
+        let ratingsUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&per_page=100`;
+        let ratingsPages = 0;
+        let good = 0;
+        let bad = 0;
+        let ratingsIncomplete = false;
+        const maxRatingPages = 10;
+
+        while (ratingsUrl && ratingsPages < maxRatingPages) {
+          ratingsPages++;
+          const data = await zdFetch(ratingsUrl);
+          const ratings = data.satisfaction_ratings || [];
+          for (const r of ratings) {
+            const assigneeId = Number(r.assignee_id);
+            if (teamIds.size && !teamIds.has(assigneeId)) continue;
+            if (r.score === "good") good += 1;
+            if (r.score === "bad") bad += 1;
+          }
+          ratingsUrl = data.next_page || null;
+        }
+        if (ratingsUrl) ratingsIncomplete = true;
+
+        const csatTotal = good + bad;
+        const csatPct = csatTotal ? Math.round((good / csatTotal) * 100) : null;
+
+        const days = dateKeys.map(date => ({
+          date,
+          solved: solvedByDay[date] || 0,
+          created: createdByDay[date] || 0
+        }));
+
+        return res.status(200).json({
+          ok: true,
+          rangeDays,
+          csatPct,
+          solvedTotal,
+          solvedAvgPerDay: solvedTotal / rangeDays,
+          createdTotal,
+          createdAvgPerDay: createdTotal / rangeDays,
+          days,
+          partial: solvedRes.incomplete || createdRes.incomplete || ratingsIncomplete
+        });
+      } catch (error) {
+        console.error("Zendesk Summary Error:", error);
+        return res.status(500).json({ ok: false, error: error.message });
+      }
+    }
     if (path === "/zendesk/activity" && req.method === "GET") {
       try {
         const name = String(req.query.name || "").trim();
@@ -3845,17 +3989,20 @@ if (path === "/holiday/bank" && req.method === "POST") {
           return res.status(400).json({ ok: false, error: "End hour must be after start hour." });
         }
 
+        const recentDates = getRecentPstDates(7);
+        if (!recentDates.includes(date)) {
+          return res.status(400).json({ ok: false, error: "Date must be within the last 7 days." });
+        }
+
         const agentEmail = await getAgentEmailByName(name);
         if (!agentEmail) {
           return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
         }
 
-        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
-        const userRes = await zdFetch(userSearchUrl);
-        if (!userRes.users?.length) {
+        const user = await getZendeskUserByEmail(agentEmail);
+        if (!user) {
           return res.status(404).json({ ok: false, error: "Email not found in Zendesk." });
         }
-        const user = userRes.users[0];
 
         const queryStart = new Date(`${date}T00:00:00Z`);
         queryStart.setUTCDate(queryStart.getUTCDate() - 1);
@@ -3864,7 +4011,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const startDateStr = queryStart.toISOString().split('T')[0];
         const endDateStr = queryEnd.toISOString().split('T')[0];
 
-        const query = `type:ticket assignee:${user.id} status:solved solved>=${startDateStr} solved<${endDateStr}`;
+        const query = `type:ticket assignee_id:${user.id} status:solved solved>=${startDateStr} solved<${endDateStr}`;
         let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100`;
 
         const maxPages = 10;
