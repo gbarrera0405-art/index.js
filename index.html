@@ -10332,7 +10332,7 @@ function handleDateJump(val) {
       return;
     }
 
-    csatEl.textContent = data.csatPct ? `${data.csatPct}%` : "--";
+    csatEl.textContent = (data.csatPct !== null && data.csatPct !== undefined) ? `${data.csatPct}%` : "--";
     solvedEl.textContent = formatSummaryNumber(data.solvedAvgPerDay);
     createdEl.textContent = formatSummaryNumber(data.createdAvgPerDay);
 
