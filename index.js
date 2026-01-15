@@ -3832,7 +3832,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const name = String(req.query.name || "").trim();
         const date = String(req.query.date || "").trim();
         const startHourRaw = Number(req.query.startHour ?? 8);
-        const endHourRaw = Number(req.query.endHour ?? 21);
+        const endHourRaw = Number(req.query.endHour ?? 20);
 
         if (!name) return res.status(400).json({ ok: false, error: "Missing agent name." });
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -3840,7 +3840,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         }
 
         const startHour = Number.isFinite(startHourRaw) ? Math.min(23, Math.max(0, startHourRaw)) : 8;
-        const endHour = Number.isFinite(endHourRaw) ? Math.min(23, Math.max(0, endHourRaw)) : 21;
+        const endHour = Number.isFinite(endHourRaw) ? Math.min(23, Math.max(0, endHourRaw)) : 20;
         if (endHour < startHour) {
           return res.status(400).json({ ok: false, error: "End hour must be after start hour." });
         }

@@ -10285,7 +10285,7 @@ function handleDateJump(val) {
     emptyEl.textContent = "";
 
     try {
-      const url = `./?action=zendesk/activity&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&startHour=8&endHour=21`;
+      const url = `./?action=zendesk/activity&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&startHour=8&endHour=20`;
       const res = await fetch(url);
       const data = await res.json();
 
