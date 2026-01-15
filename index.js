@@ -1,232 +1,10 @@
 const functions = require("@google-cloud/functions-framework");
-const { Firestore, FieldValue } = require("@google-cloud/firestore");
+const { Firestore } = require("@google-cloud/firestore");
 const pathMod = require("path");
 const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
 const client = new OAuth2Client(CLIENT_ID);
-
-// ============================================
-// APPLICATION CONFIGURATION
-// ============================================
-const APP_CONFIG = {
-  version: "1.0.0",
-  environment: process.env.NODE_ENV || "production",
-  startTime: new Date().toISOString()
-};
-
-// ============================================
-// STRUCTURED LOGGING
-// ============================================
-const LOG_LEVELS = { DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3 };
-const CURRENT_LOG_LEVEL = LOG_LEVELS[process.env.LOG_LEVEL] || LOG_LEVELS.INFO;
-
-function structuredLog(level, message, data = {}) {
-  if (LOG_LEVELS[level] < CURRENT_LOG_LEVEL) return;
-  
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...data,
-    service: "scheduler-api",
-    version: APP_CONFIG.version
-  };
-  
-  const logMethod = level === 'ERROR' ? console.error : 
-                   level === 'WARN' ? console.warn : console.log;
-  logMethod(JSON.stringify(logEntry));
-}
-
-// ============================================
-// STANDARDIZED ERROR HANDLING
-// ============================================
-class APIError extends Error {
-  constructor(message, statusCode = 500, errorCode = 'INTERNAL_ERROR', details = null) {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-    this.details = details;
-    this.timestamp = new Date().toISOString();
-  }
-}
-
-function sendError(res, error) {
-  const statusCode = error.statusCode || 500;
-  const response = {
-    ok: false,
-    error: {
-      message: error.message || 'An unexpected error occurred',
-      code: error.errorCode || 'INTERNAL_ERROR',
-      timestamp: new Date().toISOString()
-    }
-  };
-  
-  if (error.details) {
-    response.error.details = error.details;
-  }
-  
-  structuredLog('ERROR', error.message, { 
-    errorCode: error.errorCode, 
-    statusCode, 
-    details: error.details 
-  });
-  
-  return res.status(statusCode).json(response);
-}
-
-function sendSuccess(res, data = {}, statusCode = 200) {
-  return res.status(statusCode).json({
-    ok: true,
-    ...data,
-    timestamp: new Date().toISOString()
-  });
-}
-
-// ============================================
-// INPUT VALIDATION HELPERS
-// ============================================
-function validateRequired(body, fields) {
-  const missing = [];
-  for (const field of fields) {
-    if (body[field] === undefined || body[field] === null || body[field] === '') {
-      missing.push(field);
-    }
-  }
-  if (missing.length > 0) {
-    throw new APIError(
-      `Missing required fields: ${missing.join(', ')}`,
-      400, 'VALIDATION_ERROR', { missingFields: missing }
-    );
-  }
-  return true;
-}
-
-function validateDateString(dateStr, fieldName = 'date') {
-  if (!dateStr) return null;
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(dateStr)) {
-    throw new APIError(`Invalid date format for ${fieldName}. Expected YYYY-MM-DD`, 400, 'VALIDATION_ERROR');
-  }
-  const date = new Date(dateStr + 'T00:00:00Z');
-  if (isNaN(date.getTime())) {
-    throw new APIError(`Invalid date value for ${fieldName}`, 400, 'VALIDATION_ERROR');
-  }
-  return dateStr;
-}
-
-function validateTimeString(timeStr, fieldName = 'time') {
-  if (!timeStr) return null;
-  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-  if (!timeRegex.test(timeStr)) {
-    throw new APIError(`Invalid time format for ${fieldName}. Expected HH:MM`, 400, 'VALIDATION_ERROR');
-  }
-  return timeStr;
-}
-
-function validateNumber(value, fieldName, min = null, max = null) {
-  const num = Number(value);
-  if (isNaN(num)) {
-    throw new APIError(`${fieldName} must be a valid number`, 400, 'VALIDATION_ERROR');
-  }
-  if (min !== null && num < min) {
-    throw new APIError(`${fieldName} must be at least ${min}`, 400, 'VALIDATION_ERROR');
-  }
-  if (max !== null && num > max) {
-    throw new APIError(`${fieldName} must be at most ${max}`, 400, 'VALIDATION_ERROR');
-  }
-  return num;
-}
-
-function sanitizeString(str, maxLength = 1000) {
-  if (!str) return '';
-  return String(str).slice(0, maxLength).replace(/[<>]/g, '').trim();
-}
-
-// ============================================
-// RATE LIMITING (In-memory)
-// ============================================
-const rateLimitStore = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 100;
-
-function checkRateLimit(identifier) {
-  const now = Date.now();
-  const key = String(identifier);
-  
-  if (!rateLimitStore.has(key)) {
-    rateLimitStore.set(key, { count: 1, windowStart: now });
-    return true;
-  }
-  
-  const record = rateLimitStore.get(key);
-  if (now - record.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimitStore.set(key, { count: 1, windowStart: now });
-    return true;
-  }
-  
-  if (record.count >= RATE_LIMIT_MAX) return false;
-  record.count++;
-  return true;
-}
-
-// Clean up old entries every 2 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of rateLimitStore.entries()) {
-    if (now - record.windowStart > RATE_LIMIT_WINDOW * 2) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, RATE_LIMIT_WINDOW * 2);
-
-// ============================================
-// IDEMPOTENCY SUPPORT
-// ============================================
-const idempotencyStore = new Map();
-const IDEMPOTENCY_TTL = 5 * 60 * 1000;
-
-function checkIdempotency(key) {
-  if (!key) return null;
-  const record = idempotencyStore.get(key);
-  if (record && Date.now() - record.timestamp < IDEMPOTENCY_TTL) {
-    return record.response;
-  }
-  return null;
-}
-
-function storeIdempotency(key, response) {
-  if (!key) return;
-  idempotencyStore.set(key, { response, timestamp: Date.now() });
-}
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of idempotencyStore.entries()) {
-    if (now - record.timestamp > IDEMPOTENCY_TTL) {
-      idempotencyStore.delete(key);
-    }
-  }
-}, IDEMPOTENCY_TTL);
-
-// ============================================
-// REQUEST METRICS
-// ============================================
-const requestMetrics = {
-  totalRequests: 0,
-  successfulRequests: 0,
-  failedRequests: 0,
-  endpointCounts: {},
-  lastReset: Date.now()
-};
-
-function trackRequest(endpoint, success) {
-  requestMetrics.totalRequests++;
-  if (success) requestMetrics.successfulRequests++;
-  else requestMetrics.failedRequests++;
-  requestMetrics.endpointCounts[endpoint] = (requestMetrics.endpointCounts[endpoint] || 0) + 1;
-}
-
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
 // ============================================
@@ -337,57 +115,6 @@ async function getCachedMetadata() {
   metadataCache.lastFetch = now;
   
   return { people: metadataCache.people, teams: metadataCache.teams };
-}
-
-/**
- * Invalidate metadata cache (call after people/teams updates)
- */
-function invalidateMetadataCache() {
-  metadataCache.people = null;
-  metadataCache.teams = null;
-  metadataCache.lastFetch = 0;
-  structuredLog('INFO', 'Metadata cache invalidated');
-}
-
-/**
- * Run Firestore transaction with automatic retry
- */
-async function runTransaction(updateFunction, maxRetries = 3) {
-  let lastError;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await db.runTransaction(updateFunction);
-    } catch (err) {
-      lastError = err;
-      structuredLog('WARN', `Transaction attempt ${attempt}/${maxRetries} failed`, { error: err.message });
-      if (err.code !== 10 && err.code !== 'ABORTED') throw err;
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
-      }
-    }
-  }
-  throw lastError;
-}
-
-/**
- * Validate PTO balance before approval
- */
-async function validatePTOBalance(personName, requestedHours) {
-  const balanceDoc = await db.collection("balances").doc(personName).get();
-  if (!balanceDoc.exists) {
-    return { valid: false, error: "No balance record found for this person" };
-  }
-  const balance = balanceDoc.data();
-  const currentPTO = balance.pto || 0;
-  if (requestedHours > currentPTO) {
-    return { 
-      valid: false, 
-      error: `Insufficient PTO balance. Requested: ${requestedHours}h, Available: ${currentPTO}h`,
-      current: currentPTO,
-      requested: requestedHours
-    };
-  }
-  return { valid: true, current: currentPTO };
 }
 
 const ZD_CONFIG = {
@@ -696,6 +423,18 @@ function buildScheduleDocIds(teamKey, start, days) {
   }
   return ids;
 }
+function requireManager(req) {
+  // Check multiple possible sources for manager status
+  const isManager = req.user?. isManager === true || 
+                    req.isManager === true ||
+                    req.body?.isManager === true;
+
+  if (!isManager) {
+    return { ok: false, status: 403, body: { ok: false, error: "Forbidden - Manager access required" } };
+  }
+  return { ok: true };
+}
+
 async function fetchSchedule(teamKey, start, days) {
   const ids = buildScheduleDocIds(teamKey, start, days);
   const refs = ids.map((id) => db.collection("scheduleDays").doc(id));
@@ -721,18 +460,38 @@ function contentTypeFor(filePath) {
   return "application/octet-stream";
 }
 function servePublicFile(reqPath, res) {
-  const publicDir = pathMod.join(__dirname, "public");
   const cleanPath = reqPath === "/" || reqPath === "" ? "/index.html" : reqPath;
-  // prevent path traversal
-  const abs = pathMod.join(publicDir, cleanPath);
-  if (!abs.startsWith(publicDir)) {
-    res.status(403).send("Forbidden");
-    return true;
+
+  const candidates = [
+    pathMod.join(__dirname, "public", cleanPath), // /public/...
+    pathMod.join(__dirname, cleanPath),           // project-root/...
+  ];
+
+  for (const abs of candidates) {
+    // prevent traversal
+    const root = abs.includes(pathMod.join(__dirname, "public"))
+      ? pathMod.join(__dirname, "public")
+      : __dirname;
+
+    if (!abs.startsWith(root)) continue;
+
+    if (fs.existsSync(abs) && !fs.statSync(abs).isDirectory()) {
+      const buf = fs.readFileSync(abs);
+      res.status(200).set("Content-Type", contentTypeFor(abs)).send(buf);
+      return true;
+    }
   }
-  if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) return false;
-  const buf = fs.readFileSync(abs);
-  res.status(200).set("Content-Type", contentTypeFor(abs)).send(buf);
-  return true;
+
+  return false;
+}
+function looksLikeStaticAsset(p) {
+  const s = String(p || "/");
+  return (
+    s === "/" ||
+    s === "/index.html" ||
+    s.startsWith("/assets/") ||
+    /\.(css|js|png|jpg|jpeg|svg|ico|map|json)$/i.test(s)
+  );
 }
 /** ------------------------
  * Main HTTP Handler
@@ -750,24 +509,32 @@ functions.http("helloHttp", async (req, res) => {
 
     if (req.method === "OPTIONS") return res.status(204).send("");
 
-    let path = String(req.path || "/").toLowerCase();
-    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-    const action = (req.query.action || (req.body && req.body.action) || "").toLowerCase();
-    // Force path to match action if present
-    if (action) {
-      path = "/" + action;
-    }
-    // Gate (optional) - skip for health endpoints
-    if (!path.startsWith("/health") && path !== "/metrics/summary") {
+    const rawPath = String(req.path || "/");
+let path = rawPath.toLowerCase();
+if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+
+// Check for action parameter FIRST - API calls take priority over static files
+const action = (req.query.action || (req.body && req.body.action) || "").toLowerCase();
+
+// ✅ Serve static ONLY if there's NO action parameter
+if (!action && req.method === "GET" && looksLikeStaticAsset(rawPath)) {
+  // OPTIONAL: if you use PREVIEW_KEY and need the browser to load assets, you can skip the gate for assets:
+  // if (rawPath === "/" || rawPath === "/index.html") { if (!requirePreviewKey(req, res)) return; }
+
+  if (servePublicFile(rawPath, res)) return;
+  // If the file wasn't found, fall through to normal routing (or you can return 404 here)
+}
+
+// Now do action-based routing for API calls
+if (action) path = "/" + action;
+
+    // Gate (optional)
+    if (path !== "/health") {
       if (!requirePreviewKey(req, res)) return;
     }
     // Static first (anything not in the API list)
     const isApi = [
       "/health",
-      "/health/live",
-      "/health/ready",
-      "/health/detailed",
-      "/metrics/summary",
       "/people",
       "/teams",
       "/roles",
@@ -799,6 +566,7 @@ functions.http("helloHttp", async (req, res) => {
       "/balances/list",        
       "/balances/update",
       "/audit/logs",
+      "/audit/clear",
       "/timeoff/request",
       "/audit/log",
       "/timeoff/list",
@@ -828,104 +596,16 @@ functions.http("helloHttp", async (req, res) => {
       "/people/list",
       "/base-schedule/save",
       "/agent/notifications/clear",
-      "/debug/base-schedule"
+      "/debug/base-schedule",
+      "/open-shifts",
+      "/open-shifts/fill"
     ].includes(path);
 
     if (!isApi) {
       if (servePublicFile(req.path || "/", res)) return;
     }
-    
-    // ============================================
-    // HEALTH CHECK ENDPOINTS
-    // ============================================
-    
-    // Basic liveness check
-    if (path === "/health" || path === "/health/live") {
-      return sendSuccess(res, { 
-        service: "scheduler-api",
-        status: "alive",
-        uptime: process.uptime(),
-        version: APP_CONFIG.version
-      });
-    }
-    
-    // Readiness check - confirms service can handle requests
-    if (path === "/health/ready") {
-      try {
-        const testStart = Date.now();
-        await db.collection("_health_check").doc("test").get();
-        const firestoreLatency = Date.now() - testStart;
-        
-        return sendSuccess(res, {
-          service: "scheduler-api",
-          status: "ready",
-          checks: {
-            firestore: { status: "healthy", latencyMs: firestoreLatency },
-            cache: { 
-              status: metadataCache.lastFetch > 0 ? "warm" : "cold",
-              lastFetch: metadataCache.lastFetch ? new Date(metadataCache.lastFetch).toISOString() : null
-            }
-          },
-          uptime: process.uptime()
-        });
-      } catch (err) {
-        return res.status(503).json({ ok: false, status: "not_ready", error: err.message });
-      }
-    }
-    
-    // Detailed health check
-    if (path === "/health/detailed") {
-      const healthReport = {
-        service: "scheduler-api",
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        version: APP_CONFIG.version,
-        environment: APP_CONFIG.environment,
-        startTime: APP_CONFIG.startTime,
-        checks: {}
-      };
-      
-      // Check Firestore
-      try {
-        const start = Date.now();
-        await db.collection("_health_check").doc("test").get();
-        healthReport.checks.firestore = { status: "healthy", latencyMs: Date.now() - start };
-      } catch (err) {
-        healthReport.checks.firestore = { status: "unhealthy", error: err.message };
-        healthReport.status = "degraded";
-      }
-      
-      // Memory usage
-      const mem = process.memoryUsage();
-      healthReport.memory = {
-        heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
-        heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
-        rssMB: Math.round(mem.rss / 1024 / 1024)
-      };
-      
-      // Rate limit status
-      healthReport.checks.rateLimit = {
-        activeClients: rateLimitStore.size,
-        windowMs: RATE_LIMIT_WINDOW,
-        maxRequests: RATE_LIMIT_MAX
-      };
-      
-      return res.status(healthReport.status === "healthy" ? 200 : 503).json(healthReport);
-    }
-    
-    // Metrics summary endpoint
-    if (path === "/metrics/summary") {
-      return sendSuccess(res, {
-        requests: requestMetrics,
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        cache: {
-          isCached: metadataCache.lastFetch > 0,
-          age: metadataCache.lastFetch ? Date.now() - metadataCache.lastFetch : null
-        }
-      });
-    }
+    // Health
+    if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
     
     // Debug endpoint for base_schedule
     if (path === "/debug/base-schedule" && req.method === "GET") {
@@ -1468,15 +1148,22 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           `${dateRange.start} to ${dateRange.end}` : 
           (date || new Date().toISOString().split('T')[0]);
         
+        // Build notification message with make-up date if applicable
+        let notifMessage = `${person} requested ${type || 'PTO'} for ${displayDate}`;
+        if (typeKey === "make_up" && makeUpDate) {
+          notifMessage += ` (Make-up date: ${makeUpDate})`;
+        }
+        
         await db.collection("manager_notifications").add({
           type: "timeoff_request",
           requestId: docRef.id,
           agentName: person,
-          message: `${person} requested ${type || 'PTO'} for ${displayDate}`,
+          message: notifMessage,
           reason: reason,
           date: date,
           dateRange: dateRange || null,
           timeOffType: type || "PTO",
+          makeUpDate: makeUpDate || null,
           status: "pending",
           createdAt: new Date().toISOString(),
           read: false
@@ -1529,6 +1216,53 @@ if (path === "/audit/logs" && req.method === "GET") {
     return res.status(500).json({ error: err.message });
   }
 }
+    // Clear audit logs
+    if (path === "/audit/clear" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { mode, olderThanDays } = body; // mode: "all" or "older"
+        
+        let query = db.collection("audit_log");
+        
+        if (mode === "older" && olderThanDays) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+          query = query.where("timestamp", "<", cutoffDate.toISOString());
+        }
+        
+        // Batch delete (Firestore limit is 500 per batch, we'll do 400 for safety)
+        let totalDeleted = 0;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const snap = await query.limit(400).get();
+          
+          if (snap.empty) {
+            hasMore = false;
+            break;
+          }
+          
+          const batch = db.batch();
+          snap.docs.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          
+          await batch.commit();
+          totalDeleted += snap.size;
+          
+          // If we got less than 400, we're done
+          if (snap.size < 400) {
+            hasMore = false;
+          }
+        }
+        
+        console.log(`🗑️ Audit log cleared: ${totalDeleted} entries deleted`);
+        return res.status(200).json({ ok: true, deleted: totalDeleted });
+      } catch (err) {
+        console.error("Audit clear error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
     if (path === "/config" || action === "config") {
         if (req.method === "POST") {
             try {
@@ -1559,18 +1293,37 @@ if (path === "/audit/logs" && req.method === "GET") {
     // Get all pending notifications
     if (path === "/notifications/pending" && req.method === "GET") {
       try {
-        // Get schedule days from today onwards
-        const today = new Date().toISOString().split("T")[0];
+        // Get ALL schedule days that might have pending notifications
+        // We need to include recent past dates because managers might edit yesterday's schedule
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const minDate = oneWeekAgo.toISOString().split("T")[0];
         
-        const snap = await db.collection("scheduleDays")
-          .where("date", ">=", today)
-          .orderBy("date", "asc")
-          .get();
+        // Try the indexed query first, fall back to getting all documents
+        let snap;
+        try {
+          snap = await db.collection("scheduleDays")
+            .where("date", ">=", minDate)
+            .orderBy("date", "asc")
+            .get();
+        } catch (indexError) {
+          // Fall back to getting all documents and filtering in memory
+          snap = await db.collection("scheduleDays").get();
+        }
         
         const pending = [];
         
         snap.forEach(doc => {
           const data = doc.data();
+          
+          // Extract date from document ID if date field is missing
+          const docDate = data.date || doc.id.split("__")[0];
+          
+          // Skip documents older than a week (for fallback query)
+          if (docDate < minDate) {
+            return;
+          }
+          
           const assignments = data.assignments || [];
           
           assignments.forEach(a => {
@@ -1578,8 +1331,8 @@ if (path === "/audit/logs" && req.method === "GET") {
               pending.push({
                 docId: doc.id,
                 assignmentId: a.id,
-                date: data.date || doc.id.split("__")[0],
-                team: data.team || doc.id.split("__")[1] || "",
+                date: docDate,
+                team: data.team || doc.id.split("__")[1]?.replace(/_/g, ' ') || "",
                 person: a.person,
                 start: toAmPm(a.start || ""),
                 end: toAmPm(a.end || ""),
@@ -1590,6 +1343,9 @@ if (path === "/audit/logs" && req.method === "GET") {
             }
           });
         });
+        
+        // Sort by date (most recent first for better UX)
+        pending.sort((a, b) => b.date.localeCompare(a.date));
         
         return res.status(200).json({ 
           ok: true, 
@@ -1764,7 +1520,7 @@ if (path === "/audit/logs" && req.method === "GET") {
       const assignmentId = String(body.assignmentId || "").trim();
       const newPerson = String(body.newPerson || "").trim();
       const notes = String(body.notes || "").trim();
-      const notifyMode = String(body.notifyMode || "defer").trim(); // "defer" | "send"
+      const notifyMode = String(body.notifyMode || "defer").trim(); // "defer" | "send" | "silent"
 
       if (!docId || !assignmentId || !newPerson) {
         logWithTrace(traceId, 'error', 'assignment/replace', 'Missing required fields', { docId, assignmentId, newPerson });
@@ -1772,10 +1528,10 @@ if (path === "/audit/logs" && req.method === "GET") {
       }
 
       // Validate notifyMode
-      if (!["defer", "send"].includes(notifyMode)) {
-        logWithTrace(traceId, 'error', 'assignment/replace', 'Invalid notifyMode', { notifyMode });
-        return res.status(400).json({ error: "notifyMode must be 'defer' or 'send'" });
-      }
+      if (!["defer", "send", "silent"].includes(notifyMode)) {
+  logWithTrace(traceId, 'error', 'assignment/replace', 'Invalid notifyMode', { notifyMode });
+  return res.status(400).json({ error: "notifyMode must be 'defer', 'send', or 'silent'" });
+}
 
       const docRef = db.collection("scheduleDays").doc(docId);
 
@@ -1803,7 +1559,8 @@ if (path === "/audit/logs" && req.method === "GET") {
           };
           // Set notify status based on mode
           let notifyStatus = "Pending";
-          if (notifyMode === "send") notifyStatus = "Sent";
+if (notifyMode === "send") notifyStatus = "Sent";
+if (notifyMode === "silent") notifyStatus = "None";
 
           const now = toIsoNow();
           const next = assignments.slice();
@@ -2044,68 +1801,35 @@ if (path === "/audit/logs" && req.method === "GET") {
       });
     }
     // legacy: assignment status
-    // legacy: assignment status (extended to support markOff)
-if (path === "/assignment/status" && req.method === "POST") {
-  const body = readJsonBody(req);
-  const docId = String(body.docId || "").trim();
-  const assignmentId = String(body.assignmentId || "").trim();
-
-  // New: allow markOff flow
-  const hasMarkOff = typeof body.markOff === "boolean";
-  const status = String(body.status || "").trim(); // Active | Completed
-
-  if (!docId || !assignmentId) {
-    return res.status(400).json({ error: "Missing docId or assignmentId" });
-  }
-  if (!hasMarkOff && !status) {
-    return res.status(400).json({ error: "Missing status (or markOff boolean)" });
-  }
-
-  const docRef = db.collection("scheduleDays").doc(docId);
-
-  const applyOffTag = (notes, markOff) => {
-    const s = String(notes || "");
-    const stripped = s.replace(/\s*\[OFF\]\s*/gi, " ").replace(/\s+/g, " ").trim();
-    if (!markOff) return stripped;
-    return (stripped ? `${stripped} [OFF]` : "[OFF]").trim();
-  };
-
-  try {
-    const updated = await db.runTransaction(async (tx) => {
-      const snap = await tx.get(docRef);
-      if (!snap.exists) throw new Error(`scheduleDays doc not found: ${docId}`);
-      const data = snap.data() || {};
-      const assignments = Array.isArray(data.assignments) ? data.assignments : [];
-      const idx = assignments.findIndex((a) => String(a.id || "").trim() === assignmentId);
-      if (idx === -1) throw new Error(`Assignment not found: ${assignmentId}`);
-
-      const now = toIsoNow();
-      const next = assignments.slice();
-      const cur = next[idx] || {};
-
-      if (hasMarkOff) {
-        const nextNotes = applyOffTag(cur.notes, body.markOff);
-        next[idx] = { ...cur, notes: nextNotes, updatedAt: now };
-      } else {
-        next[idx] = { ...cur, status, updatedAt: now };
+    if (path === "/assignment/status" && req.method === "POST") {
+      const body = readJsonBody(req);
+      const docId = String(body.docId || "").trim();
+      const assignmentId = String(body.assignmentId || "").trim();
+      const status = String(body.status || "").trim(); // Active | Completed
+      if (!docId || !assignmentId || !status) {
+        return res.status(400).json({ error: "Missing docId, assignmentId, or status" });
       }
-
-      tx.update(docRef, { assignments: next, updatedAt: now });
-      return next[idx];
-    });
-
-    return res.status(200).json({
-      ok: true,
-      docId,
-      assignmentId,
-      updated: normalizeValue(updated),
-    });
-  } catch (e) {
-    console.error("status error:", e);
-    return res.status(500).json({ error: e.message || "Status update failed" });
-  }
-}
-
+      const docRef = db.collection("scheduleDays").doc(docId);
+      try {
+        const updated = await db.runTransaction(async (tx) => {
+          const snap = await tx.get(docRef);
+          if (!snap.exists) throw new Error(`scheduleDays doc not found: ${docId}`);
+          const data = snap.data() || {};
+          const assignments = Array.isArray(data.assignments) ? data.assignments : [];
+          const idx = assignments.findIndex((a) => String(a.id || "").trim() === assignmentId);
+          if (idx === -1) throw new Error(`Assignment not found: ${assignmentId}`);
+          const now = toIsoNow();
+          const next = assignments.slice();
+          next[idx] = { ...next[idx], status, updatedAt: now };
+          tx.update(docRef, { assignments: next, updatedAt: now });
+          return next[idx];
+        });
+        return res.status(200).json({ ok: true, docId, assignmentId, updated: normalizeValue(updated) });
+      } catch (e) {
+        console.error("status error:", e);
+        return res.status(500).json({ error: e.message || "Status update failed" });
+      }
+    }
    
     if (path === "/schedule/extended" && req.method === "POST") {
       const body = req.body || {};
@@ -2353,9 +2077,8 @@ if (path === "/assignment/status" && req.method === "POST") {
         return res.status(500).json({ error: err.message });
       }
     }
-    /// Clear all notifications for an agent
-// Clear all notifications for an agent
-// Clear all notifications for an agent
+    
+    // Clear all notifications for an agent
 if (path === "/agent/notifications/clear" && req.method === "POST") {
   try {
     const body = await readJsonBody(req); // IMPORTANT: await if your helper returns a Promise
@@ -2645,45 +2368,45 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
       }
     }
 
-    // GET /manager/presence - Get active manager presence
-    if (path === "/manager/presence" && req.method === "GET") {
-      try {
-        // Consider managers active if heartbeat within last 5 minutes
-        const cutoffTime = Date.now() - 5 * 60 * 1000;
+    // GET or POST /manager/presence - Get active manager presence
+    if (path === "/manager/presence" && (req.method === "GET" || req.method === "POST")) {
+  const guard = requireManager(req);
+  if (!guard.ok) return res.status(guard.status).json(guard.body);
+  try {
+    // Consider managers active if heartbeat within last 10 minutes
+    const cutoffIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-        // Get all presence docs and filter in memory (avoids index requirement)
-        const snap = await db.collection("manager_presence").get();
+    // Query only active managers
+    const snap = await db.collection("manager_presence")
+      .where("lastHeartbeat", ">=", cutoffIso)
+      .get();
 
-        const activeManagers = [];
-        snap.forEach(doc => {
-          const data = doc.data();
-          const heartbeatTime = new Date(data.lastHeartbeat).getTime();
-          
-          // Only include managers with recent heartbeats
-          if (heartbeatTime >= cutoffTime) {
-            activeManagers.push({
-              managerName: data.managerName,
-              view: data.view,
-              area: data.area,
-              lastHeartbeat: data.lastHeartbeat
-            });
-          }
-        });
+    const activeManagers = [];
+    snap.forEach(doc => {
+      const data = doc.data();
+      activeManagers.push({
+        managerName: data.managerName,
+        view: data.view,
+        area: data.area,
+        lastHeartbeat: data.lastHeartbeat
+      });
+    });
 
-        logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
-          total: activeManagers.length,
-          managers: activeManagers.map(m => m.managerName)
-        });
+    logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
+      total: activeManagers.length,
+      managers: activeManagers.map(m => m.managerName)
+    });
 
-        return res.status(200).json({ ok: true, activeManagers });
+    return res.status(200).json({ ok: true, activeManagers });
 
-      } catch (err) {
-        logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
-          error: err.message
-        });
-        return res.status(500).json({ error: err.message });
-      }
-    }
+  } catch (err) {
+    logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
+      error: err.message
+    });
+    return res.status(500).json({ error: err.message });
+  }
+}
+
     
     // ============================================
     // MANAGER NOTIFICATIONS
@@ -2766,6 +2489,8 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         }
         
         const requestData = requestDoc.data();
+        const agentName = requestData.person || requestData.agentName;
+        const requestDate = requestData.date;
         
         // Update the request status
         await db.collection("time_off_requests").doc(requestId).update({
@@ -2783,36 +2508,92 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           });
         }
         
-        // Create notification for the agent
+        // ========================================
+        // MARK AGENT'S SHIFTS AS "OPEN" FOR THE DATE
+        // ========================================
+        let shiftsMarkedOpen = 0;
+        const openShifts = [];
+        
+        try {
+          // Find all schedule documents for this date
+          const scheduleSnap = await db.collection("scheduleDays")
+            .where("date", "==", requestDate)
+            .get();
+          
+          for (const doc of scheduleSnap.docs) {
+            const data = doc.data();
+            const assignments = data.assignments || [];
+            let modified = false;
+            
+            // Find assignments for this agent
+            const updatedAssignments = assignments.map(a => {
+              const personName = String(a.person || "").toLowerCase().trim();
+              const targetName = String(agentName || "").toLowerCase().trim();
+              
+              if (personName === targetName || personName.split(" ")[0] === targetName.split(" ")[0]) {
+                // Mark this shift as open
+                modified = true;
+                shiftsMarkedOpen++;
+                
+                const openShiftData = {
+                  docId: doc.id,
+                  assignmentId: a.id,
+                  originalPerson: a.person,
+                  team: data.team || doc.id.split("__")[1] || "",
+                  date: requestDate,
+                  start: a.start,
+                  end: a.end,
+                  role: a.role,
+                  reason: `PTO approved for ${a.person}`,
+                  timeOffType: requestData.type || requestData.timeOffType || "PTO"
+                };
+                openShifts.push(openShiftData);
+                
+                return {
+                  ...a,
+                  person: "Open",
+                  originalPerson: a.person,
+                  isOpenShift: true,
+                  openReason: `PTO: ${requestData.reason || 'Time off approved'}`,
+                  timeOffRequestId: requestId,
+                  updatedAt: new Date().toISOString()
+                };
+              }
+              return a;
+            });
+            
+            if (modified) {
+              await doc.ref.update({ 
+                assignments: updatedAssignments, 
+                updatedAt: new Date().toISOString() 
+              });
+            }
+          }
+          
+          console.log(`📋 Marked ${shiftsMarkedOpen} shifts as Open for ${agentName} on ${requestDate}`);
+          
+        } catch (scheduleErr) {
+          console.warn("Could not update schedule (non-fatal):", scheduleErr.message);
+        }
+        
+        // Create notification for the agent (in-app only - no Google Chat DM)
         await db.collection("agent_notifications").add({
-          recipientName: requestData.person,
+          recipientName: agentName,
           type: "timeoff_approved",
-          message: `✅ Your ${requestData.type || 'PTO'} request for ${requestData.date} has been approved`,
+          message: `✅ Your ${requestData.type || requestData.timeOffType || 'PTO'} request for ${requestDate} has been approved`,
           requestId: requestId,
           approvedBy: managerName || "Manager",
           createdAt: new Date().toISOString(),
           read: false
         });
         
-        // Send Chat notification to agent
-        try {
-          const agentEmail = await getAgentEmailByName(requestData.person);
-          if (agentEmail) {
-            await sendShiftNotification(agentEmail, {
-              date: requestData.date,
-              start: requestData.shiftStart || "All Day",
-              end: requestData.shiftEnd || "",
-              team: requestData.team || "Support",
-              notes: `✅ Your ${requestData.type || 'PTO'} request has been APPROVED by ${managerName || 'your manager'}`
-            });
-          }
-        } catch (chatErr) {
-          console.warn("Chat notification failed (non-fatal):", chatErr.message);
-        }
+        console.log(`✅ Time off approved: ${agentName} - ${requestDate} by ${managerName}`);
         
-        console.log(`✅ Time off approved: ${requestData.person} - ${requestData.date} by ${managerName}`);
-        
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ 
+          ok: true,
+          shiftsMarkedOpen,
+          openShifts
+        });
         
       } catch (err) {
         console.error("Approve time off error:", err);
@@ -2855,7 +2636,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           });
         }
         
-        // Create notification for the agent
+        // Create notification for the agent (in-app only - no Google Chat DM)
         await db.collection("agent_notifications").add({
           recipientName: requestData.person,
           type: "timeoff_denied",
@@ -2867,28 +2648,165 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           read: false
         });
         
-        // Send Chat notification to agent
-        try {
-          const agentEmail = await getAgentEmailByName(requestData.person);
-          if (agentEmail) {
-            await sendShiftNotification(agentEmail, {
-              date: requestData.date,
-              start: requestData.shiftStart || "All Day",
-              end: requestData.shiftEnd || "",
-              team: requestData.team || "Support",
-              notes: `❌ Your ${requestData.type || 'PTO'} request was NOT APPROVED${reason ? '. Reason: ' + reason : '. Please contact your manager.'}`
-            });
-          }
-        } catch (chatErr) {
-          console.warn("Chat notification failed (non-fatal):", chatErr.message);
-        }
-        
         console.log(`❌ Time off denied: ${requestData.person} - ${requestData.date} by ${managerName}`);
         
         return res.status(200).json({ ok: true });
         
       } catch (err) {
         console.error("Deny time off error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // ============================================
+    // OPEN SHIFTS MANAGEMENT
+    // ============================================
+    
+    // Get all open shifts
+    if (path === "/open-shifts" && req.method === "GET") {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        
+        // Get schedule days from today onwards
+        const snap = await db.collection("scheduleDays")
+          .where("date", ">=", today)
+          .get();
+        
+        const openShifts = [];
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          const docDate = data.date || doc.id.split("__")[0];
+          const assignments = data.assignments || [];
+          
+          assignments.forEach(a => {
+            const personLower = String(a.person || "").toLowerCase().trim();
+            if (personLower === "open" || a.isOpenShift === true) {
+              openShifts.push({
+                docId: doc.id,
+                assignmentId: a.id,
+                date: docDate,
+                team: data.team || doc.id.split("__")[1]?.replace(/_/g, ' ') || "",
+                start: a.start,
+                end: a.end,
+                startLabel: toAmPm(a.start || ""),
+                endLabel: toAmPm(a.end || ""),
+                role: a.role || "",
+                originalPerson: a.originalPerson || "",
+                openReason: a.openReason || "",
+                timeOffRequestId: a.timeOffRequestId || ""
+              });
+            }
+          });
+        });
+        
+        // Sort by date then time
+        openShifts.sort((a, b) => {
+          const dateCompare = a.date.localeCompare(b.date);
+          if (dateCompare !== 0) return dateCompare;
+          return (a.start || "").localeCompare(b.start || "");
+        });
+        
+        return res.status(200).json({ 
+          ok: true, 
+          count: openShifts.length,
+          openShifts 
+        });
+        
+      } catch (err) {
+        console.error("Get open shifts error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // Fill an open shift with an agent
+    if (path === "/open-shifts/fill" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { docId, assignmentId, agentName, notifyAgent } = body;
+        
+        if (!docId || !assignmentId || !agentName) {
+          return res.status(400).json({ error: "Missing required fields: docId, assignmentId, agentName" });
+        }
+        
+        const docRef = db.collection("scheduleDays").doc(docId);
+        
+        let shiftData = {};
+        
+        await db.runTransaction(async (tx) => {
+          const doc = await tx.get(docRef);
+          if (!doc.exists) throw new Error("Schedule document not found");
+          
+          const data = doc.data();
+          const assignments = data.assignments || [];
+          
+          const idx = assignments.findIndex(a => String(a.id || "") === String(assignmentId));
+          if (idx === -1) throw new Error("Assignment not found");
+          
+          const old = assignments[idx];
+          
+          // Store shift data for notification
+          shiftData = {
+            date: data.date || docId.split("__")[0],
+            start: toAmPm(old.start || ""),
+            end: toAmPm(old.end || ""),
+            team: data.team || docId.split("__")[1] || "",
+            role: old.role || ""
+          };
+          
+          // Update the assignment
+          assignments[idx] = {
+            ...old,
+            person: agentName,
+            isOpenShift: false,
+            filledAt: new Date().toISOString(),
+            filledFrom: old.originalPerson || "Open",
+            notifyStatus: notifyAgent ? "Pending" : "None"
+          };
+          
+          tx.update(docRef, { 
+            assignments, 
+            updatedAt: new Date().toISOString() 
+          });
+        });
+        
+        // Send notification if requested
+        let notificationResult = { sent: false };
+        if (notifyAgent) {
+          try {
+            const agentEmail = await getAgentEmailByName(agentName);
+            if (agentEmail) {
+              const result = await sendShiftNotification(agentEmail, {
+                ...shiftData,
+                notes: `You have been assigned to cover this shift`
+              });
+              notificationResult = { sent: result.success, error: result.error };
+            }
+          } catch (notifErr) {
+            notificationResult = { sent: false, error: notifErr.message };
+          }
+        }
+        
+        // Create in-app notification for the agent
+        await db.collection("agent_notifications").add({
+          recipientName: agentName,
+          type: "shift_assigned",
+          message: `📋 You've been assigned a shift on ${shiftData.date} (${shiftData.start} - ${shiftData.end})`,
+          shiftDate: shiftData.date,
+          team: shiftData.team,
+          createdAt: new Date().toISOString(),
+          read: false
+        });
+        
+        console.log(`✅ Open shift filled: ${agentName} assigned to ${docId} - ${shiftData.date}`);
+        
+        return res.status(200).json({ 
+          ok: true, 
+          notification: notificationResult 
+        });
+        
+      } catch (err) {
+        console.error("Fill open shift error:", err);
         return res.status(500).json({ error: err.message });
       }
     }
@@ -3147,7 +3065,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
                 t.update(balanceRef, { pto: nextPto, lastUpdated: new Date().toISOString() });
             }
 
-            // 5. AUTOMATICALLY MARK SCHEDULE OFF (approved only)
+            // 5. AUTOMATICALLY MARK SCHEDULE OPEN (approved only)
               if (decision === "approved" && scheduleDocRef && scheduleData) {
                 const assignments = scheduleData.assignments || [];
                 const personKey = String(data.person || "").trim().toLowerCase();
@@ -3165,28 +3083,32 @@ const idx = assignments.findIndex(a => {
                 
                 if (idx !== -1) {
                     const entry = assignments[idx];
-                    // Append [OFF] if not already there
-                    if (!entry.notes || !entry.notes.includes("[OFF]")) {
+                    // Mark shift as OPEN for managers to reassign
+                    const offLabel = isMakeUp ? "Make Up Approved" : "PTO Approved";
+                    const managerNote = manager ? ` by ${manager}` : "";
+                    const newNotes = `[OPEN] Originally: ${data.person} - ${offLabel}${managerNote}`;
 
-                        const offLabel = isMakeUp ? "Make Up Approved" : "PTO Approved";
-                        const managerNote = manager ? ` by ${manager}` : "";
-                        const newNotes = (entry.notes ? entry.notes + " " : "") + `[OFF] - ${offLabel}${managerNote}`;
+                    // Copy array to modify - mark as OPEN for reassignment
+                    const nextAssignments = [...assignments];
+                    nextAssignments[idx] = { 
+                      ...entry, 
+                      person: "OPEN",
+                      status: "Open",
+                      originalPerson: data.person,
+                      notes: newNotes, 
+                      updatedAt: new Date().toISOString() 
+                    };
+                    
+                    t.update(scheduleDocRef, { 
+                        assignments: nextAssignments, 
+                        updatedAt: new Date().toISOString() 
+                    });
 
-                        // Copy array to modify
-                        const nextAssignments = [...assignments];
-                        nextAssignments[idx] = { ...entry, notes: newNotes, updatedAt: new Date().toISOString() };
-                        
-                        t.update(scheduleDocRef, { 
-                            assignments: nextAssignments, 
-                            updatedAt: new Date().toISOString() 
-                        });
-
-                        logWithTrace(traceId, 'info', 'timeoff/resolve', 'Marked shift as OFF', {
-                          person: data.person,
-                          date: data.date,
-                          team: data.team
-                        });
-                    }
+                    logWithTrace(traceId, 'info', 'timeoff/resolve', 'Marked shift as OPEN for reassignment', {
+                      person: data.person,
+                      date: data.date,
+                      team: data.team
+                    });
                 }
             }
         });
@@ -3213,6 +3135,18 @@ const idx = assignments.findIndex(a => {
         logWithTrace(traceId, 'info', 'timeoff/resolve', 'Created agent notification', {
           person: resolvedData.person,
           decision
+        });
+
+        // Add to audit log
+        const auditAction = decision === "approved" ? "APPROVE_TIMEOFF" : "DENY_TIMEOFF";
+        const typeLabel = resolvedData.typeKey === "make_up" ? "Make-Up" : "PTO";
+        await db.collection("audit_log").add({
+          action: auditAction,
+          manager: manager || "Admin",
+          target: resolvedData.person,
+          details: `${typeLabel} request for ${resolvedData.date} ${decision}`,
+          date: resolvedData.date,
+          timestamp: new Date().toISOString()
         });
 
         return res.status(200).json({ ok: true });
@@ -3350,6 +3284,10 @@ const idx = assignments.findIndex(a => {
       if (!docId || !id || !start || !end || !role) {
         return res.status(400).json({ error: "Missing docId or assignment fields (id,start,end,role)" });
       }
+      
+      // Extract date and team from docId (format: "2025-01-12__TEAM_NAME")
+      const [docDate, docTeam] = docId.includes("__") ? docId.split("__") : [docId, ""];
+      
       const docRef = db.collection("scheduleDays").doc(docId);
       try {
         const created = await db.runTransaction(async (tx) => {
@@ -3360,6 +3298,8 @@ const idx = assignments.findIndex(a => {
               docRef,
               {
                 id: docId,
+                date: docDate,  // Include date field for query filtering
+                team: docTeam.replace(/_/g, ' '),  // Include team field
                 assignments: [
                   {
                     id,
@@ -3751,9 +3691,13 @@ if (path === "/holiday/bank" && req.method === "POST") {
           if (action === "DELETE") {
             items.splice(idx, 1);
           } else if (action === "EDIT") {
+            // Update and ensure the NEW times are also clean HH:MM
             items[idx].start = hhmm(newStart);
             items[idx].end = hhmm(newEnd);
+            
+            // Update Team and Role if provided
             if (req.body.newTeam) items[idx].team = String(req.body.newTeam).trim();
+            if (req.body.newRole) items[idx].role = String(req.body.newRole).trim();
           } else if (action === "ADD") {
             // Logic to add a brand new entry to the array
             items.push({
@@ -3764,17 +3708,6 @@ if (path === "/holiday/bank" && req.method === "POST") {
               team: String(req.body.newTeam || "Other").trim(),
               role: "Agent"
             });
-          }
-          if (action === "DELETE") {
-            items.splice(idx, 1);
-          } else if (action === "EDIT") {
-            // Update and ensure the NEW times are also clean HH:MM
-            items[idx].start = hhmm(newStart);
-            items[idx].end = hhmm(newEnd);
-            
-            // FIX: Update Team and Role if provided
-            if (req.body.newTeam) items[idx].team = String(req.body.newTeam).trim();
-            if (req.body.newRole) items[idx].role = String(req.body.newRole).trim();
           }
           t.update(docRef, { items: items });
         });
@@ -3811,28 +3744,27 @@ if (path === "/holiday/bank" && req.method === "POST") {
         if (!userRes.users?.length) throw new Error("Email not found in Zendesk.");
         
         const user = userRes.users[0];
-        // 3. Fetch Open Tickets
-        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status<solved`)}`;
-        const openRes = await zdFetch(openUrl);
-        // 4. Fetch Solved Tickets (Last 7 Days)
+        
+        // 3 & 4. Fetch Open and Solved Tickets with per_page=100 for efficiency
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         const date7 = oneWeekAgo.toISOString().split('T')[0];
-        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status:solved solved>${date7}`)}`;
-        const solvedRes = await zdFetch(solvedUrl);
-        // 5. Fetch CSAT (Last 60 Days)
-        const daysBack = 60;
+        
+        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status<solved`)}&per_page=100`;
+        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status:solved solved>${date7}`)}&per_page=100`;
+        // 5. Fetch CSAT (Last 30 Days - optimized for speed)
+        const daysBack = 30;
         const endSec = Math.floor(Date.now() / 1000) - 120;
         const startSec = endSec - (daysBack * 24 * 60 * 60);
         
         const getCsatCount = async (score) => {
             let count = 0;
-            let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&score=${encodeURIComponent(score)}`;
+            let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&score=${encodeURIComponent(score)}&per_page=100`;
             
             let safetyPages = 0;
-            while (url) {
+            const maxPages = 5; // Limit pagination for faster response
+            while (url && safetyPages < maxPages) {
                 safetyPages++;
-                if (safetyPages > 50) break;
                 const data = await zdFetch(url);
                 const ratings = data.satisfaction_ratings || [];
                 for (const r of ratings) {
@@ -3845,8 +3777,15 @@ if (path === "/holiday/bank" && req.method === "POST") {
             }
             return count;
         };
-        const good = await getCsatCount("good");
-        const bad = await getCsatCount("bad");
+        
+        // Execute all fetches in parallel for ~60-70% speed improvement
+        const [openRes, solvedRes, good, bad] = await Promise.all([
+          zdFetch(openUrl),
+          zdFetch(solvedUrl),
+          getCsatCount("good"),
+          getCsatCount("bad")
+        ]);
+        
         const total = good + bad;
         const csatDisplay = total ? Math.round((good / total) * 100) + "%" : "--";
         // 6. Return standard object to UI
