@@ -4839,11 +4839,7 @@ body.dark-mode .open-shift {
                     <div id="mRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:6px;">--</div>
                   </div>
                   <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
-                  <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <a id="mOpenTicketsLink" class="btn ghost" target="_blank" style="text-decoration:none;">View Open Tickets</a>
-                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
-                  </div>
-                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
+                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Zendesk activity is shown in the hourly breakdown below.</div>
                   <div id="mActivitySection" style="margin-top:16px; max-width:360px; text-align:left;">
                     <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Hourly Activity (Solved)</div>
                     <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
@@ -10250,7 +10246,7 @@ function handleDateJump(val) {
             document.getElementById("mLogin").innerText = "Never";
         }
     }
-    updateMetricLinks(data);
+    // Zendesk link buttons removed; activity panel handles quick insights
     // Load hourly activity after profile renders
     const activityDate = document.getElementById("mActivityDate");
     if (activityDate && !activityDate.value) {
@@ -10297,7 +10293,7 @@ function handleDateJump(val) {
 
       const partialNote = data.incomplete ? " (partial)" : "";
       summaryEl.textContent = `Solved tickets on ${data.date} (PST): ${data.total}${partialNote}`;
-      emptyEl.textContent = data.incomplete ? "Showing the first 500 tickets from Zendesk search." : "";
+      emptyEl.textContent = data.incomplete ? "Showing the first 1000 tickets from Zendesk search." : "";
       if (!Array.isArray(data.buckets) || data.buckets.length === 0) {
         emptyEl.textContent = "No solved tickets found for this date.";
         return;
@@ -10352,23 +10348,6 @@ function forceRefresh() {
 }
 // Make it globally accessible
 window.forceRefresh = forceRefresh;
-  function updateMetricLinks(data) {
-     let openQ = "", badCsatQ = "";
-     if (data.zendeskUserId) {
-         openQ = "type:ticket status<solved assignee_id:" + data.zendeskUserId;
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee_id:" + data.zendeskUserId;
-     } else if (data.email) {
-         openQ = "type:ticket status<solved assignee:" + data.email;
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee:" + data.email;
-     } else {
-         openQ = "type:ticket status<solved assignee:\"" + data.name + "\"";
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee:\"" + data.name + "\"";
-     }
-     const openUrl = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(openQ);
-     const badUrl  = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(badCsatQ);
-     const openA = document.getElementById("mOpenTicketsLink"); if (openA) openA.href = openUrl;
-     const badA = document.getElementById("mBadCsatLink"); if (badA) badA.href = badUrl;
-  }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
   function closeProfile() { $("profileOverlay").style.display = "none"; }
   // --- 9. AUDIT & MASTER MODES ---

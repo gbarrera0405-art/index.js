@@ -3857,14 +3857,17 @@ if (path === "/holiday/bank" && req.method === "POST") {
         }
         const user = userRes.users[0];
 
-        const nextDate = new Date(`${date}T00:00:00Z`);
-        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-        const nextDateStr = nextDate.toISOString().split('T')[0];
+        const queryStart = new Date(`${date}T00:00:00Z`);
+        queryStart.setUTCDate(queryStart.getUTCDate() - 1);
+        const queryEnd = new Date(`${date}T00:00:00Z`);
+        queryEnd.setUTCDate(queryEnd.getUTCDate() + 2);
+        const startDateStr = queryStart.toISOString().split('T')[0];
+        const endDateStr = queryEnd.toISOString().split('T')[0];
 
-        const query = `type:ticket assignee:${user.id} status:solved solved>=${date} solved<${nextDateStr}`;
+        const query = `type:ticket assignee:${user.id} status:solved solved>=${startDateStr} solved<${endDateStr}`;
         let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100`;
 
-        const maxPages = 5;
+        const maxPages = 10;
         let pages = 0;
         let results = [];
 
