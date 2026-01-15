@@ -969,13 +969,13 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     transition: all 0.2s;
   }
   .metricsTop input { max-width: 260px; margin:0; }
-  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; }
+  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; flex:1; min-height:0; }
   .metricsRow { 
     display:flex; 
     align-items:center; 
     justify-content:space-between; 
     gap:12px; 
-    padding:10px 12px; 
+    padding:8px 10px; 
     border:1px solid var(--border-color); 
     border-radius:12px; 
     cursor:pointer; 
@@ -986,10 +986,11 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     border-color: var(--text-tertiary); 
   }
   .metricsRow .left { display:flex; align-items:center; gap:10px; min-width:0; }
-  .metricsRow .avatar { width:34px; height:34px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex: 0 0 auto; }
+  .metricsRow .avatar { width:28px; height:28px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px; flex: 0 0 auto; }
   .metricsRow .name { 
     font-weight:800; 
     color: var(--text-primary); 
+    font-size:13px;
     white-space:nowrap; 
     overflow:hidden; 
     text-overflow:ellipsis;
@@ -4839,11 +4840,17 @@ body.dark-mode .open-shift {
                     <div id="mRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:6px;">--</div>
                   </div>
                   <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
-                  <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <a id="mOpenTicketsLink" class="btn ghost" target="_blank" style="text-decoration:none;">View Open Tickets</a>
-                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
+                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Zendesk activity is shown in the hourly breakdown below.</div>
+                  <div id="mActivitySection" style="margin-top:16px; max-width:360px; text-align:left;">
+                    <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Hourly Activity (Solved · last 7 days)</div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                      <input type="date" id="mActivityDate" style="flex:1; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px;" onchange="refreshMetricsActivity()">
+                      <button type="button" class="btn ghost" style="padding:6px 10px; font-size:11px;" onclick="refreshMetricsActivity()">Load</button>
+                    </div>
+                    <div id="mActivitySummary" style="font-size:11px; color:#64748b; margin-bottom:6px;"></div>
+                    <div id="mActivityList" style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;"></div>
+                    <div id="mActivityEmpty" style="font-size:11px; color:#94a3b8; margin-top:6px;"></div>
                   </div>
-                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
                 </div>
               </div>
             </div>
@@ -5153,7 +5160,7 @@ body.dark-mode .open-shift {
       <div class="mFoot"><button class="btn primary" onclick="applyPicker()">Apply Filter</button></div>
     </div>
   </div>
-  <<!-- ✅ Admin Overlay (ONLY ONCE) -->
+  <!-- ✅ Admin Overlay (ONLY ONCE) -->
   <div id="adminOverlay" class="overlay overlay-admin" style="display:none;" onclick="if(event.target===this) closeAdminModal()">
     <div class="modal adminModal">
       <div class="mHead adminHead">
@@ -5808,7 +5815,7 @@ const CHANNEL_ABBREV = {
     showSessionIndicator(false);
     
     // Hide the login button after successful sign-in
-    const loginContainer = document.getElementById("loginContainer");
+    const loginContainer = document.getElementById("authLoginContainer");
     if (loginContainer) loginContainer.style.display = "none";
     
     // Now load the dashboard
@@ -6022,6 +6029,11 @@ if (typeof window !== 'undefined') {
       day: "2-digit",
     }).format(d);
   }
+  function pstISODateOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return pstISODate(d);
+  }
   
   // --- CLOUD RUN BRIDGE START ---
   // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
@@ -6206,20 +6218,6 @@ runGenerate: async function() {
     if (this._success) this._success(json);
   } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
 },
-runArchive: async function() {
-  try {
-    const res = await fetch("./?action=archive", { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    if (this._success) this._success(json);
-  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
-},
-runBoth: async function() {
-  try {
-    const res = await fetch("./?action=sync", { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    if (this._success) this._success(json);
-  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
-},
             handleMasterScheduleEdit: async function(payload) {
                 console.log("Bridge: Master Edit Request", payload);
                 try {
@@ -6287,6 +6285,9 @@ runBoth: async function() {
   let _isMasterMode = false;
   let _activeProfileRequest = "";
   let _activeMetricsRequest = "";
+  let _activeMetricsEmail = "";
+  let _peopleMeta = [];
+  let _peopleMetaByName = new Map();
 // Schedule date range tracking
   let _scheduleLoadedPast = 0;      // How many past days are loaded
   let _scheduleLoadedFuture = 14;   // How many future days are loaded
@@ -6579,7 +6580,17 @@ function clearScheduleCache() {
 
     // Filter out current user
     const otherManagers = (managers || []).filter(m => m.managerName !== window._myName);
-    const totalOnline = managers?.length || 0;
+
+    const setPresenceVariant = () => {
+      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
+      if (otherManagers.length === 0) {
+        presenceEl.classList.add("mp-solo");
+      } else if (otherManagers.length === 1) {
+        presenceEl.classList.add("mp-one");
+      } else {
+        presenceEl.classList.add("mp-many");
+      }
+    };
 
     // Always show presence - even if you're the only one online
     if (otherManagers.length === 0) {
@@ -6589,15 +6600,7 @@ function clearScheduleCache() {
         <span class="presence-name">Online</span>
       `;
       presenceEl.title = "You are the only manager currently viewing the scheduler";
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     } else if (otherManagers.length === 1) {
       const m = otherManagers[0];
@@ -6607,15 +6610,7 @@ if (otherManagers.length === 0) {
         <span class="presence-view">${m.view}</span>
       `;
       presenceEl.title = `${m.managerName} is viewing ${m.view}${m.area ? ` (${m.area})` : ''}`;
-     presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     } else {
       presenceEl.innerHTML = `
@@ -6625,15 +6620,7 @@ if (otherManagers.length === 0) {
       presenceEl.title = otherManagers.map(m => 
         `${m.managerName}: ${m.view}${m.area ? ` (${m.area})` : ''}`
       ).join('\n');
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     }
 
@@ -6765,7 +6752,7 @@ function startManagerPresenceTracking() {
       showSessionIndicator(true);
       
       // Hide login container
-      const loginContainer = document.getElementById("loginContainer");
+      const loginContainer = document.getElementById("authLoginContainer");
       if (loginContainer) loginContainer.style.display = "none";
     }
     
@@ -6773,7 +6760,7 @@ function startManagerPresenceTracking() {
   };
   function load(force, targetEmail) {
   // ✅ Show/hide login button based on auth state
-  const loginContainer = document.getElementById("loginContainer");
+  const loginContainer = document.getElementById("authLoginContainer");
   if (loginContainer) {
     loginContainer.style.display = (window._myName && window._myEmail) ? "none" : "flex";
   }
@@ -7006,7 +6993,13 @@ window.formatTimePST = formatTimePST;
       body: JSON.stringify({ isManager: isManager, action: 'getMetadata' })
     });
     const meta = await metaRes.json();
-    _people = (meta.people || []).map(p => p.name || p.id).filter(Boolean);
+    _peopleMeta = Array.isArray(meta.people) ? meta.people : [];
+    _peopleMetaByName = new Map();
+    _peopleMeta.forEach(p => {
+      const display = String(p.name || p.id || "").trim();
+      if (display) _peopleMetaByName.set(display.toLowerCase(), p);
+    });
+    _people = _peopleMeta.map(p => p.name || p.id).filter(Boolean);
     _teams = (meta.teams || []).map(t => t.id || t.name).filter(Boolean);
     if (!_teams.includes("Lunch")) _teams.push("Lunch");
       if (!_teams.includes("1:1 Meeting")) _teams.push("1:1 Meeting");
@@ -10175,13 +10168,17 @@ function handleDateJump(val) {
      const q = ($("metricsSearch").value || "").toLowerCase();
      _people.filter(p => !q || p.toLowerCase().includes(q)).forEach(p => {
          const row = mkDiv("metricsRow");
+         const meta = _peopleMetaByName.get(p.toLowerCase());
+         const email = meta?.email || "";
          row.innerHTML = `<div class="left"><div class="avatar">${p.substring(0,2)}</div><div class="name">${p}</div></div>`;
-         row.onclick = () => openMetricsProfile(p);
+         row.onclick = () => openMetricsProfile(p, email);
          host.appendChild(row);
      });
   }
-  function openMetricsProfile(name) {
+  function openMetricsProfile(name, email) {
     _activeMetricsRequest = name;
+    _activeMetricsEmail = email || "";
+    window._activeMetricsEmail = _activeMetricsEmail;
     
     const d = document.getElementById("metricsDrawer"); 
     d.classList.add("open");
@@ -10202,7 +10199,7 @@ function handleDateJump(val) {
     fetch('./?action=agent-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name })
+      body: JSON.stringify({ name: name, email: email })
     })
     .then(res => res.json())
     .then(data => renderMetricsProfileData(data))
@@ -10215,7 +10212,7 @@ function handleDateJump(val) {
              loader.innerHTML = `<div style="color:#f59e0b; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fcd34d;">
                                   <strong>Taking longer than usual...</strong><br>
                                   The server is still processing. Please wait or try again.<br>
-                                  <button class="btn ghost" style="margin-top:8px; font-size:11px;" onclick="openMetricsProfile('${name}')">Retry</button>
+                                  <button class="btn ghost" style="margin-top:8px; font-size:11px;" onclick="openMetricsProfile('${name}', window._activeMetricsEmail || '')">Retry</button>
                                 </div>`;
         }
     }, 30000);
@@ -10254,7 +10251,81 @@ function handleDateJump(val) {
             document.getElementById("mLogin").innerText = "Never";
         }
     }
-    updateMetricLinks(data);
+    // Zendesk link buttons removed; activity panel handles quick insights
+    // Load hourly activity after profile renders
+    applyActivityDateRange();
+    refreshMetricsActivity();
+  }
+  function formatHourLabel(hour) {
+    const h = hour % 24;
+    const ampm = h >= 12 ? "pm" : "am";
+    const display = h % 12 || 12;
+    return `${display}${ampm}`;
+  }
+  function formatHourRangeLabel(hour) {
+    const next = (hour + 1) % 24;
+    return `${formatHourLabel(hour)}-${formatHourLabel(next)}`;
+  }
+  function applyActivityDateRange() {
+    const input = document.getElementById("mActivityDate");
+    if (!input) return;
+    const max = pstISODate();
+    const min = pstISODateOffset(-6);
+    input.max = max;
+    input.min = min;
+    if (!input.value || input.value < min || input.value > max) {
+      input.value = max;
+    }
+  }
+  async function refreshMetricsActivity() {
+    const name = (_activeMetricsRequest || document.getElementById("mName")?.innerText || "").trim();
+    const email = (_activeMetricsEmail || "").trim();
+    const dateInput = document.getElementById("mActivityDate");
+    const summaryEl = document.getElementById("mActivitySummary");
+    const listEl = document.getElementById("mActivityList");
+    const emptyEl = document.getElementById("mActivityEmpty");
+
+    if (!name || !summaryEl || !listEl || !emptyEl || !dateInput) return;
+
+    applyActivityDateRange();
+    const date = dateInput.value || pstISODate();
+    if (!dateInput.value) dateInput.value = date;
+
+    summaryEl.textContent = "Loading activity...";
+    listEl.innerHTML = "";
+    emptyEl.textContent = "";
+
+    try {
+      const emailParam = email ? `&email=${encodeURIComponent(email)}` : "";
+      const url = `./?action=zendesk/activity&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&startHour=8&endHour=20${emailParam}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.ok) {
+        summaryEl.textContent = "";
+        emptyEl.textContent = data.error || "Unable to load activity.";
+        return;
+      }
+
+      const partialNote = data.incomplete ? " (partial)" : "";
+      summaryEl.textContent = `Solved tickets on ${data.date} (PST): ${data.total}${partialNote}`;
+      emptyEl.textContent = data.incomplete ? "Partial results due to Zendesk export limits." : "";
+      if (!Array.isArray(data.buckets) || data.buckets.length === 0) {
+        emptyEl.textContent = "No solved tickets found for this date.";
+        return;
+      }
+
+      listEl.innerHTML = data.buckets.map(b => `
+        <div style="background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius:8px; padding:8px; text-align:center;">
+          <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">${formatHourRangeLabel(b.hour)}</div>
+          <div style="font-size:16px; font-weight:800; color:var(--text-primary); margin-top:4px;">${b.count}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      summaryEl.textContent = "";
+      emptyEl.textContent = "Failed to load activity.";
+      console.error("Metrics activity error:", err);
+    }
   }
   // Force refresh - clears cache and reloads data
 function forceRefresh() {
@@ -10293,23 +10364,6 @@ function forceRefresh() {
 }
 // Make it globally accessible
 window.forceRefresh = forceRefresh;
-  function updateMetricLinks(data) {
-     let openQ = "", badCsatQ = "";
-     if (data.zendeskUserId) {
-         openQ = "type:ticket status<solved assignee_id:" + data.zendeskUserId;
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee_id:" + data.zendeskUserId;
-     } else if (data.email) {
-         openQ = "type:ticket status<solved assignee:" + data.email;
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee:" + data.email;
-     } else {
-         openQ = "type:ticket status<solved assignee:\"" + data.name + "\"";
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee:\"" + data.name + "\"";
-     }
-     const openUrl = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(openQ);
-     const badUrl  = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(badCsatQ);
-     const openA = document.getElementById("mOpenTicketsLink"); if (openA) openA.href = openUrl;
-     const badA = document.getElementById("mBadCsatLink"); if (badA) badA.href = badUrl;
-  }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
   function closeProfile() { $("profileOverlay").style.display = "none"; }
   // --- 9. AUDIT & MASTER MODES ---
