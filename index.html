@@ -6335,20 +6335,6 @@ runGenerate: async function() {
     if (this._success) this._success(json);
   } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
 },
-runArchive: async function() {
-  try {
-    const res = await fetch("./?action=archive", { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    if (this._success) this._success(json);
-  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
-},
-runBoth: async function() {
-  try {
-    const res = await fetch("./?action=sync", { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    if (this._success) this._success(json);
-  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
-},
             handleMasterScheduleEdit: async function(payload) {
                 console.log("Bridge: Master Edit Request", payload);
                 try {
@@ -10347,9 +10333,13 @@ function handleDateJump(val) {
 
     if (queueEl) {
       const baseLabel = data.queueLabel || "All tickets";
-      const showSuffix = !data.queueQueryApplied && baseLabel !== "All tickets";
-      const suffix = showSuffix ? " (all tickets)" : "";
-      queueEl.textContent = `Queue: ${baseLabel}${suffix}`;
+      if (data.queueQueryApplied && baseLabel === "All tickets") {
+        queueEl.textContent = "Queue: Default filters";
+      } else {
+        const showSuffix = !data.queueQueryApplied && baseLabel !== "All tickets";
+        const suffix = showSuffix ? " (all tickets)" : "";
+        queueEl.textContent = `Queue: ${baseLabel}${suffix}`;
+      }
     }
     csatEl.textContent = (data.csatPct !== null && data.csatPct !== undefined) ? `${data.csatPct}%` : "--";
     solvedEl.textContent = formatSummaryNumber(data.solvedAvgPerDay);

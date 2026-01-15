@@ -154,7 +154,7 @@ const ZD_QUEUE_ASSIGNEE_FILTER = String(process.env.ZD_QUEUE_ASSIGNEE_FILTER || 
 const ZD_QUEUE_FILTER_DISABLED = String(process.env.ZD_QUEUE_FILTER_DISABLE || "").toLowerCase() === "true";
 
 const DEFAULT_QUEUE_FILTER = {
-  allowedChannels: ["chat", "web_form", "email", "web_widget", "api", "messaging"],
+  allowedChannels: ["chat", "web", "web_form", "email", "web_widget", "api"],
   allowedRecipients: [
     "support@musely.com",
     "mdsupport@musely.com",
@@ -165,7 +165,7 @@ const DEFAULT_QUEUE_FILTER = {
   ],
   excludedOrganizations: ["server", "bbb alerts"],
   excludedTags: ["call_back_request_form"],
-  requireUnassigned: true
+  requireUnassigned: false
 };
 
 const queueFilterConfig = (() => {
@@ -799,7 +799,6 @@ if (action) path = "/" + action;
       "/assignment/add",
       "/assignment/delete",
       "/admin/generate",
-      "/admin/archive",
       "/admin/seed-base",
       "/update-master-schedule",
       "/agent-profile",
@@ -3845,37 +3844,6 @@ if (path === "/holiday/bank" && req.method === "POST") {
       }
       return res.status(200).json({ ok: true, daysGenerated: daysForward, details: log });
     }
-    // Archive old days
-    if (path === "/admin/archive" && req.method === "POST") {
-      const body = readJsonBody(req);
-      const daysAgo = parseInt(body.daysAgo || "30", 10);
-      
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - daysAgo);
-      const cutoffStr = cutoff.toISOString().split("T")[0]; // YYYY-MM-DD
-      const oldDocs = await db.collection("scheduleDays")
-        .where("date", "<", cutoffStr)
-        .get();
-      if (oldDocs.empty) {
-        return res.status(200).json({ ok: true, archived: 0, message: "No old docs found." });
-      }
-      const batch = db.batch();
-      let count = 0;
-      oldDocs.forEach(doc => {
-        const data = doc.data();
-        const typeKey = data.typeKey || normalizeTimeOffType(data.type || "");
-        const isMakeUp = typeKey === "make_up";
-        const archiveRef = db.collection("scheduleArchive").doc(doc.id);
-        
-        // Copy to Archive
-        batch.set(archiveRef, { ...data, archivedAt: toIsoNow() });
-        // Delete from Live
-        batch.delete(doc.ref);
-        count++;
-      });
-      await batch.commit();
-      return res.status(200).json({ ok: true, archived: count, cutoff: cutoffStr });
-    }
     // Import Base Schedule (V2: Includes Team & Time Fix)
     if (path === "/admin/seed-base" && req.method === "POST") {
       const body = readJsonBody(req);
@@ -4103,7 +4071,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const createdRes = await zdSearchWithFallback(createdQuery, 25, 10);
         let createdTickets = createdRes.results;
         if (isQueueFilterEnabled()) {
-          const requireUnassigned = queueFilterConfig?.requireUnassigned !== false;
+          const requireUnassigned = queueFilterConfig?.requireUnassigned === true;
           createdTickets = await filterTicketsForQueue(createdTickets, { requireUnassigned });
         }
 
