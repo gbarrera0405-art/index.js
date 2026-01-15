@@ -1050,8 +1050,8 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
   .metricsTrend {
     margin-top:10px;
     display:grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap:6px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap:8px;
   }
   .metricsTrendDay {
     border:1px solid var(--border-color);
@@ -1064,18 +1064,21 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     font-size:10px;
     color: var(--text-secondary);
     font-weight:700;
+    margin-bottom:6px;
   }
-  .metricsTrendDay .value {
-    font-size:12px;
-    font-weight:800;
+  .metricsTrendStat {
+    display:flex;
+    justify-content:space-between;
+    font-size:11px;
+    margin-top:4px;
+  }
+  .metricsTrendStat .val {
+    font-weight:900;
     color: var(--text-primary);
-    margin-top:2px;
   }
-  .metricsTrendDay .sub {
-    font-size:10px;
+  .metricsTrendStat .lbl {
     font-weight:700;
     color: var(--text-secondary);
-    margin-top:2px;
   }
   .metricsRow .sub { 
     font-size:11px; 
@@ -10340,13 +10343,36 @@ function handleDateJump(val) {
     noteEl.textContent = data.partial ? `${totals} (partial)` : totals;
 
     if (Array.isArray(data.days)) {
-      trendEl.innerHTML = data.days.map(day => `
-        <div class="metricsTrendDay">
-          <div class="label">${formatSummaryDateLabel(day.date)}</div>
-          <div class="value">C ${day.created}</div>
-          <div class="sub">S ${day.solved}</div>
-        </div>
-      `).join("");
+      if (data.rangeDays === 7) {
+        trendEl.innerHTML = data.days.map(day => `
+          <div class="metricsTrendDay">
+            <div class="label">${formatSummaryDateLabel(day.date)}</div>
+            <div class="metricsTrendStat"><span class="lbl">Created</span><span class="val">${day.created}</span></div>
+            <div class="metricsTrendStat"><span class="lbl">Solved</span><span class="val">${day.solved}</span></div>
+          </div>
+        `).join("");
+      } else {
+        const weeks = [];
+        for (let i = 0; i < data.days.length; i += 7) {
+          const slice = data.days.slice(i, i + 7);
+          if (!slice.length) continue;
+          const created = slice.reduce((sum, d) => sum + (d.created || 0), 0);
+          const solved = slice.reduce((sum, d) => sum + (d.solved || 0), 0);
+          weeks.push({
+            start: slice[0].date,
+            end: slice[slice.length - 1].date,
+            created,
+            solved
+          });
+        }
+        trendEl.innerHTML = weeks.map(week => `
+          <div class="metricsTrendDay">
+            <div class="label">${formatSummaryDateLabel(week.start)} - ${formatSummaryDateLabel(week.end)}</div>
+            <div class="metricsTrendStat"><span class="lbl">Created</span><span class="val">${week.created}</span></div>
+            <div class="metricsTrendStat"><span class="lbl">Solved</span><span class="val">${week.solved}</span></div>
+          </div>
+        `).join("");
+      }
     } else {
       trendEl.innerHTML = "";
     }
