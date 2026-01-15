@@ -127,8 +127,22 @@ const zdFetch = async (url) => {
     const res = await fetch(url, {
         headers: { 'Authorization': `Basic ${auth}` }
     });
-    if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
-    return res.json();
+    const text = await res.text();
+    if (!res.ok) {
+        const err = new Error(`Zendesk API Error: ${res.status} ${res.statusText}`);
+        err.status = res.status;
+        err.body = text;
+        throw err;
+    }
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const err = new Error("Zendesk API Error: Invalid JSON response");
+        err.status = res.status;
+        err.body = text;
+        throw err;
+    }
 };
 const ZD_QUEUE_LABEL = process.env.ZD_QUEUE_LABEL || "All tickets";
 const ZD_QUEUE_QUERY = String(process.env.ZD_QUEUE_QUERY || "").trim();
@@ -310,6 +324,30 @@ async function zdSearchExportAll(query, maxPages = 25) {
   }
 
   return { results, incomplete: hasMore && pages >= maxPages };
+}
+async function zdSearchAll(query, maxPages = 10) {
+  let results = [];
+  let pages = 0;
+  let next = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100`;
+
+  while (next && pages < maxPages) {
+    pages++;
+    const data = await zdFetch(next);
+    results = results.concat(data.results || []);
+    next = data.next_page || null;
+  }
+
+  return { results, incomplete: Boolean(next) };
+}
+async function zdSearchWithFallback(query, exportPages = 25, searchPages = 10) {
+  try {
+    return await zdSearchExportAll(query, exportPages);
+  } catch (err) {
+    const status = err?.status;
+    const isUnprocessable = status === 422 || /unprocessable/i.test(err?.message || "");
+    if (!isUnprocessable) throw err;
+    return zdSearchAll(query, searchPages);
+  }
 }
 /** ------------------------
  * Helpers
@@ -4042,7 +4080,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         if (ZD_QUEUE_SOLVED_QUERY) {
           solvedQuery += ` ${ZD_QUEUE_SOLVED_QUERY}`;
         }
-        const solvedRes = await zdSearchExportAll(solvedQuery, 25);
+        const solvedRes = await zdSearchWithFallback(solvedQuery, 25, 10);
         let solvedTickets = solvedRes.results;
         if (isQueueFilterEnabled()) {
           solvedTickets = await filterTicketsForQueue(solvedTickets, {
@@ -4062,7 +4100,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         if (ZD_QUEUE_CREATED_QUERY) {
           createdQuery += ` ${ZD_QUEUE_CREATED_QUERY}`;
         }
-        const createdRes = await zdSearchExportAll(createdQuery, 25);
+        const createdRes = await zdSearchWithFallback(createdQuery, 25, 10);
         let createdTickets = createdRes.results;
         if (isQueueFilterEnabled()) {
           const requireUnassigned = queueFilterConfig?.requireUnassigned !== false;
@@ -4172,7 +4210,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         if (ZD_QUEUE_SOLVED_QUERY) {
           query += ` ${ZD_QUEUE_SOLVED_QUERY}`;
         }
-        const searchRes = await zdSearchExportAll(query, 25);
+        const searchRes = await zdSearchWithFallback(query, 25, 10);
         let results = searchRes.results;
         if (isQueueFilterEnabled()) {
           results = await filterTicketsForQueue(results);
