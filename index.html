@@ -4844,6 +4844,16 @@ body.dark-mode .open-shift {
                     <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
                   </div>
                   <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
+                  <div id="mActivitySection" style="margin-top:16px; max-width:360px; text-align:left;">
+                    <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Hourly Activity (Solved)</div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                      <input type="date" id="mActivityDate" style="flex:1; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px;" onchange="refreshMetricsActivity()">
+                      <button type="button" class="btn ghost" style="padding:6px 10px; font-size:11px;" onclick="refreshMetricsActivity()">Load</button>
+                    </div>
+                    <div id="mActivitySummary" style="font-size:11px; color:#64748b; margin-bottom:6px;"></div>
+                    <div id="mActivityList" style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;"></div>
+                    <div id="mActivityEmpty" style="font-size:11px; color:#94a3b8; margin-top:6px;"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5153,7 +5163,7 @@ body.dark-mode .open-shift {
       <div class="mFoot"><button class="btn primary" onclick="applyPicker()">Apply Filter</button></div>
     </div>
   </div>
-  <<!-- ✅ Admin Overlay (ONLY ONCE) -->
+  <!-- ✅ Admin Overlay (ONLY ONCE) -->
   <div id="adminOverlay" class="overlay overlay-admin" style="display:none;" onclick="if(event.target===this) closeAdminModal()">
     <div class="modal adminModal">
       <div class="mHead adminHead">
@@ -5808,7 +5818,7 @@ const CHANNEL_ABBREV = {
     showSessionIndicator(false);
     
     // Hide the login button after successful sign-in
-    const loginContainer = document.getElementById("loginContainer");
+    const loginContainer = document.getElementById("authLoginContainer");
     if (loginContainer) loginContainer.style.display = "none";
     
     // Now load the dashboard
@@ -6579,7 +6589,17 @@ function clearScheduleCache() {
 
     // Filter out current user
     const otherManagers = (managers || []).filter(m => m.managerName !== window._myName);
-    const totalOnline = managers?.length || 0;
+
+    const setPresenceVariant = () => {
+      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
+      if (otherManagers.length === 0) {
+        presenceEl.classList.add("mp-solo");
+      } else if (otherManagers.length === 1) {
+        presenceEl.classList.add("mp-one");
+      } else {
+        presenceEl.classList.add("mp-many");
+      }
+    };
 
     // Always show presence - even if you're the only one online
     if (otherManagers.length === 0) {
@@ -6589,15 +6609,7 @@ function clearScheduleCache() {
         <span class="presence-name">Online</span>
       `;
       presenceEl.title = "You are the only manager currently viewing the scheduler";
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     } else if (otherManagers.length === 1) {
       const m = otherManagers[0];
@@ -6607,15 +6619,7 @@ if (otherManagers.length === 0) {
         <span class="presence-view">${m.view}</span>
       `;
       presenceEl.title = `${m.managerName} is viewing ${m.view}${m.area ? ` (${m.area})` : ''}`;
-     presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     } else {
       presenceEl.innerHTML = `
@@ -6625,15 +6629,7 @@ if (otherManagers.length === 0) {
       presenceEl.title = otherManagers.map(m => 
         `${m.managerName}: ${m.view}${m.area ? ` (${m.area})` : ''}`
       ).join('\n');
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     }
 
@@ -6765,7 +6761,7 @@ function startManagerPresenceTracking() {
       showSessionIndicator(true);
       
       // Hide login container
-      const loginContainer = document.getElementById("loginContainer");
+      const loginContainer = document.getElementById("authLoginContainer");
       if (loginContainer) loginContainer.style.display = "none";
     }
     
@@ -6773,7 +6769,7 @@ function startManagerPresenceTracking() {
   };
   function load(force, targetEmail) {
   // ✅ Show/hide login button based on auth state
-  const loginContainer = document.getElementById("loginContainer");
+  const loginContainer = document.getElementById("authLoginContainer");
   if (loginContainer) {
     loginContainer.style.display = (window._myName && window._myEmail) ? "none" : "flex";
   }
@@ -10255,6 +10251,69 @@ function handleDateJump(val) {
         }
     }
     updateMetricLinks(data);
+    // Load hourly activity after profile renders
+    const activityDate = document.getElementById("mActivityDate");
+    if (activityDate && !activityDate.value) {
+      activityDate.value = pstISODate();
+    }
+    refreshMetricsActivity();
+  }
+  function formatHourLabel(hour) {
+    const h = hour % 24;
+    const ampm = h >= 12 ? "pm" : "am";
+    const display = h % 12 || 12;
+    return `${display}${ampm}`;
+  }
+  function formatHourRangeLabel(hour) {
+    const next = (hour + 1) % 24;
+    return `${formatHourLabel(hour)}-${formatHourLabel(next)}`;
+  }
+  async function refreshMetricsActivity() {
+    const name = (_activeMetricsRequest || document.getElementById("mName")?.innerText || "").trim();
+    const dateInput = document.getElementById("mActivityDate");
+    const summaryEl = document.getElementById("mActivitySummary");
+    const listEl = document.getElementById("mActivityList");
+    const emptyEl = document.getElementById("mActivityEmpty");
+
+    if (!name || !summaryEl || !listEl || !emptyEl || !dateInput) return;
+
+    const date = dateInput.value || pstISODate();
+    if (!dateInput.value) dateInput.value = date;
+
+    summaryEl.textContent = "Loading activity...";
+    listEl.innerHTML = "";
+    emptyEl.textContent = "";
+
+    try {
+      const url = `./?action=zendesk/activity&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&startHour=8&endHour=21`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.ok) {
+        summaryEl.textContent = "";
+        emptyEl.textContent = data.error || "Unable to load activity.";
+        return;
+      }
+
+      const partialNote = data.incomplete ? " (partial)" : "";
+      summaryEl.textContent = `Solved tickets on ${data.date} (PST): ${data.total}${partialNote}`;
+      emptyEl.textContent = data.incomplete ? "Showing the first 500 tickets from Zendesk search." : "";
+      if (!Array.isArray(data.buckets) || data.buckets.length === 0) {
+        emptyEl.textContent = "No solved tickets found for this date.";
+        return;
+      }
+
+      listEl.innerHTML = data.buckets.map(b => `
+        <div style="background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius:8px; padding:8px; text-align:center;">
+          <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">${formatHourRangeLabel(b.hour)}</div>
+          <div style="font-size:16px; font-weight:800; color:var(--text-primary); margin-top:4px;">${b.count}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      summaryEl.textContent = "";
+      emptyEl.textContent = "Failed to load activity.";
+      console.error("Metrics activity error:", err);
+    }
   }
   // Force refresh - clears cache and reloads data
 function forceRefresh() {

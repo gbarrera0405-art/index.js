@@ -69,17 +69,16 @@ async function sendShiftNotification(agentEmail, shiftData) {
  */
 async function getAgentEmailByName(name) {
   if (!name) return null;
-  
-  const snap = await db.collection("people").get();
+
+  const { people } = await getCachedMetadata();
   const target = String(name).toLowerCase().trim();
-  
-  for (const doc of snap.docs) {
-    const d = doc.data();
-    const dbName = String(d.name || "").toLowerCase().trim();
-    
+
+  for (const p of people) {
+    const dbName = String(p.name || p.id || "").toLowerCase().trim();
+
     // Match full name or first name
     if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
-      return d.email || null;
+      return p.email || null;
     }
   }
   
@@ -277,6 +276,27 @@ function normalizeValue(v) {
 }
 function toIsoNow() {
   return new Date().toISOString();
+}
+function getPstDateKey(isoDate) {
+  const dt = new Date(isoDate);
+  if (Number.isNaN(dt.getTime())) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dt);
+}
+function getPstHour(isoDate) {
+  const dt = new Date(isoDate);
+  if (Number.isNaN(dt.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: '2-digit',
+    hour12: false
+  }).formatToParts(dt);
+  const hourPart = parts.find(p => p.type === 'hour');
+  return hourPart ? Number(hourPart.value) : null;
 }
 
 /**
@@ -579,6 +599,7 @@ if (action) path = "/" + action;
       "/schedule/extended",
       "/schedule/past", 
       "/schedule/future",
+      "/zendesk/activity",
       "/agent/notifications",
       "/agent/notifications/read",
       "/swap/request",
@@ -3804,6 +3825,86 @@ if (path === "/holiday/bank" && req.method === "POST") {
       } catch (error) {
         console.error("Profile Error:", error);
         return res.status(500).json({ error: error.message });
+      }
+    }
+    if (path === "/zendesk/activity" && req.method === "GET") {
+      try {
+        const name = String(req.query.name || "").trim();
+        const date = String(req.query.date || "").trim();
+        const startHourRaw = Number(req.query.startHour ?? 8);
+        const endHourRaw = Number(req.query.endHour ?? 21);
+
+        if (!name) return res.status(400).json({ ok: false, error: "Missing agent name." });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return res.status(400).json({ ok: false, error: "Invalid date format. Use YYYY-MM-DD." });
+        }
+
+        const startHour = Number.isFinite(startHourRaw) ? Math.min(23, Math.max(0, startHourRaw)) : 8;
+        const endHour = Number.isFinite(endHourRaw) ? Math.min(23, Math.max(0, endHourRaw)) : 21;
+        if (endHour < startHour) {
+          return res.status(400).json({ ok: false, error: "End hour must be after start hour." });
+        }
+
+        const agentEmail = await getAgentEmailByName(name);
+        if (!agentEmail) {
+          return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
+        }
+
+        const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
+        const userRes = await zdFetch(userSearchUrl);
+        if (!userRes.users?.length) {
+          return res.status(404).json({ ok: false, error: "Email not found in Zendesk." });
+        }
+        const user = userRes.users[0];
+
+        const nextDate = new Date(`${date}T00:00:00Z`);
+        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+
+        const query = `type:ticket assignee:${user.id} status:solved solved>=${date} solved<${nextDateStr}`;
+        let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100`;
+
+        const maxPages = 5;
+        let pages = 0;
+        let results = [];
+
+        while (url && pages < maxPages) {
+          pages++;
+          const data = await zdFetch(url);
+          results = results.concat(data.results || []);
+          url = data.next_page || null;
+        }
+
+        const buckets = [];
+        for (let h = startHour; h <= endHour; h++) {
+          buckets.push({ hour: h, count: 0 });
+        }
+
+        for (const ticket of results) {
+          const solvedAt = ticket.solved_at || ticket.updated_at || ticket.created_at;
+          if (!solvedAt) continue;
+          const pstDate = getPstDateKey(solvedAt);
+          if (pstDate !== date) continue;
+          const hour = getPstHour(solvedAt);
+          if (hour === null || hour < startHour || hour > endHour) continue;
+          const bucket = buckets[hour - startHour];
+          if (bucket) bucket.count++;
+        }
+
+        const total = buckets.reduce((sum, b) => sum + b.count, 0);
+        return res.status(200).json({
+          ok: true,
+          name: user.name,
+          date,
+          startHour,
+          endHour,
+          total,
+          buckets,
+          incomplete: Boolean(url)
+        });
+      } catch (error) {
+        console.error("Zendesk Activity Error:", error);
+        return res.status(500).json({ ok: false, error: error.message });
       }
     }
     return res.status(404).json({ error: "Not found" });
