@@ -144,13 +144,11 @@ const zdFetch = async (url) => {
         throw err;
     }
 };
-const ZD_QUEUE_LABEL = process.env.ZD_QUEUE_LABEL || "All tickets";
 const ZD_QUEUE_QUERY = String(process.env.ZD_QUEUE_QUERY || "").trim();
 const ZD_QUEUE_CREATED_QUERY = String(process.env.ZD_QUEUE_CREATED_QUERY || ZD_QUEUE_QUERY || "").trim();
 const ZD_QUEUE_SOLVED_QUERY = String(process.env.ZD_QUEUE_SOLVED_QUERY || ZD_QUEUE_QUERY || "").trim();
 const ZD_QUEUE_SUPPORT_TYPE_FIELD_ID = process.env.ZD_QUEUE_SUPPORT_TYPE_FIELD_ID || "";
 const ZD_QUEUE_SUPPORT_TYPE_VALUE = process.env.ZD_QUEUE_SUPPORT_TYPE_VALUE || "Agent";
-const ZD_QUEUE_ASSIGNEE_FILTER = String(process.env.ZD_QUEUE_ASSIGNEE_FILTER || "").toLowerCase() === "true";
 const ZD_QUEUE_FILTER_DISABLED = String(process.env.ZD_QUEUE_FILTER_DISABLE || "").toLowerCase() === "true";
 
 const DEFAULT_QUEUE_FILTER = {
@@ -201,17 +199,6 @@ async function getZendeskUserByEmail(email) {
   const entry = { id: user.id, name: user.name, email: user.email, cachedAt: Date.now() };
   zendeskUserCache.set(key, entry);
   return entry;
-}
-async function getZendeskUserIdsForPeople(people) {
-  const emails = (people || []).map(p => p.email).filter(Boolean);
-  const settled = await Promise.allSettled(emails.map(getZendeskUserByEmail));
-  const ids = new Set();
-  for (const res of settled) {
-    if (res.status === "fulfilled" && res.value?.id) {
-      ids.add(Number(res.value.id));
-    }
-  }
-  return ids;
 }
 async function getZendeskOrgNamesByIds(ids) {
   const unique = Array.from(new Set(ids.map(String)));
@@ -829,7 +816,6 @@ if (action) path = "/" + action;
       "/schedule/past", 
       "/schedule/future",
       "/zendesk/activity",
-      "/zendesk/team-summary",
       "/agent/notifications",
       "/agent/notifications/read",
       "/swap/request",
@@ -1528,7 +1514,18 @@ if (path === "/audit/logs" && req.method === "GET") {
                 if (personDoc.empty) {
                     return res.status(403).json({ error: "Access Denied: User not in system." });
                 }
+                const personRef = personDoc.docs[0].ref;
                 const userData = personDoc.docs[0].data();
+                const lastLoginAt = toIsoNow();
+                await personRef.set({ lastLoginAt }, { merge: true });
+                if (metadataCache.people) {
+                  metadataCache.people = metadataCache.people.map(p => {
+                    if ((p.email || "").toLowerCase() === String(email).toLowerCase()) {
+                      return { ...p, lastLoginAt };
+                    }
+                    return p;
+                  });
+                }
                 return res.status(200).json({
                     userEmail: email,
                     matchedPerson: userData.name,
@@ -3939,24 +3936,40 @@ if (path === "/holiday/bank" && req.method === "POST") {
     }
     if (path === "/agent-profile" && req.method === "POST") {
       try {
-        const { name } = readJsonBody(req);
-        if (!name) return res.status(400).json({ error: "No name provided" });
+        const { name, email } = readJsonBody(req);
+        if (!name && !email) return res.status(400).json({ error: "No name or email provided" });
         // 1. Find the agent's email from Firestore
         const { people } = await getCachedMetadata();
         let agentEmail = "";
-        
-        const target = name.toLowerCase().trim();
-        for (const p of people) {
-          const dbName = String(p.name || p.id || "").toLowerCase().trim();
-          
-          // Match full name or first name
-          if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
-            agentEmail = p.email; 
-            break;
+        let personRole = "";
+        let personLastLogin = "";
+
+        if (email) {
+          const lowerEmail = String(email).toLowerCase().trim();
+          const match = people.find(p => String(p.email || "").toLowerCase().trim() === lowerEmail);
+          if (match) {
+            agentEmail = match.email;
+            personRole = match.role || "";
+            personLastLogin = match.lastLoginAt || "";
           }
         }
+
+        if (!agentEmail && name) {
+          const target = String(name).toLowerCase().trim();
+          for (const p of people) {
+            const dbName = String(p.name || p.id || "").toLowerCase().trim();
+            // Match full name or first name
+            if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
+              agentEmail = p.email;
+              personRole = p.role || "";
+              personLastLogin = p.lastLoginAt || "";
+              break;
+            }
+          }
+        }
+
         if (!agentEmail) {
-          throw new Error(`Agent ${name} found in Firestore, but they are missing an email address.`);
+          throw new Error(`Agent ${name || email} found in Firestore, but they are missing an email address.`);
         }
         // 2. Lookup User in Zendesk
         const user = await getZendeskUserByEmail(agentEmail);
@@ -3970,7 +3983,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${user.id} status<solved`)}&per_page=100`;
         const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${user.id} status:solved solved>${date7}`)}&per_page=100`;
         // 5. Fetch CSAT (Last 30 Days - optimized for speed)
-        const daysBack = 30;
+        const daysBack = 60;
         const endSec = Math.floor(Date.now() / 1000) - 120;
         const startSec = endSec - (daysBack * 24 * 60 * 60);
         
@@ -4012,8 +4025,8 @@ if (path === "/holiday/bank" && req.method === "POST") {
             name: user.name,
             email: user.email,
             avatar: user.photo ? user.photo.content_url : null,
-            role: user.role,
-            lastLogin: user.last_login_at,
+            role: personRole || user.role,
+            lastLogin: personLastLogin || user.last_login_at,
             openTickets: openRes.count || 0,
             solvedWeek: solvedRes.count || 0,
             csatScore: csatDisplay
@@ -4023,120 +4036,10 @@ if (path === "/holiday/bank" && req.method === "POST") {
         return res.status(500).json({ error: error.message });
       }
     }
-    if (path === "/zendesk/team-summary" && req.method === "GET") {
-      try {
-        const rangeRaw = Number(req.query.range || 7);
-        const rangeDays = rangeRaw === 30 ? 30 : 7;
-        const dateKeys = getRecentPstDates(rangeDays);
-        if (!dateKeys.length) {
-          return res.status(500).json({ ok: false, error: "Unable to build date range." });
-        }
-
-        const startDateStr = dateKeys[0];
-        const endDate = new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00Z`);
-        endDate.setUTCDate(endDate.getUTCDate() + 1);
-        const endDateStr = endDate.toISOString().split('T')[0];
-
-        const { people } = await getCachedMetadata();
-        const teamIds = await getZendeskUserIdsForPeople(people);
-
-        const solvedByDay = {};
-        const createdByDay = {};
-        dateKeys.forEach(d => { solvedByDay[d] = 0; createdByDay[d] = 0; });
-
-        let solvedQuery = `type:ticket status:solved solved>=${startDateStr} solved<${endDateStr}`;
-        if (ZD_QUEUE_SOLVED_QUERY) {
-          solvedQuery += ` ${ZD_QUEUE_SOLVED_QUERY}`;
-        }
-        const solvedRes = await zdSearchWithFallback(solvedQuery, 25, 10);
-        let solvedTickets = solvedRes.results;
-        if (isQueueFilterEnabled()) {
-          solvedTickets = await filterTicketsForQueue(solvedTickets, {
-            allowedAssigneeIds: ZD_QUEUE_ASSIGNEE_FILTER ? teamIds : null
-          });
-        } else if (ZD_QUEUE_ASSIGNEE_FILTER && teamIds.size) {
-          solvedTickets = solvedTickets.filter(t => teamIds.has(Number(t.assignee_id)));
-        }
-
-        for (const ticket of solvedTickets) {
-          const solvedAt = ticket.solved_at || ticket.updated_at || ticket.created_at;
-          const day = getPstDateKey(solvedAt);
-          if (day && solvedByDay[day] !== undefined) solvedByDay[day] += 1;
-        }
-
-        let createdQuery = `type:ticket created>=${startDateStr} created<${endDateStr}`;
-        if (ZD_QUEUE_CREATED_QUERY) {
-          createdQuery += ` ${ZD_QUEUE_CREATED_QUERY}`;
-        }
-        const createdRes = await zdSearchWithFallback(createdQuery, 25, 10);
-        let createdTickets = createdRes.results;
-        if (isQueueFilterEnabled()) {
-          const requireUnassigned = queueFilterConfig?.requireUnassigned === true;
-          createdTickets = await filterTicketsForQueue(createdTickets, { requireUnassigned });
-        }
-
-        for (const ticket of createdTickets) {
-          const day = getPstDateKey(ticket.created_at);
-          if (day && createdByDay[day] !== undefined) createdByDay[day] += 1;
-        }
-
-        const solvedTotal = Object.values(solvedByDay).reduce((sum, val) => sum + val, 0);
-        const createdTotal = Object.values(createdByDay).reduce((sum, val) => sum + val, 0);
-
-        const endSec = Math.floor(Date.now() / 1000) - 120;
-        const startSec = endSec - (rangeDays * 24 * 60 * 60);
-        let ratingsUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&per_page=100`;
-        let ratingsPages = 0;
-        let good = 0;
-        let bad = 0;
-        let ratingsIncomplete = false;
-        const maxRatingPages = 10;
-
-        while (ratingsUrl && ratingsPages < maxRatingPages) {
-          ratingsPages++;
-          const data = await zdFetch(ratingsUrl);
-          const ratings = data.satisfaction_ratings || [];
-          for (const r of ratings) {
-            const assigneeId = Number(r.assignee_id);
-            if (teamIds.size && !teamIds.has(assigneeId)) continue;
-            if (r.score === "good") good += 1;
-            if (r.score === "bad") bad += 1;
-          }
-          ratingsUrl = data.next_page || null;
-        }
-        if (ratingsUrl) ratingsIncomplete = true;
-
-        const csatTotal = good + bad;
-        const csatPct = csatTotal ? Math.round((good / csatTotal) * 100) : null;
-
-        const days = dateKeys.map(date => ({
-          date,
-          solved: solvedByDay[date] || 0,
-          created: createdByDay[date] || 0
-        }));
-
-        const partial = solvedRes.incomplete || createdRes.incomplete || ratingsIncomplete;
-        return res.status(200).json({
-          ok: true,
-          rangeDays,
-          queueLabel: ZD_QUEUE_LABEL,
-          queueQueryApplied: Boolean(ZD_QUEUE_CREATED_QUERY || ZD_QUEUE_SOLVED_QUERY || isQueueFilterEnabled()),
-          csatPct,
-          solvedTotal,
-          solvedAvgPerDay: solvedTotal / rangeDays,
-          createdTotal,
-          createdAvgPerDay: createdTotal / rangeDays,
-          days,
-          partial
-        });
-      } catch (error) {
-        console.error("Zendesk Summary Error:", error);
-        return res.status(500).json({ ok: false, error: error.message });
-      }
-    }
     if (path === "/zendesk/activity" && req.method === "GET") {
       try {
         const name = String(req.query.name || "").trim();
+        const email = String(req.query.email || "").trim();
         const date = String(req.query.date || "").trim();
         const startHourRaw = Number(req.query.startHour ?? 8);
         const endHourRaw = Number(req.query.endHour ?? 20);
@@ -4157,7 +4060,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
           return res.status(400).json({ ok: false, error: "Date must be within the last 7 days." });
         }
 
-        const agentEmail = await getAgentEmailByName(name);
+        const agentEmail = email || await getAgentEmailByName(name);
         if (!agentEmail) {
           return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
         }
