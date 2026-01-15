@@ -130,6 +130,45 @@ const zdFetch = async (url) => {
     if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
     return res.json();
 };
+const ZD_QUEUE_LABEL = process.env.ZD_QUEUE_LABEL || "All tickets";
+const ZD_QUEUE_QUERY = String(process.env.ZD_QUEUE_QUERY || "").trim();
+const ZD_QUEUE_CREATED_QUERY = String(process.env.ZD_QUEUE_CREATED_QUERY || ZD_QUEUE_QUERY || "").trim();
+const ZD_QUEUE_SOLVED_QUERY = String(process.env.ZD_QUEUE_SOLVED_QUERY || ZD_QUEUE_QUERY || "").trim();
+const ZD_QUEUE_SUPPORT_TYPE_FIELD_ID = process.env.ZD_QUEUE_SUPPORT_TYPE_FIELD_ID || "";
+const ZD_QUEUE_SUPPORT_TYPE_VALUE = process.env.ZD_QUEUE_SUPPORT_TYPE_VALUE || "Agent";
+const ZD_QUEUE_ASSIGNEE_FILTER = String(process.env.ZD_QUEUE_ASSIGNEE_FILTER || "").toLowerCase() === "true";
+const ZD_QUEUE_FILTER_DISABLED = String(process.env.ZD_QUEUE_FILTER_DISABLE || "").toLowerCase() === "true";
+
+const DEFAULT_QUEUE_FILTER = {
+  allowedChannels: ["chat", "web_form", "email", "web_widget", "api", "messaging"],
+  allowedRecipients: [
+    "support@musely.com",
+    "mdsupport@musely.com",
+    "support@musely.zendesk.com",
+    "sellersupport@musely.com",
+    "musely@musely.com",
+    "no-reply@musely.com"
+  ],
+  excludedOrganizations: ["server", "bbb alerts"],
+  excludedTags: ["call_back_request_form"],
+  requireUnassigned: true
+};
+
+const queueFilterConfig = (() => {
+  if (ZD_QUEUE_FILTER_DISABLED) return null;
+  const raw = process.env.ZD_QUEUE_FILTER_JSON;
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn("Invalid ZD_QUEUE_FILTER_JSON, using defaults.");
+    }
+  }
+  return DEFAULT_QUEUE_FILTER;
+})();
+
+const ZENDESK_ORG_CACHE_MS = 12 * 60 * 60 * 1000;
+const zendeskOrgCache = new Map();
 const ZENDESK_USER_CACHE_MS = 6 * 60 * 60 * 1000;
 const zendeskUserCache = new Map();
 async function getZendeskUserByEmail(email) {
@@ -160,17 +199,117 @@ async function getZendeskUserIdsForPeople(people) {
   }
   return ids;
 }
-async function zdSearchAll(url, maxPages = 10) {
+async function getZendeskOrgNamesByIds(ids) {
+  const unique = Array.from(new Set(ids.map(String)));
+  const missing = unique.filter(id => !zendeskOrgCache.has(id));
+  const chunkSize = 100;
+  for (let i = 0; i < missing.length; i += chunkSize) {
+    const chunk = missing.slice(i, i + chunkSize);
+    if (!chunk.length) continue;
+    const url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/organizations/show_many.json?ids=${chunk.join(",")}`;
+    const data = await zdFetch(url);
+    (data.organizations || []).forEach(org => {
+      zendeskOrgCache.set(String(org.id), { name: org.name, cachedAt: Date.now() });
+    });
+  }
+  const now = Date.now();
+  const map = new Map();
+  unique.forEach(id => {
+    const cached = zendeskOrgCache.get(id);
+    if (!cached) return;
+    if (now - cached.cachedAt > ZENDESK_ORG_CACHE_MS) return;
+    map.set(id, cached.name);
+  });
+  return map;
+}
+function normalizeZendeskValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+function ticketRecipient(ticket) {
+  return ticket?.recipient ||
+    ticket?.via?.source?.from?.address ||
+    ticket?.via?.source?.from?.email ||
+    "";
+}
+function ticketChannel(ticket) {
+  return ticket?.via?.channel || "";
+}
+function ticketSupportType(ticket) {
+  if (!ZD_QUEUE_SUPPORT_TYPE_FIELD_ID) return null;
+  const fieldId = String(ZD_QUEUE_SUPPORT_TYPE_FIELD_ID);
+  const field = (ticket.custom_fields || []).find(f => String(f.id) === fieldId);
+  return field?.value || null;
+}
+function isQueueFilterEnabled() {
+  if (!queueFilterConfig) return false;
+  const { allowedChannels, allowedRecipients, excludedOrganizations, excludedTags } = queueFilterConfig;
+  return Boolean(
+    (allowedChannels && allowedChannels.length) ||
+    (allowedRecipients && allowedRecipients.length) ||
+    (excludedOrganizations && excludedOrganizations.length) ||
+    (excludedTags && excludedTags.length) ||
+    ZD_QUEUE_SUPPORT_TYPE_FIELD_ID
+  );
+}
+async function filterTicketsForQueue(tickets, { requireUnassigned = false, allowedAssigneeIds = null } = {}) {
+  if (!isQueueFilterEnabled()) return tickets;
+  const allowedChannels = new Set((queueFilterConfig.allowedChannels || []).map(normalizeZendeskValue));
+  const allowedRecipients = new Set((queueFilterConfig.allowedRecipients || []).map(normalizeZendeskValue));
+  const excludedOrganizations = new Set((queueFilterConfig.excludedOrganizations || []).map(normalizeZendeskValue));
+  const excludedTags = new Set((queueFilterConfig.excludedTags || []).map(normalizeZendeskValue));
+
+  let orgNameMap = null;
+  if (excludedOrganizations.size) {
+    const orgIds = tickets.map(t => t.organization_id).filter(Boolean);
+    orgNameMap = await getZendeskOrgNamesByIds(orgIds);
+  }
+
+  return tickets.filter(ticket => {
+    if (requireUnassigned && ticket.assignee_id) return false;
+    if (allowedAssigneeIds && ticket.assignee_id && !allowedAssigneeIds.has(Number(ticket.assignee_id))) return false;
+
+    const channel = normalizeZendeskValue(ticketChannel(ticket));
+    const recipient = normalizeZendeskValue(ticketRecipient(ticket));
+    if ((allowedChannels.size || allowedRecipients.size) && !allowedChannels.has(channel) && !allowedRecipients.has(recipient)) {
+      return false;
+    }
+
+    if (excludedTags.size) {
+      const tags = (ticket.tags || []).map(normalizeZendeskValue);
+      if (tags.some(tag => excludedTags.has(tag))) return false;
+    }
+
+    if (excludedOrganizations.size && orgNameMap && ticket.organization_id) {
+      const orgName = normalizeZendeskValue(orgNameMap.get(String(ticket.organization_id)) || "");
+      if (orgName && excludedOrganizations.has(orgName)) return false;
+    }
+
+    if (ZD_QUEUE_SUPPORT_TYPE_FIELD_ID) {
+      const supportType = normalizeZendeskValue(ticketSupportType(ticket));
+      if (supportType !== normalizeZendeskValue(ZD_QUEUE_SUPPORT_TYPE_VALUE)) return false;
+    }
+
+    return true;
+  });
+}
+async function zdSearchExportAll(query, maxPages = 25) {
   let results = [];
   let pages = 0;
-  let next = url;
-  while (next && pages < maxPages) {
+  let afterCursor = null;
+  let hasMore = true;
+
+  while (hasMore && pages < maxPages) {
     pages++;
-    const data = await zdFetch(next);
+    let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search/export.json?query=${encodeURIComponent(query)}`;
+    if (afterCursor) url += `&after_cursor=${encodeURIComponent(afterCursor)}`;
+
+    const data = await zdFetch(url);
     results = results.concat(data.results || []);
-    next = data.next_page || null;
+    hasMore = Boolean(data.meta?.has_more);
+    afterCursor = data.meta?.after_cursor || null;
   }
-  return { results, incomplete: Boolean(next) };
+
+  return { results, incomplete: hasMore && pages >= maxPages };
 }
 /** ------------------------
  * Helpers
@@ -3899,23 +4038,38 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const createdByDay = {};
         dateKeys.forEach(d => { solvedByDay[d] = 0; createdByDay[d] = 0; });
 
-        const solvedQuery = `type:ticket status:solved solved>=${startDateStr} solved<${endDateStr}`;
-        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(solvedQuery)}&per_page=100`;
-        const solvedRes = await zdSearchAll(solvedUrl, 10);
+        let solvedQuery = `type:ticket status:solved solved>=${startDateStr} solved<${endDateStr}`;
+        if (ZD_QUEUE_SOLVED_QUERY) {
+          solvedQuery += ` ${ZD_QUEUE_SOLVED_QUERY}`;
+        }
+        const solvedRes = await zdSearchExportAll(solvedQuery, 25);
+        let solvedTickets = solvedRes.results;
+        if (isQueueFilterEnabled()) {
+          solvedTickets = await filterTicketsForQueue(solvedTickets, {
+            allowedAssigneeIds: ZD_QUEUE_ASSIGNEE_FILTER ? teamIds : null
+          });
+        } else if (ZD_QUEUE_ASSIGNEE_FILTER && teamIds.size) {
+          solvedTickets = solvedTickets.filter(t => teamIds.has(Number(t.assignee_id)));
+        }
 
-        for (const ticket of solvedRes.results) {
-          const assigneeId = Number(ticket.assignee_id);
-          if (teamIds.size && !teamIds.has(assigneeId)) continue;
+        for (const ticket of solvedTickets) {
           const solvedAt = ticket.solved_at || ticket.updated_at || ticket.created_at;
           const day = getPstDateKey(solvedAt);
           if (day && solvedByDay[day] !== undefined) solvedByDay[day] += 1;
         }
 
-        const createdQuery = `type:ticket created>=${startDateStr} created<${endDateStr}`;
-        const createdUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(createdQuery)}&per_page=100`;
-        const createdRes = await zdSearchAll(createdUrl, 10);
+        let createdQuery = `type:ticket created>=${startDateStr} created<${endDateStr}`;
+        if (ZD_QUEUE_CREATED_QUERY) {
+          createdQuery += ` ${ZD_QUEUE_CREATED_QUERY}`;
+        }
+        const createdRes = await zdSearchExportAll(createdQuery, 25);
+        let createdTickets = createdRes.results;
+        if (isQueueFilterEnabled()) {
+          const requireUnassigned = queueFilterConfig?.requireUnassigned !== false;
+          createdTickets = await filterTicketsForQueue(createdTickets, { requireUnassigned });
+        }
 
-        for (const ticket of createdRes.results) {
+        for (const ticket of createdTickets) {
           const day = getPstDateKey(ticket.created_at);
           if (day && createdByDay[day] !== undefined) createdByDay[day] += 1;
         }
@@ -3955,16 +4109,19 @@ if (path === "/holiday/bank" && req.method === "POST") {
           created: createdByDay[date] || 0
         }));
 
+        const partial = solvedRes.incomplete || createdRes.incomplete || ratingsIncomplete;
         return res.status(200).json({
           ok: true,
           rangeDays,
+          queueLabel: ZD_QUEUE_LABEL,
+          queueQueryApplied: Boolean(ZD_QUEUE_CREATED_QUERY || ZD_QUEUE_SOLVED_QUERY || isQueueFilterEnabled()),
           csatPct,
           solvedTotal,
           solvedAvgPerDay: solvedTotal / rangeDays,
           createdTotal,
           createdAvgPerDay: createdTotal / rangeDays,
           days,
-          partial: solvedRes.incomplete || createdRes.incomplete || ratingsIncomplete
+          partial
         });
       } catch (error) {
         console.error("Zendesk Summary Error:", error);
@@ -4011,18 +4168,14 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const startDateStr = queryStart.toISOString().split('T')[0];
         const endDateStr = queryEnd.toISOString().split('T')[0];
 
-        const query = `type:ticket assignee_id:${user.id} status:solved solved>=${startDateStr} solved<${endDateStr}`;
-        let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100`;
-
-        const maxPages = 10;
-        let pages = 0;
-        let results = [];
-
-        while (url && pages < maxPages) {
-          pages++;
-          const data = await zdFetch(url);
-          results = results.concat(data.results || []);
-          url = data.next_page || null;
+        let query = `type:ticket assignee_id:${user.id} status:solved solved>=${startDateStr} solved<${endDateStr}`;
+        if (ZD_QUEUE_SOLVED_QUERY) {
+          query += ` ${ZD_QUEUE_SOLVED_QUERY}`;
+        }
+        const searchRes = await zdSearchExportAll(query, 25);
+        let results = searchRes.results;
+        if (isQueueFilterEnabled()) {
+          results = await filterTicketsForQueue(results);
         }
 
         const buckets = [];
@@ -4050,7 +4203,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
           endHour,
           total,
           buckets,
-          incomplete: Boolean(url)
+          incomplete: searchRes.incomplete
         });
       } catch (error) {
         console.error("Zendesk Activity Error:", error);

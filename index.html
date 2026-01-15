@@ -1013,6 +1013,11 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     color: var(--text-primary);
     font-size:13px;
   }
+  .metricsSummaryQueue {
+    margin-top:2px;
+    font-size:11px;
+    color: var(--text-secondary);
+  }
   .metricsSummaryToggle { display:flex; gap:6px; }
   .metricsSummaryToggle .btn {
     padding:4px 8px;
@@ -4893,7 +4898,10 @@ body.dark-mode .open-shift {
             </div>
             <div id="metricsSummary" class="metricsSummary">
               <div class="metricsSummaryHead">
-                <div class="metricsSummaryTitle">Team Summary</div>
+                <div>
+                  <div class="metricsSummaryTitle">Team Summary</div>
+                  <div id="metricsSummaryQueue" class="metricsSummaryQueue"></div>
+                </div>
                 <div class="metricsSummaryToggle">
                   <button id="metricsSummary7" type="button" class="btn primary" onclick="loadTeamSummary(7)">7d</button>
                   <button id="metricsSummary30" type="button" class="btn ghost" onclick="loadTeamSummary(30)">30d</button>
@@ -10324,6 +10332,7 @@ function handleDateJump(val) {
     const createdEl = $("metricsSummaryCreated");
     const noteEl = $("metricsSummaryNote");
     const trendEl = $("metricsSummaryTrend");
+    const queueEl = $("metricsSummaryQueue");
     if (!csatEl || !solvedEl || !createdEl || !noteEl || !trendEl) return;
 
     if (!data || !data.ok) {
@@ -10332,9 +10341,16 @@ function handleDateJump(val) {
       solvedEl.textContent = "--";
       createdEl.textContent = "--";
       trendEl.innerHTML = "";
+      if (queueEl) queueEl.textContent = "";
       return;
     }
 
+    if (queueEl) {
+      const baseLabel = data.queueLabel || "All tickets";
+      const showSuffix = !data.queueQueryApplied && baseLabel !== "All tickets";
+      const suffix = showSuffix ? " (all tickets)" : "";
+      queueEl.textContent = `Queue: ${baseLabel}${suffix}`;
+    }
     csatEl.textContent = (data.csatPct !== null && data.csatPct !== undefined) ? `${data.csatPct}%` : "--";
     solvedEl.textContent = formatSummaryNumber(data.solvedAvgPerDay);
     createdEl.textContent = formatSummaryNumber(data.createdAvgPerDay);
@@ -10532,7 +10548,7 @@ function handleDateJump(val) {
 
       const partialNote = data.incomplete ? " (partial)" : "";
       summaryEl.textContent = `Solved tickets on ${data.date} (PST): ${data.total}${partialNote}`;
-      emptyEl.textContent = data.incomplete ? "Showing the first 1000 tickets from Zendesk search." : "";
+      emptyEl.textContent = data.incomplete ? "Partial results due to Zendesk export limits." : "";
       if (!Array.isArray(data.buckets) || data.buckets.length === 0) {
         emptyEl.textContent = "No solved tickets found for this date.";
         return;
