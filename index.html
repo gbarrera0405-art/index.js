@@ -2466,6 +2466,94 @@ body.agent-mode .agent-toolbar {
   box-shadow: 0 4px 12px rgba(179,126,120,0.4);
 }
 
+/* Agent Schedule Banner */
+.agent-schedule-banner {
+  display: none;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+body.agent-mode .agent-schedule-banner {
+  display: grid;
+}
+.agent-schedule-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
+}
+.agent-schedule-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.agent-schedule-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.agent-schedule-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+.agent-schedule-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+.agent-schedule-pill.off {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.agent-schedule-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary, #1e293b);
+}
+.agent-schedule-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+.agent-schedule-team {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #f1f5f9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+.agent-schedule-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #f1f5f9);
+  overflow: hidden;
+}
+.agent-schedule-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #b37e78 0%, #8f5f5a 100%);
+  transition: width 0.3s ease;
+}
+.agent-schedule-date {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+
 /* Dark mode agent toolbar */
 body.dark-mode .agent-toolbar {
   background: #1a0e0d;
@@ -2483,6 +2571,36 @@ body.dark-mode .agent-toolbar-btn.secondary {
 }
 
 body.dark-mode .agent-toolbar-btn.secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+body.dark-mode .agent-schedule-banner {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+body.dark-mode .agent-schedule-card {
+  background: var(--card-bg);
+  border-color: var(--border-color);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode .agent-schedule-pill {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--text-secondary);
+}
+body.dark-mode .agent-schedule-pill.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+body.dark-mode .agent-schedule-pill.off {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+body.dark-mode .agent-schedule-team {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+body.dark-mode .agent-schedule-progress {
   background: var(--bg-tertiary);
 }
 
@@ -4819,6 +4937,35 @@ body.dark-mode .bulkModal .mBody {
     🏖️ Request Time Off
   </button>
 </div>
+<!-- Agent Schedule Banner (Current + Next Shift) -->
+<div id="agentScheduleBanner" class="agent-schedule-banner" style="display:none;">
+  <div class="agent-schedule-card current">
+    <div class="agent-schedule-card-head">
+      <span class="agent-schedule-label">Current Shift</span>
+      <span class="agent-schedule-pill off" id="agentCurrentShiftStatus">Off</span>
+    </div>
+    <div class="agent-schedule-time" id="agentCurrentShiftTime">--</div>
+    <div class="agent-schedule-meta">
+      <span class="agent-schedule-team" id="agentCurrentShiftTeam">--</span>
+      <span id="agentCurrentShiftRole"></span>
+    </div>
+    <div class="agent-schedule-progress" id="agentCurrentShiftProgressWrap">
+      <div class="agent-schedule-progress-bar" id="agentCurrentShiftProgress"></div>
+    </div>
+  </div>
+  <div class="agent-schedule-card next">
+    <div class="agent-schedule-card-head">
+      <span class="agent-schedule-label">Next Shift</span>
+      <span class="agent-schedule-pill" id="agentNextShiftStatus">Upcoming</span>
+    </div>
+    <div class="agent-schedule-time" id="agentNextShiftTime">--</div>
+    <div class="agent-schedule-meta">
+      <span class="agent-schedule-team" id="agentNextShiftTeam">--</span>
+      <span id="agentNextShiftRole"></span>
+    </div>
+    <div class="agent-schedule-date" id="agentNextShiftDate"></div>
+  </div>
+</div>
   <!-- MAIN -->
   <div class="main">
     <div class="content">
@@ -6817,10 +6964,7 @@ function clearScheduleCache() {
   // ============================================
   // [SECTION 6] MANAGER PRESENCE TRACKING
   // ============================================
-  function sendManagerHeartbeat() {
-    if (!window._isManager || !window._myName) return;
-
-    // Determine current view and area
+  function getPresenceContext() {
     let view = "Daily Schedule";
     let area = "";
 
@@ -6828,12 +6972,20 @@ function clearScheduleCache() {
       view = "Metrics";
     } else if (_view === "schedule") {
       if (window._isMasterMode) {
-        view = "Master Template";
+        view = _masterEditEnabled ? "Editing Master Schedule" : "Master Schedule";
       } else {
-        view = "Daily Schedule";
+        view = _isEditingSchedule ? "Editing Daily Schedule" : "Daily Schedule";
         area = (typeof _activeTeam !== "undefined" && _activeTeam) ? _activeTeam : "";
       }
     }
+
+    return { view, area };
+  }
+
+  function sendManagerHeartbeat() {
+    if (!window._isManager || !window._myName) return;
+
+    const { view, area } = getPresenceContext();
 
     console.log(`[Presence] Sending heartbeat: ${window._myName} - ${view}`);
 
@@ -6917,11 +7069,12 @@ function clearScheduleCache() {
     // Always show presence - even if you're the only one online
     if (otherManagers.length === 0) {
       // Only you are online
+      const myPresence = getPresenceContext();
       presenceEl.innerHTML = `
         <span class="presence-dot"></span>
         <span class="presence-name">Online</span>
       `;
-      presenceEl.title = "You are the only manager currently viewing the scheduler";
+      presenceEl.title = `You are viewing ${myPresence.view}${myPresence.area ? ` (${myPresence.area})` : ""}`;
       setPresenceVariant();
 
     } else if (otherManagers.length === 1) {
@@ -6949,6 +7102,8 @@ function clearScheduleCache() {
     // Add click handler for details popup
     presenceEl.onclick = function() {
       const now = new Date();
+      const myPresence = getPresenceContext();
+      const myViewLabel = `${myPresence.view}${myPresence.area ? ` • ${myPresence.area}` : ""}`;
       
       let html = `
         <div style="text-align: left; font-size: 14px; max-height: 300px; overflow-y: auto;">
@@ -6960,7 +7115,7 @@ function clearScheduleCache() {
             <div style="flex:1;">
               <div style="font-weight:700; color:#1e293b; font-size:14px;">${window._myName || 'You'} <span style="font-size:11px; color:#b37e78;">(You)</span></div>
               <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                📍 Currently viewing
+                📍 ${myViewLabel}
               </div>
             </div>
             <div style="font-size:11px; color:#b37e78; background:#f0e6e4; padding:4px 8px; border-radius:6px;">
@@ -7655,6 +7810,11 @@ function updateCacheIndicator(fromCache) {
   
   // Render the new Single Day view
   renderScheduleView();
+  
+  // Update agent schedule banner (agents only)
+  if (!window._isManager) {
+    updateAgentScheduleBanner();
+  }
   
   // Update the coverage banner (Managers only)
   if (window._isManager) {
@@ -10530,6 +10690,117 @@ function updateAgentRangeLabel() {
   const label = document.getElementById("agentRangeLabel");
   if (label) {
     label.textContent = `Today → ${_agentScheduleDays} days`;
+  }
+}
+
+function updateAgentScheduleBanner() {
+  const banner = $("agentScheduleBanner");
+  if (!banner) return;
+  if (window._isManager || !window._myName) {
+    banner.style.display = "none";
+    return;
+  }
+  if (!_allData || _allData.length === 0) {
+    banner.style.display = "none";
+    return;
+  }
+  banner.style.display = "grid";
+
+  const currentStatus = $("agentCurrentShiftStatus");
+  const currentTime = $("agentCurrentShiftTime");
+  const currentTeam = $("agentCurrentShiftTeam");
+  const currentRole = $("agentCurrentShiftRole");
+  const currentProgressWrap = $("agentCurrentShiftProgressWrap");
+  const currentProgress = $("agentCurrentShiftProgress");
+  const nextStatus = $("agentNextShiftStatus");
+  const nextTime = $("agentNextShiftTime");
+  const nextTeam = $("agentNextShiftTeam");
+  const nextRole = $("agentNextShiftRole");
+  const nextDate = $("agentNextShiftDate");
+
+  const setStatus = (el, text, type) => {
+    if (!el) return;
+    el.textContent = text;
+    el.className = `agent-schedule-pill${type ? ` ${type}` : ""}`;
+  };
+
+  const nowParts = pstParts(new Date());
+  if (!nowParts) return;
+  const todayKey = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
+  const nowDec = parseTimeDecimal(`${nowParts.hour}:${nowParts.minute}`);
+
+  const shifts = _allData
+    .filter(s => s.person === window._myName && !String(s.notes || "").toUpperCase().includes("[OFF]"))
+    .map(s => {
+      const dayKey = s.dayKey || s.dateISO || dayKeyPST(s.date);
+      const startDec = parseTimeDecimal(s.start);
+      const endDec = parseTimeDecimal(s.end);
+      return { ...s, dayKey, startDec, endDec };
+    })
+    .filter(s => s.dayKey && !isNaN(s.startDec) && !isNaN(s.endDec))
+    .sort((a, b) => {
+      if (a.dayKey !== b.dayKey) return a.dayKey.localeCompare(b.dayKey);
+      return a.startDec - b.startDec;
+    });
+
+  if (shifts.length === 0) {
+    setStatus(currentStatus, "Off", "off");
+    if (currentTime) currentTime.textContent = "No active shift";
+    if (currentTeam) currentTeam.textContent = "--";
+    if (currentRole) currentRole.textContent = "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "none";
+
+    setStatus(nextStatus, "None");
+    if (nextTime) nextTime.textContent = "No upcoming shift";
+    if (nextTeam) nextTeam.textContent = "--";
+    if (nextRole) nextRole.textContent = "";
+    if (nextDate) nextDate.textContent = "";
+    return;
+  }
+
+  const currentShift = shifts.find(s =>
+    s.dayKey === todayKey && s.startDec <= nowDec && s.endDec > nowDec
+  );
+
+  if (currentShift) {
+    setStatus(currentStatus, "On shift", "active");
+    if (currentTime) currentTime.textContent = `${toAmPm(currentShift.start)} - ${toAmPm(currentShift.end)}`;
+    if (currentTeam) currentTeam.textContent = currentShift.team || "General";
+    if (currentRole) currentRole.textContent = currentShift.role ? `• ${currentShift.role}` : "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "block";
+    if (currentProgress) {
+      const duration = Math.max(currentShift.endDec - currentShift.startDec, 0.01);
+      const elapsed = Math.min(Math.max(nowDec - currentShift.startDec, 0), duration);
+      const pct = Math.min(Math.max((elapsed / duration) * 100, 0), 100);
+      currentProgress.style.width = `${pct.toFixed(0)}%`;
+    }
+  } else {
+    setStatus(currentStatus, "Off", "off");
+    if (currentTime) currentTime.textContent = "No active shift";
+    if (currentTeam) currentTeam.textContent = "--";
+    if (currentRole) currentRole.textContent = "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "none";
+    if (currentProgress) currentProgress.style.width = "0%";
+  }
+
+  const upcomingShift = shifts.find(s =>
+    s.dayKey > todayKey || (s.dayKey === todayKey && s.startDec > nowDec)
+  );
+
+  if (upcomingShift) {
+    setStatus(nextStatus, "Upcoming");
+    if (nextTime) nextTime.textContent = `${toAmPm(upcomingShift.start)} - ${toAmPm(upcomingShift.end)}`;
+    if (nextTeam) nextTeam.textContent = upcomingShift.team || "General";
+    if (nextRole) nextRole.textContent = upcomingShift.role ? `• ${upcomingShift.role}` : "";
+    if (nextDate) {
+      nextDate.textContent = upcomingShift.dayKey === todayKey ? "Today" : displayDayLabel(upcomingShift.dayKey);
+    }
+  } else {
+    setStatus(nextStatus, "None");
+    if (nextTime) nextTime.textContent = "No upcoming shift";
+    if (nextTeam) nextTeam.textContent = "--";
+    if (nextRole) nextRole.textContent = "";
+    if (nextDate) nextDate.textContent = "";
   }
 }
   async function runUndo() { 
