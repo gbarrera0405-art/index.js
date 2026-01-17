@@ -2466,6 +2466,94 @@ body.agent-mode .agent-toolbar {
   box-shadow: 0 4px 12px rgba(179,126,120,0.4);
 }
 
+/* Agent Schedule Banner */
+.agent-schedule-banner {
+  display: none;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+body.agent-mode .agent-schedule-banner {
+  display: grid;
+}
+.agent-schedule-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
+}
+.agent-schedule-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.agent-schedule-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.agent-schedule-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+.agent-schedule-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+.agent-schedule-pill.off {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.agent-schedule-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary, #1e293b);
+}
+.agent-schedule-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+.agent-schedule-team {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #f1f5f9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+.agent-schedule-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #f1f5f9);
+  overflow: hidden;
+}
+.agent-schedule-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #b37e78 0%, #8f5f5a 100%);
+  transition: width 0.3s ease;
+}
+.agent-schedule-date {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+
 /* Dark mode agent toolbar */
 body.dark-mode .agent-toolbar {
   background: #1a0e0d;
@@ -2483,6 +2571,36 @@ body.dark-mode .agent-toolbar-btn.secondary {
 }
 
 body.dark-mode .agent-toolbar-btn.secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+body.dark-mode .agent-schedule-banner {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+body.dark-mode .agent-schedule-card {
+  background: var(--card-bg);
+  border-color: var(--border-color);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode .agent-schedule-pill {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--text-secondary);
+}
+body.dark-mode .agent-schedule-pill.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+body.dark-mode .agent-schedule-pill.off {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+body.dark-mode .agent-schedule-team {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+body.dark-mode .agent-schedule-progress {
   background: var(--bg-tertiary);
 }
 
@@ -4819,6 +4937,35 @@ body.dark-mode .bulkModal .mBody {
     🏖️ Request Time Off
   </button>
 </div>
+<!-- Agent Schedule Banner (Current + Next Shift) -->
+<div id="agentScheduleBanner" class="agent-schedule-banner" style="display:none;">
+  <div class="agent-schedule-card current">
+    <div class="agent-schedule-card-head">
+      <span class="agent-schedule-label">Current Shift</span>
+      <span class="agent-schedule-pill off" id="agentCurrentShiftStatus">Off</span>
+    </div>
+    <div class="agent-schedule-time" id="agentCurrentShiftTime">--</div>
+    <div class="agent-schedule-meta">
+      <span class="agent-schedule-team" id="agentCurrentShiftTeam">--</span>
+      <span id="agentCurrentShiftRole"></span>
+    </div>
+    <div class="agent-schedule-progress" id="agentCurrentShiftProgressWrap">
+      <div class="agent-schedule-progress-bar" id="agentCurrentShiftProgress"></div>
+    </div>
+  </div>
+  <div class="agent-schedule-card next">
+    <div class="agent-schedule-card-head">
+      <span class="agent-schedule-label">Next Shift</span>
+      <span class="agent-schedule-pill" id="agentNextShiftStatus">Upcoming</span>
+    </div>
+    <div class="agent-schedule-time" id="agentNextShiftTime">--</div>
+    <div class="agent-schedule-meta">
+      <span class="agent-schedule-team" id="agentNextShiftTeam">--</span>
+      <span id="agentNextShiftRole"></span>
+    </div>
+    <div class="agent-schedule-date" id="agentNextShiftDate"></div>
+  </div>
+</div>
   <!-- MAIN -->
   <div class="main">
     <div class="content">
@@ -5075,18 +5222,26 @@ body.dark-mode .open-shift {
       </div>
       <input type="hidden" id="modalOrigStart">
       <input type="hidden" id="modalOrigEnd">
+      <input type="hidden" id="modalOrigTeam">
+      <input type="hidden" id="modalOrigRole">
       <input type="hidden" id="modalDocId">
       <input type="hidden" id="modalAssignmentId">
-      <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Channel</label>
-        <select id="modalTeam" onchange="toggleCustomChannel(this)" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Channel</label>
+          <select id="modalTeam" onchange="toggleCustomChannel(this)" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Role</label>
+          <select id="modalRole" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
+        </div>
       </div>
       <div id="customChannelWrapper" style="margin-bottom:20px; display:none;">
         <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Custom Channel Name</label>
         <input type="text" id="modalCustomChannel" placeholder="Enter custom channel name..." style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;">
       </div>
       <div style="display:flex; justify-content:space-between; padding-top:16px; border-top:1px solid var(--border-color, #e2e8f0);">
-        <button type="button" onclick="deleteShift()" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Delete</button>
+        <button type="button" id="modalDeleteBtn" onclick="deleteShift()" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Delete</button>
         <div style="display:flex; gap:10px;">
           <button type="button" onclick="closeModal()" style="background:var(--bg-tertiary, #f1f5f9); color:var(--text-secondary, #64748b); border:1px solid var(--border-color, #e2e8f0); padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancel</button>
           <button type="button" onclick="saveShift()" style="background:#b37e78; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Save</button>
@@ -6809,10 +6964,7 @@ function clearScheduleCache() {
   // ============================================
   // [SECTION 6] MANAGER PRESENCE TRACKING
   // ============================================
-  function sendManagerHeartbeat() {
-    if (!window._isManager || !window._myName) return;
-
-    // Determine current view and area
+  function getPresenceContext() {
     let view = "Daily Schedule";
     let area = "";
 
@@ -6820,12 +6972,20 @@ function clearScheduleCache() {
       view = "Metrics";
     } else if (_view === "schedule") {
       if (window._isMasterMode) {
-        view = "Master Template";
+        view = _masterEditEnabled ? "Editing Master Schedule" : "Master Schedule";
       } else {
-        view = "Daily Schedule";
+        view = _isEditingSchedule ? "Editing Daily Schedule" : "Daily Schedule";
         area = (typeof _activeTeam !== "undefined" && _activeTeam) ? _activeTeam : "";
       }
     }
+
+    return { view, area };
+  }
+
+  function sendManagerHeartbeat() {
+    if (!window._isManager || !window._myName) return;
+
+    const { view, area } = getPresenceContext();
 
     console.log(`[Presence] Sending heartbeat: ${window._myName} - ${view}`);
 
@@ -6909,11 +7069,12 @@ function clearScheduleCache() {
     // Always show presence - even if you're the only one online
     if (otherManagers.length === 0) {
       // Only you are online
+      const myPresence = getPresenceContext();
       presenceEl.innerHTML = `
         <span class="presence-dot"></span>
         <span class="presence-name">Online</span>
       `;
-      presenceEl.title = "You are the only manager currently viewing the scheduler";
+      presenceEl.title = `You are viewing ${myPresence.view}${myPresence.area ? ` (${myPresence.area})` : ""}`;
       setPresenceVariant();
 
     } else if (otherManagers.length === 1) {
@@ -6941,6 +7102,8 @@ function clearScheduleCache() {
     // Add click handler for details popup
     presenceEl.onclick = function() {
       const now = new Date();
+      const myPresence = getPresenceContext();
+      const myViewLabel = `${myPresence.view}${myPresence.area ? ` • ${myPresence.area}` : ""}`;
       
       let html = `
         <div style="text-align: left; font-size: 14px; max-height: 300px; overflow-y: auto;">
@@ -6952,7 +7115,7 @@ function clearScheduleCache() {
             <div style="flex:1;">
               <div style="font-weight:700; color:#1e293b; font-size:14px;">${window._myName || 'You'} <span style="font-size:11px; color:#b37e78;">(You)</span></div>
               <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                📍 Currently viewing
+                📍 ${myViewLabel}
               </div>
             </div>
             <div style="font-size:11px; color:#b37e78; background:#f0e6e4; padding:4px 8px; border-radius:6px;">
@@ -7647,6 +7810,11 @@ function updateCacheIndicator(fromCache) {
   
   // Render the new Single Day view
   renderScheduleView();
+  
+  // Update agent schedule banner (agents only)
+  if (!window._isManager) {
+    updateAgentScheduleBanner();
+  }
   
   // Update the coverage banner (Managers only)
   if (window._isManager) {
@@ -8602,8 +8770,11 @@ async function regenerateSchedule() {
   const newStart = document.getElementById("modalStart").value;
   const newEnd = document.getElementById("modalEnd").value;
   const newTeam = getSelectedChannel(); // Use the helper function for custom channels
+  const newRole = document.getElementById("modalRole")?.value || "";
   const origStart = document.getElementById("modalOrigStart").value;
   const origEnd = document.getElementById("modalOrigEnd").value;
+  const origTeam = document.getElementById("modalOrigTeam")?.value || "";
+  const origRole = document.getElementById("modalOrigRole")?.value || "";
   const isAdding = origStart === "NEW";
 
   if (!newStart || !newEnd) {
@@ -8623,14 +8794,37 @@ async function regenerateSchedule() {
 
   const dayData = _masterRawData[day] || [];
   if (isAdding) {
-    dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
+    const newShift = { person, start: newStart, end: newEnd, team: newTeam };
+    if (newRole) newShift.role = newRole;
+    dayData.push(newShift);
     _masterRawData[day] = dayData;
   } else {
-    const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
-    if (shiftToUpdate) {
-      shiftToUpdate.start = newStart;
-      shiftToUpdate.end = newEnd;
-      shiftToUpdate.team = newTeam;
+    const sameValue = (a, b) => (a || "") === (b || "");
+    let shiftToUpdate = dayData.find(s =>
+      s.person === person &&
+      s.start === origStart &&
+      s.end === origEnd &&
+      sameValue(s.team, origTeam) &&
+      sameValue(s.role, origRole)
+    );
+    if (!shiftToUpdate) {
+      shiftToUpdate = dayData.find(s =>
+        s.person === person &&
+        s.start === origStart &&
+        s.end === origEnd
+      );
+    }
+    if (!shiftToUpdate) {
+      toast("Shift not found. Try re-opening the shift.", "error");
+      return;
+    }
+    shiftToUpdate.start = newStart;
+    shiftToUpdate.end = newEnd;
+    shiftToUpdate.team = newTeam;
+    if (newRole) {
+      shiftToUpdate.role = newRole;
+    } else {
+      delete shiftToUpdate.role;
     }
   }
 
@@ -8847,6 +9041,8 @@ function deleteShift() {
   const day = document.getElementById("modalDay").value;
   const origStart = document.getElementById("modalOrigStart").value;
   const origEnd = document.getElementById("modalOrigEnd").value;
+  const origTeam = document.getElementById("modalOrigTeam")?.value || "";
+  const origRole = document.getElementById("modalOrigRole")?.value || "";
 
   // ✅ MASTER MODE = draft-only delete (no backend)
   if (_isMasterMode) {
@@ -8856,9 +9052,25 @@ function deleteShift() {
     }
 
     const dayData = _masterRawData[day] || [];
-    _masterRawData[day] = dayData.filter(s =>
-      !(s.person === person && s.start === origStart && s.end === origEnd)
-    );
+    const sameValue = (a, b) => (a || "") === (b || "");
+    let removed = false;
+    _masterRawData[day] = dayData.filter(s => {
+      if (removed) return true;
+      const matches = s.person === person &&
+        s.start === origStart &&
+        s.end === origEnd &&
+        sameValue(s.team, origTeam) &&
+        sameValue(s.role, origRole);
+      if (matches) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    if (!removed) {
+      toast("Shift not found. Try re-opening the shift.", "error");
+      return;
+    }
 
     renderMasterView(_masterRawData);
     closeModal();
@@ -10480,6 +10692,117 @@ function updateAgentRangeLabel() {
     label.textContent = `Today → ${_agentScheduleDays} days`;
   }
 }
+
+function updateAgentScheduleBanner() {
+  const banner = $("agentScheduleBanner");
+  if (!banner) return;
+  if (window._isManager || !window._myName) {
+    banner.style.display = "none";
+    return;
+  }
+  if (!_allData || _allData.length === 0) {
+    banner.style.display = "none";
+    return;
+  }
+  banner.style.display = "grid";
+
+  const currentStatus = $("agentCurrentShiftStatus");
+  const currentTime = $("agentCurrentShiftTime");
+  const currentTeam = $("agentCurrentShiftTeam");
+  const currentRole = $("agentCurrentShiftRole");
+  const currentProgressWrap = $("agentCurrentShiftProgressWrap");
+  const currentProgress = $("agentCurrentShiftProgress");
+  const nextStatus = $("agentNextShiftStatus");
+  const nextTime = $("agentNextShiftTime");
+  const nextTeam = $("agentNextShiftTeam");
+  const nextRole = $("agentNextShiftRole");
+  const nextDate = $("agentNextShiftDate");
+
+  const setStatus = (el, text, type) => {
+    if (!el) return;
+    el.textContent = text;
+    el.className = `agent-schedule-pill${type ? ` ${type}` : ""}`;
+  };
+
+  const nowParts = pstParts(new Date());
+  if (!nowParts) return;
+  const todayKey = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
+  const nowDec = parseTimeDecimal(`${nowParts.hour}:${nowParts.minute}`);
+
+  const shifts = _allData
+    .filter(s => s.person === window._myName && !String(s.notes || "").toUpperCase().includes("[OFF]"))
+    .map(s => {
+      const dayKey = s.dayKey || s.dateISO || dayKeyPST(s.date);
+      const startDec = parseTimeDecimal(s.start);
+      const endDec = parseTimeDecimal(s.end);
+      return { ...s, dayKey, startDec, endDec };
+    })
+    .filter(s => s.dayKey && !isNaN(s.startDec) && !isNaN(s.endDec))
+    .sort((a, b) => {
+      if (a.dayKey !== b.dayKey) return a.dayKey.localeCompare(b.dayKey);
+      return a.startDec - b.startDec;
+    });
+
+  if (shifts.length === 0) {
+    setStatus(currentStatus, "Off", "off");
+    if (currentTime) currentTime.textContent = "No active shift";
+    if (currentTeam) currentTeam.textContent = "--";
+    if (currentRole) currentRole.textContent = "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "none";
+
+    setStatus(nextStatus, "None");
+    if (nextTime) nextTime.textContent = "No upcoming shift";
+    if (nextTeam) nextTeam.textContent = "--";
+    if (nextRole) nextRole.textContent = "";
+    if (nextDate) nextDate.textContent = "";
+    return;
+  }
+
+  const currentShift = shifts.find(s =>
+    s.dayKey === todayKey && s.startDec <= nowDec && s.endDec > nowDec
+  );
+
+  if (currentShift) {
+    setStatus(currentStatus, "On shift", "active");
+    if (currentTime) currentTime.textContent = `${toAmPm(currentShift.start)} - ${toAmPm(currentShift.end)}`;
+    if (currentTeam) currentTeam.textContent = currentShift.team || "General";
+    if (currentRole) currentRole.textContent = currentShift.role ? `• ${currentShift.role}` : "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "block";
+    if (currentProgress) {
+      const duration = Math.max(currentShift.endDec - currentShift.startDec, 0.01);
+      const elapsed = Math.min(Math.max(nowDec - currentShift.startDec, 0), duration);
+      const pct = Math.min(Math.max((elapsed / duration) * 100, 0), 100);
+      currentProgress.style.width = `${pct.toFixed(0)}%`;
+    }
+  } else {
+    setStatus(currentStatus, "Off", "off");
+    if (currentTime) currentTime.textContent = "No active shift";
+    if (currentTeam) currentTeam.textContent = "--";
+    if (currentRole) currentRole.textContent = "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "none";
+    if (currentProgress) currentProgress.style.width = "0%";
+  }
+
+  const upcomingShift = shifts.find(s =>
+    s.dayKey > todayKey || (s.dayKey === todayKey && s.startDec > nowDec)
+  );
+
+  if (upcomingShift) {
+    setStatus(nextStatus, "Upcoming");
+    if (nextTime) nextTime.textContent = `${toAmPm(upcomingShift.start)} - ${toAmPm(upcomingShift.end)}`;
+    if (nextTeam) nextTeam.textContent = upcomingShift.team || "General";
+    if (nextRole) nextRole.textContent = upcomingShift.role ? `• ${upcomingShift.role}` : "";
+    if (nextDate) {
+      nextDate.textContent = upcomingShift.dayKey === todayKey ? "Today" : displayDayLabel(upcomingShift.dayKey);
+    }
+  } else {
+    setStatus(nextStatus, "None");
+    if (nextTime) nextTime.textContent = "No upcoming shift";
+    if (nextTeam) nextTeam.textContent = "--";
+    if (nextRole) nextRole.textContent = "";
+    if (nextDate) nextDate.textContent = "";
+  }
+}
   async function runUndo() { 
     if (!_lastUndo) return;
     try {
@@ -11128,7 +11451,7 @@ function groupShifts(data) {
     s.innerHTML=""; 
     if(bl)s.appendChild(new Option("- Select -","")); 
     // ✅ Special handling for role selects - show formatted display name
-    const isRoleSelect = id === "mstRole";
+    const isRoleSelect = id === "mstRole" || id === "modalRole";
     list.forEach(x => {
       const displayName = isRoleSelect ? formatRoleDisplay(x) : x;
       s.appendChild(new Option(displayName, x));
@@ -11761,23 +12084,47 @@ if (!style) {
     // ✅ Helper function to calculate weekly hours for a person
     function calculateWeeklyHours(personRoster) {
       let totalHours = 0;
+      const shouldSkipTeam = (teamName) => {
+        const team = String(teamName || "").toLowerCase();
+        return team.includes("lunch") || team.includes("break") || team.includes("1:1");
+      };
+
       days.forEach(day => {
         const shifts = personRoster[day] || [];
+        const intervals = [];
+
         shifts.forEach(shift => {
-          if (shift.start && shift.end) {
-            // Skip lunch/break entries for hour calculation
-            const team = String(shift.team || "").toLowerCase();
-            if (team.includes("lunch") || team.includes("break") || team.includes("1:1")) {
-              return; // Don't count lunch/breaks in weekly hours
-            }
-            const startH = parseTimeDecimal(shift.start);
-            const endH = parseTimeDecimal(shift.end);
-            if (!isNaN(startH) && !isNaN(endH) && endH > startH) {
-              totalHours += (endH - startH);
-            }
+          if (!shift.start || !shift.end) return;
+          if (shouldSkipTeam(shift.team)) return;
+
+          const startH = parseTimeDecimal(shift.start);
+          const endH = parseTimeDecimal(shift.end);
+          if (!isNaN(startH) && !isNaN(endH) && endH > startH) {
+            intervals.push([startH, endH]);
           }
         });
+
+        if (!intervals.length) return;
+
+        intervals.sort((a, b) => a[0] - b[0]);
+        let [currentStart, currentEnd] = intervals[0];
+        let dayHours = 0;
+
+        for (let i = 1; i < intervals.length; i++) {
+          const [start, end] = intervals[i];
+          if (start <= currentEnd) {
+            currentEnd = Math.max(currentEnd, end);
+          } else {
+            dayHours += (currentEnd - currentStart);
+            currentStart = start;
+            currentEnd = end;
+          }
+        }
+
+        dayHours += (currentEnd - currentStart);
+        totalHours += dayHours;
       });
+
       return totalHours;
     }
     
@@ -11873,86 +12220,11 @@ if (!style) {
     });
 }
 // Triggered when clicking an existing blue chip
-function handleShiftEdit(person, day, start, end, team, docId, assignmentId) {
-    // ✅ Mark as editing to prevent auto-refresh disruption
-    setEditingMode(true);
-    
-    if (_isMasterMode && !_masterEditEnabled) {
-  toast("Click Edit to start making draft changes.", "info");
-  setEditingMode(false);
-  return;
-}
-const docEl = document.getElementById("modalDocId");
-const asgEl = document.getElementById("modalAssignmentId");
-
-if (_isMasterMode) {
-  if (docEl) docEl.value = "";
-  if (asgEl) asgEl.value = "";
-} else {
-  if (docEl) docEl.value = docId || "";
-  if (asgEl) asgEl.value = assignmentId || "";
-}
-    // Populate the inputs
-    document.getElementById("modalEmployee").value = person;
-    document.getElementById("modalDay").value = day;
-    
-    // Ensure format HH:MM for the time inputs
-    document.getElementById("modalStart").value = start.substring(0,5);
-    document.getElementById("modalEnd").value = end.substring(0,5);
-    // Store original times so we know which shift to update later
-    document.getElementById("modalOrigStart").value = start;
-    document.getElementById("modalOrigEnd").value = end;
-    // Populate Channel dropdown with Custom option and select the current channel
-    fillSelect("modalTeam", _teams, false, true); // includeCustom = true
-    if (team) {
-        // Check if team is in the list, if not it's a custom one
-        const teamInList = _teams.includes(team);
-        if (teamInList) {
-          document.getElementById("modalTeam").value = team;
-          document.getElementById("customChannelWrapper").style.display = "none";
-        } else {
-          document.getElementById("modalTeam").value = "__custom__";
-          document.getElementById("modalCustomChannel").value = team;
-          document.getElementById("customChannelWrapper").style.display = "block";
-        }
-    }
-    // Update modal title for editing
-    const modalTitle = document.querySelector("#editShiftModal h3");
-    if (modalTitle) modalTitle.innerText = "Edit Shift";
-    // Show the modal
-    document.getElementById("editShiftModal").style.display = "flex";
+function handleShiftEdit(person, day, start, end, team, docId, assignmentId, role) {
+  openMasterModal(person, day, start, end, team, role);
 }
 function handleCellClick(person, day) {
-    // ✅ Mark as editing to prevent auto-refresh disruption
-    setEditingMode(true);
-    
-    if (_isMasterMode && !_masterEditEnabled) {
-  toast("Click Edit to start making draft changes.", "info");
-  setEditingMode(false);
-  return;
-}
-if (document.getElementById("modalDocId")) document.getElementById("modalDocId").value = "";
-if (document.getElementById("modalAssignmentId")) document.getElementById("modalAssignmentId").value = "";
-
-    // 1. Prepare the Modal for a New Entry
-    document.getElementById("modalEmployee").value = person;
-    document.getElementById("modalDay").value = day;
-    
-    // Default times for a new shift
-    document.getElementById("modalStart").value = "08:00";
-    document.getElementById("modalEnd").value = "17:00";
-    // Clear original times (since this shift doesn't exist yet)
-    document.getElementById("modalOrigStart").value = "NEW";
-    document.getElementById("modalOrigEnd").value = "NEW";
-    // Populate Channel dropdown with Custom option
-    fillSelect("modalTeam", _teams, true, true); // includeCustom = true
-    document.getElementById("customChannelWrapper").style.display = "none";
-    document.getElementById("modalCustomChannel").value = "";
-    
-    // Change UI header to indicate "Adding"
-    document.querySelector("#editShiftModal h3").innerText = "Add New Shift";
-    const modal = document.getElementById("editShiftModal");
-    modal.style.display = "flex";
+  openMasterModal(person, day);
 }
   function toggleMasterPerson(key, dayName) {
     if (_masterSelected.has(key)) {
@@ -11964,25 +12236,90 @@ if (document.getElementById("modalAssignmentId")) document.getElementById("modal
     updateMasterSelectionBar(); 
   }
   function openMasterModal(p,d,s,e,t,r) { 
+    // ✅ Mark as editing to prevent auto-refresh disruption
+    setEditingMode(true);
+    
     // ✅ Check if editing is enabled in master mode
     if (_isMasterMode && !_masterEditEnabled) {
       toast("Click Edit to start making draft changes.", "info");
+      setEditingMode(false);
       return;
     }
     
-    fillSelect("mstTeam", _teams); 
-    fillSelect("mstRole", _roles); 
+    const isAdding = !s || !e;
+    const docEl = document.getElementById("modalDocId");
+    const asgEl = document.getElementById("modalAssignmentId");
+    if (docEl) docEl.value = "";
+    if (asgEl) asgEl.value = "";
     
-    $("mstSub").innerText = s ? `Editing ${p} on ${d}` : `Adding Shift for ${p} on ${d}`;
-    $("mstPerson").value = p; 
-    $("mstDay").value = d; 
+    // Populate the inputs
+    document.getElementById("modalEmployee").value = p;
+    document.getElementById("modalDay").value = d;
     
-    $("mstStart").value = s || ""; 
-    $("mstEnd").value = e || ""; 
-    $("mstTeam").value = t || ""; 
-    $("mstRole").value = r || ""; 
+    const startInput = document.getElementById("modalStart");
+    const endInput = document.getElementById("modalEnd");
     
-    $("masterOverlay").style.display = "flex"; 
+    if (isAdding) {
+      startInput.value = "08:00";
+      endInput.value = "17:00";
+      document.getElementById("modalOrigStart").value = "NEW";
+      document.getElementById("modalOrigEnd").value = "NEW";
+      document.getElementById("modalOrigTeam").value = "NEW";
+      document.getElementById("modalOrigRole").value = "NEW";
+    } else {
+      startInput.value = formatTimeHHMM(s) || "";
+      endInput.value = formatTimeHHMM(e) || "";
+      document.getElementById("modalOrigStart").value = s || "";
+      document.getElementById("modalOrigEnd").value = e || "";
+      document.getElementById("modalOrigTeam").value = t || "";
+      document.getElementById("modalOrigRole").value = r || "";
+    }
+    
+    // Populate Channel + Role dropdowns
+    fillSelect("modalTeam", _teams, isAdding, true);
+    fillSelect("modalRole", _roles, true);
+    
+    const teamSelect = document.getElementById("modalTeam");
+    const customWrapper = document.getElementById("customChannelWrapper");
+    const customInput = document.getElementById("modalCustomChannel");
+    
+    if (!isAdding && t) {
+      const teamInList = _teams.includes(t);
+      if (teamInList) {
+        teamSelect.value = t;
+        if (customWrapper) customWrapper.style.display = "none";
+        if (customInput) customInput.value = "";
+      } else {
+        teamSelect.value = "__custom__";
+        if (customWrapper) customWrapper.style.display = "block";
+        if (customInput) customInput.value = t;
+      }
+    } else {
+      if (teamSelect) teamSelect.value = "";
+      if (customWrapper) customWrapper.style.display = "none";
+      if (customInput) customInput.value = "";
+    }
+    
+    const roleSelect = document.getElementById("modalRole");
+    if (roleSelect) {
+      if (r && !_roles.includes(r)) {
+        roleSelect.appendChild(new Option(formatRoleDisplay(r), r));
+      }
+      roleSelect.value = r || "";
+    }
+    
+    const deleteBtn = document.getElementById("modalDeleteBtn");
+    if (deleteBtn) {
+      deleteBtn.style.visibility = isAdding ? "hidden" : "visible";
+      deleteBtn.style.pointerEvents = isAdding ? "none" : "auto";
+    }
+    
+    // Update modal title
+    const modalTitle = document.querySelector("#editShiftModal h3");
+    if (modalTitle) modalTitle.innerText = isAdding ? "Add New Shift" : "Edit Shift";
+    
+    // Show the modal
+    document.getElementById("editShiftModal").style.display = "flex";
   }
   
   function updateMasterSelectionBar() {
