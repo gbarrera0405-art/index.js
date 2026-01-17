@@ -2,6 +2,34 @@
 <html>
 <head>
   <base target="_top">
+  <!-- ✅ Early session check to prevent login screen flash -->
+  <script>
+    (function() {
+      try {
+        var raw = localStorage.getItem('musely_auth_session');
+        if (raw) {
+          var data = JSON.parse(raw);
+          var age = Date.now() - (data.lastActivity || data.timestamp || 0);
+          var TTL = 8 * 60 * 60 * 1000; // 8 hours
+          if (data.email && data.name && age < TTL) {
+            // Valid session exists - set flag for CSS to use
+            document.documentElement.setAttribute('data-authenticated', 'true');
+            window._hasValidSession = true;
+          }
+        }
+      } catch(e) { console.warn('Early session check failed:', e); }
+    })();
+  </script>
+  <style>
+    /* ✅ Hide auth overlay immediately if authenticated (prevents flash) */
+    html[data-authenticated="true"] #authOverlay {
+      display: none !important;
+    }
+    html[data-authenticated="true"] .header,
+    html[data-authenticated="true"] .main {
+      opacity: 1 !important;
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -197,27 +225,58 @@
     background: linear-gradient(135deg, var(--accent-primary) 0%, color-mix(in srgb, var(--accent-primary) 70%, #000 30%) 100%);
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
   }
+  
+  /* Sign Out Pill (Manager header) - Better contrast for light mode */
+  .pill.sign-out-pill {
+    background: rgba(255, 255, 255, 0.85);
+    color: #5d3a36;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .pill.sign-out-pill:hover {
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  body.dark-mode .pill.sign-out-pill {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+  }
+  body.dark-mode .pill.sign-out-pill:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 
   .pill.tz { background: rgba(255,255,255,0.1); color: #94a3b8; }
   
-  /* Manager Presence Indicator */
+  /* Manager Presence Indicator - Better contrast for light mode */
   .manager-presence-pill {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(124, 58, 237, 0.1) 100%);
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
   .manager-presence-pill:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(143, 95, 90, 0.25);
-  filter: brightness(1.03);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
   .presence-dot {
     width: 8px;
@@ -231,30 +290,31 @@
     50% { opacity: 0.6; transform: scale(0.9); }
   }
   .presence-name {
-  color: #3b1f1c; /* deep warm brown */
-  font-weight: 600;
+  color: #5d3a36;
+  font-weight: 700;
 }
   .presence-view {
-    color: #a78bfa;
-    font-size: 11px;
+    color: #7a5652;
+    font-size: 10px;
     padding-left: 6px;
-    border-left: 1px solid rgba(139, 92, 246, 0.3);
+    border-left: 1px solid rgba(0, 0, 0, 0.15);
   }
   .presence-count {
-  color: rgba(59, 31, 28, 0.90);
+  color: #5d3a36;
   font-weight: 700;
 }
   body.dark-mode .manager-presence-pill {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.15) 100%);
-    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: none;
   }
   body.dark-mode .presence-name,
 body.dark-mode .presence-count {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.9);
 }
   body.dark-mode .presence-view {
-  color: rgba(255, 255, 255, 0.72);
-  border-left-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.65);
+  border-left-color: rgba(255, 255, 255, 0.15);
 }
   
   .hRight { display: flex; align-items: center; gap: 16px; }
@@ -414,12 +474,12 @@ body.dark-mode .presence-count {
     box-shadow: 0 4px 12px rgba(0,0,0,0.18);
     pointer-events: none; /* ✅ badge won't block clicking */
   }
-  /* ✅ Missing style in your file (you use class="action-btn") */
+  /* Action button - glass style for header */
   .action-btn{
-    background: var(--card-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    padding: 8px 16px;
     border-radius: 10px;
     font-size: 12px;
     font-weight: 700;
@@ -428,8 +488,15 @@ body.dark-mode .presence-count {
     white-space: nowrap;
   }
   .action-btn:hover{
-    background: var(--bg-tertiary);
-    border-color: var(--text-tertiary);
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateY(-1px);
+  }
+  body.dark-mode .action-btn{
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+  }
+  body.dark-mode .action-btn:hover{
+    background: rgba(255, 255, 255, 0.15);
   }
   /* --- FILTER STYLES --- */
   .filter-card { 
@@ -947,7 +1014,7 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     justify-content: center; 
   }
   .qrPerson.unavailable { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
-  .metricsWrap { display:flex; gap:16px; height:100%; }
+  .metricsWrap { display:flex; gap:16px; height:100%; overflow: hidden; }
   .metricsLeft { 
     flex: 1; 
     background: var(--card-bg); 
@@ -957,6 +1024,8 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     display:flex; 
     flex-direction:column;
     transition: all 0.2s;
+    min-height: 0;
+    max-height: 100%;
   }
   .metricsTop { 
     padding:14px 16px; 
@@ -967,15 +1036,16 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     align-items:center; 
     justify-content:space-between;
     transition: all 0.2s;
+    flex-shrink: 0;
   }
   .metricsTop input { max-width: 260px; margin:0; }
-  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; }
+  .metricsList { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; flex:1; min-height:0; max-height: 100%; }
   .metricsRow { 
     display:flex; 
     align-items:center; 
     justify-content:space-between; 
     gap:12px; 
-    padding:10px 12px; 
+    padding:8px 10px; 
     border:1px solid var(--border-color); 
     border-radius:12px; 
     cursor:pointer; 
@@ -986,10 +1056,11 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     border-color: var(--text-tertiary); 
   }
   .metricsRow .left { display:flex; align-items:center; gap:10px; min-width:0; }
-  .metricsRow .avatar { width:34px; height:34px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex: 0 0 auto; }
+  .metricsRow .avatar { width:28px; height:28px; border-radius:50%; background:#cbd5e1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px; flex: 0 0 auto; }
   .metricsRow .name { 
     font-weight:800; 
     color: var(--text-primary); 
+    font-size:13px;
     white-space:nowrap; 
     overflow:hidden; 
     text-overflow:ellipsis;
@@ -1006,7 +1077,10 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     background: var(--card-bg); 
     border:1px solid var(--border-color); 
     border-radius:16px; 
-    transition: width 0.25s ease, background-color 0.2s, border-color 0.2s; 
+    transition: width 0.25s ease, background-color 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
   }
   .metricsDrawer.open { width: 420px; }
   .metricsDrawerHead { 
@@ -1017,8 +1091,9 @@ body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135d
     align-items:center; 
     justify-content:space-between;
     transition: all 0.2s;
+    flex-shrink: 0;
   }
-  .metricsDrawerBody { padding:16px; overflow-y:auto; height: calc(100% - 56px); }
+  .metricsDrawerBody { padding:16px; overflow-y:auto; flex: 1; min-height: 0; }
   .tGroup { margin-bottom: 12px; background: transparent; }
   .tGroupHeader { 
     padding: 4px 0; 
@@ -3753,6 +3828,35 @@ body.dark-mode .section-title {
   color: var(--text-secondary);
 }
 
+/* Sign Out Button */
+.sign-out-btn {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.sign-out-btn:hover {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+body.dark-mode .sign-out-btn {
+  background: transparent;
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+body.dark-mode .sign-out-btn:hover {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: #f87171;
+}
+
 .agent-info-card {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -4373,25 +4477,29 @@ button[data-action="requestTimeOff"]:hover{
   color:#fff !important;
 }
 
-/* D) Top-right header icon buttons (bell/moon/refresh) */
+/* D) Top-right header icon buttons - Clean minimal style */
 .header .iconBtn,
 .header .icon-btn,
 .header button.icon,
 .header .topIconBtn,
 .header .iconButton,
-#btnNotif, #btnTheme, #btnRefresh, #btnDarkMode, #btnLightMode{
-  background: var(--icon-btn-bg) !important;
-  color: var(--icon-btn-color) !important;
-  border: 1px solid var(--icon-btn-border) !important;
+#btnNotif, #btnTheme, #btnRefresh, #btnDarkMode, #btnLightMode, #btnAdmin, #drawerToggle{
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  width: 36px !important;
+  height: 36px !important;
+  transition: all 0.2s ease !important;
 }
 .header .iconBtn:hover,
 .header .icon-btn:hover,
 .header button.icon:hover,
 .header .topIconBtn:hover,
 .header .iconButton:hover,
-#btnNotif:hover, #btnTheme:hover, #btnRefresh:hover{
-  border-color: var(--accent-focus) !important;
-  box-shadow: 0 10px 18px var(--accent-ring) !important;
+#btnNotif:hover, #btnTheme:hover, #btnRefresh:hover, #btnAdmin:hover, #drawerToggle:hover{
+  background: rgba(255, 255, 255, 0.22) !important;
+  transform: translateY(-1px);
 }
 
 /* Make SVG icons follow button color */
@@ -4400,11 +4508,12 @@ button[data-action="requestTimeOff"]:hover{
 .header button.icon svg,
 .header .topIconBtn svg,
 .header .iconButton svg{
-  stroke: currentColor !important;
-  fill: none !important;
+  fill: currentColor !important;
+  width: 18px !important;
+  height: 18px !important;
 }
 
-/* Dark mode: make icons feel “native” to #1a0e0d header */
+/* Dark mode icon buttons */
 body.dark-mode .header .iconBtn,
 body.dark-mode .header .icon-btn,
 body.dark-mode .header button.icon,
@@ -4412,10 +4521,15 @@ body.dark-mode .header .topIconBtn,
 body.dark-mode .header .iconButton,
 body.dark-mode #btnNotif,
 body.dark-mode #btnTheme,
-body.dark-mode #btnRefresh{
+body.dark-mode #btnRefresh,
+body.dark-mode #btnAdmin,
+body.dark-mode #drawerToggle{
   background: rgba(255,255,255,0.08) !important;
-  border-color: rgba(255,255,255,0.16) !important;
-  color: #f3f3f3 !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+body.dark-mode .header .iconBtn:hover,
+body.dark-mode .header .icon-btn:hover{
+  background: rgba(255,255,255,0.15) !important;
 }
 
 /* Dark mode: Time off CTA is a45953 */
@@ -4547,10 +4661,14 @@ body.dark-mode .bulkModal .mBody {
 
 </style>
 </head>
-<!-- ✅ COPY/PASTE: Replace your entire current <body> ... </body> says with this cleaned version.
-     It keeps all your IDs/structure, fixes the broken nesting + removes the duplicate adminOverlay,
-     and puts notifPanel in the right place (not trapped inside another div/overlay). -->
-<body class="auth-pending">
+<!-- ✅ Body starts without auth-pending if early check found valid session -->
+<body>
+  <script>
+    // Apply auth-pending class only if no valid session was found in early check
+    if (!window._hasValidSession) {
+      document.body.classList.add('auth-pending');
+    }
+  </script>
   <!-- AUTH OVERLAY - Blocks all interaction until signed in -->
   <div id="authOverlay" style="
     position: fixed;
@@ -4608,11 +4726,16 @@ body.dark-mode .bulkModal .mBody {
       <div class="hTitle">Musely Scheduler</div>
       
       <div class="metaGroup" style="margin-left: 16px;">
+        <!-- Agent Profile Pill (agents only - shows PTO and opens profile modal) -->
         <div id="balancePill" class="pill profile-pill" style="display:none;" onclick="openBalanceModal()">
             <span id="balanceText">My Profile</span>
             <span class="profile-pill-badge" id="ptoBadge">0h</span>
         </div>
-        <div id="managerContextPill" class="pill" style="display:none; background:#a45953; color:#fff; border-color:#7d3f3a;">Loading...</div>
+        <!-- Manager Sign Out Pill (managers only - simple sign out, no modal) -->
+        <div id="managerSignOutPill" class="pill sign-out-pill" style="display:none;" onclick="handleLogout()">
+            Sign Out
+        </div>
+        <div id="managerContextPill" class="pill" style="display:none; background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.9); border:none; font-size:11px; font-weight:600; border-radius:20px;">Loading...</div>
       </div>
     </div>
     <div class="hRight">
@@ -4639,7 +4762,7 @@ body.dark-mode .bulkModal .mBody {
           <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" fill="none"/>
         </svg>
       </button>
-<button type="button" class="iconBtn" title="Refresh (clears cache)" onclick="forceRefresh()">
+<button type="button" class="iconBtn" title="Refresh schedule data" onclick="forceRefresh()">
         <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
       </button>
       <button class="iconBtn" id="drawerToggle" title="Tools" onclick="toggleDrawer()">
@@ -4796,8 +4919,8 @@ body.dark-mode .open-shift {
 }
 </style>
 <div id="masterView" style="display:none; height:100%; overflow-y:auto;"></div>
-      <div id="metricsView" style="display:none; height:100%;">
-        <div class="metricsWrap">
+      <div id="metricsView" style="display:none; height:100%; flex:1; min-height:0; overflow:hidden;">
+        <div class="metricsWrap" style="height:100%;">
           <div class="metricsLeft">
             <div class="metricsTop">
               <div class="metricsTitleWrap">
@@ -4829,7 +4952,7 @@ body.dark-mode .open-shift {
                     <div id="mSolved" style="font-size:18px; font-weight:900; color:#16a34a;">--</div>
                   </div>
                   <div style="background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #fed7aa;">
-                    <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (60d)</div>
+                    <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (30d)</div>
                     <div id="mCSAT" style="font-size:18px; font-weight:900; color:#ea580c;">--</div>
                   </div>
                 </div>
@@ -4839,11 +4962,24 @@ body.dark-mode .open-shift {
                     <div id="mRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:6px;">--</div>
                   </div>
                   <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
-                  <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <a id="mOpenTicketsLink" class="btn ghost" target="_blank" style="text-decoration:none;">View Open Tickets</a>
-                    <a id="mBadCsatLink" class="btn ghost" target="_blank" style="text-decoration:none;">Find Bad CSAT Tickets</a>
+                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Zendesk activity is shown in the hourly breakdown below.</div>
+                  <div id="mActivitySection" style="margin-top:16px; max-width:360px; text-align:left;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                      <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px;">Hourly Activity (last 7 days)</div>
+                    </div>
+                    <!-- Activity Type Toggle -->
+                    <div style="display:flex; gap:4px; margin-bottom:10px; background:#f1f5f9; padding:4px; border-radius:8px;">
+                      <button type="button" id="activityTypeSolved" class="seg-btn active" style="flex:1; padding:6px 10px; font-size:11px; font-weight:600; border:none; border-radius:6px; cursor:pointer; background:#fff; color:#0f172a; box-shadow:0 1px 2px rgba(0,0,0,0.05);" onclick="setActivityType('solved')">🎫 Solved</button>
+                      <button type="button" id="activityTypeUpdates" class="seg-btn" style="flex:1; padding:6px 10px; font-size:11px; font-weight:600; border:none; border-radius:6px; cursor:pointer; background:transparent; color:#64748b;" onclick="setActivityType('updates')">💬 Updates</button>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                      <input type="date" id="mActivityDate" style="flex:1; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px; background:var(--input-bg); color:var(--text-primary);" onchange="refreshMetricsActivity()">
+                      <button type="button" class="btn ghost" style="padding:6px 10px; font-size:11px;" onclick="refreshMetricsActivity()">Load</button>
+                    </div>
+                    <div id="mActivitySummary" style="font-size:11px; color:#64748b; margin-bottom:6px;"></div>
+                    <div id="mActivityList" style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;"></div>
+                    <div id="mActivityEmpty" style="font-size:11px; color:#94a3b8; margin-top:6px;"></div>
                   </div>
-                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Tip: use “Find Bad CSAT Tickets” to send examples to the agent for review.</div>
                 </div>
               </div>
             </div>
@@ -5100,11 +5236,36 @@ body.dark-mode .open-shift {
               <div id="pSolved" style="font-size: 20px; font-weight: 800; color: #16a34a;">--</div>
             </div>
             <div style="background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px solid #fed7aa;">
-              <div style="font-size: 10px; font-weight: 700; color: #c2410c;">CSAT (60d)</div>
+              <div style="font-size: 10px; font-weight: 700; color: #c2410c;">CSAT (30d)</div>
               <div id="pCSAT" style="font-size: 20px; font-weight: 800; color: #ea580c;">--</div>
             </div>
           </div>
-          <div style="margin-top: 20px; font-size: 11px; color: #94a3b8;">Last Login: <span id="pLogin">--</span></div>
+          <div style="margin-top: 16px; background:#fdf2f8; padding:12px; border-radius:12px; border:1px solid #fbcfe8; text-align:left;">
+            <div style="font-size:10px; font-weight:900; color:#be185d; text-transform:uppercase;">Role</div>
+            <div id="pRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:4px;">--</div>
+          </div>
+          <div style="margin-top: 12px; font-size: 11px; color: #94a3b8;">Last Login: <span id="pLogin">--</span></div>
+          
+          <!-- ✅ Logout Button -->
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+            <button onclick="handleLogout()" style="
+              background: transparent;
+              color: #dc2626;
+              border: 1px solid #fecaca;
+              padding: 10px 20px;
+              border-radius: 8px;
+              font-size: 13px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+            " onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#dc2626';" 
+               onmouseout="this.style.background='transparent'; this.style.borderColor='#fecaca';">
+              🚪 Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -5153,7 +5314,7 @@ body.dark-mode .open-shift {
       <div class="mFoot"><button class="btn primary" onclick="applyPicker()">Apply Filter</button></div>
     </div>
   </div>
-  <<!-- ✅ Admin Overlay (ONLY ONCE) -->
+  <!-- ✅ Admin Overlay (ONLY ONCE) -->
   <div id="adminOverlay" class="overlay overlay-admin" style="display:none;" onclick="if(event.target===this) closeAdminModal()">
     <div class="modal adminModal">
       <div class="mHead adminHead">
@@ -5185,17 +5346,6 @@ body.dark-mode .open-shift {
 
         <!-- Tool grid -->
         <div class="adminGrid">
-          <div class="adminCard" onclick="openTimeOffQueue()">
-            <div class="adminCardTop">
-              <div class="adminIcon adminIconAmber">⏳</div>
-              <div class="adminCardText">
-                <div class="adminCardTitle">Time Off Requests</div>
-                <div class="adminCardDesc">Approve/deny requests</div>
-              </div>
-              <span class="adminChip">Queue</span>
-            </div>
-          </div>
-
           <div class="adminCard" onclick="openBalanceModal()">
             <div class="adminCardTop">
               <div class="adminIcon adminIconGreen">💰</div>
@@ -5380,7 +5530,7 @@ body.dark-mode .open-shift {
 <div id="balanceModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeBalanceModal()">
   <div class="modal" style="width: 550px;">
     <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none;">
-      <span class="mTitle" style="color: white;">👤 My Profile</span>
+      <span id="balanceModalTitle" class="mTitle" style="color: white;">👤 My Profile</span>
       <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeBalanceModal()">✕</button>
     </div>
     
@@ -5480,6 +5630,13 @@ body.dark-mode .open-shift {
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- Sign Out Section -->
+        <div class="profile-section" style="margin-top: 8px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+          <button onclick="handleLogout()" class="sign-out-btn">
+            🚪 Sign Out
+          </button>
         </div>
       </div>
       
@@ -5808,7 +5965,7 @@ const CHANNEL_ABBREV = {
     showSessionIndicator(false);
     
     // Hide the login button after successful sign-in
-    const loginContainer = document.getElementById("loginContainer");
+    const loginContainer = document.getElementById("authLoginContainer");
     if (loginContainer) loginContainer.style.display = "none";
     
     // Now load the dashboard
@@ -5827,25 +5984,31 @@ window.handleSignIn = handleSignIn;
 const CACHE_CONFIG = {
   SCHEDULE_KEY: 'musely_schedule_cache',
   METADATA_KEY: 'musely_metadata_cache',
-  TTL: 5 * 60 * 1000,  // 5 minutes in milliseconds
-  VERSION: '1.0'       // Increment to invalidate old caches
+  TTL: 10 * 60 * 1000,  // 10 minutes in milliseconds (increased from 5)
+  VERSION: '1.1'       // Increment to invalidate old caches
 };
 
 // ============================================
-// SESSION PERSISTENCE (15-minute auth cache)
+// SESSION PERSISTENCE (Enhanced - 8 hour auth cache)
 // ============================================
 // Note: Session data is stored in localStorage without encryption.
 // This is acceptable because:
 // 1. Server still validates all requests with preview key
-// 2. Session TTL is only 15 minutes
+// 2. Session TTL is 8 hours but refreshes on activity
 // 3. No passwords or tokens are stored
 // 4. Only caches display name, email, and role flag
 // For higher security requirements, consider using httpOnly cookies
 const SESSION_CONFIG = {
   KEY: 'musely_auth_session',
-  TTL: 60 * 60 * 1000, // 60 minutes in milliseconds
-  VERSION: '1.0'
+  BACKUP_KEY: 'musely_auth_session_backup', // Backup in sessionStorage
+  TTL: 8 * 60 * 60 * 1000, // 8 hours in milliseconds
+  WARNING_THRESHOLD: 30 * 60 * 1000, // Warn 30 min before expiry
+  VERSION: '1.1' // Incremented for new format
 };
+
+// Session activity tracker
+let _lastActivityTime = Date.now();
+let _sessionWarningShown = false;
 
 function saveAuthSession(email, name, isManager) {
   const sessionData = {
@@ -5853,40 +6016,91 @@ function saveAuthSession(email, name, isManager) {
     name,
     isManager,
     timestamp: Date.now(),
+    lastActivity: Date.now(),
     version: SESSION_CONFIG.VERSION,
     cached: true
   };
   try {
+    // Save to localStorage (persists across browser sessions)
     localStorage.setItem(SESSION_CONFIG.KEY, JSON.stringify(sessionData));
+    // Also save to sessionStorage as backup (survives refresh, cleared on tab close)
+    sessionStorage.setItem(SESSION_CONFIG.BACKUP_KEY, JSON.stringify(sessionData));
     console.log('✅ Auth session saved to cache');
   } catch (err) {
     console.warn('Failed to save auth session:', err);
   }
 }
 
-function loadAuthSession() {
+// ✅ NEW: Refresh session timestamp on user activity
+function refreshSessionTimestamp() {
   try {
     const raw = localStorage.getItem(SESSION_CONFIG.KEY);
+    if (!raw) return;
+    
+    const data = JSON.parse(raw);
+    data.lastActivity = Date.now();
+    
+    localStorage.setItem(SESSION_CONFIG.KEY, JSON.stringify(data));
+    sessionStorage.setItem(SESSION_CONFIG.BACKUP_KEY, JSON.stringify(data));
+    
+    _lastActivityTime = Date.now();
+    _sessionWarningShown = false; // Reset warning flag on activity
+    
+    console.log('🔄 Session timestamp refreshed');
+  } catch (err) {
+    console.warn('Failed to refresh session timestamp:', err);
+  }
+}
+
+function loadAuthSession() {
+  try {
+    // Try localStorage first
+    let raw = localStorage.getItem(SESSION_CONFIG.KEY);
+    
+    // If localStorage is empty, try sessionStorage backup
+    if (!raw) {
+      raw = sessionStorage.getItem(SESSION_CONFIG.BACKUP_KEY);
+      if (raw) {
+        console.log('📦 Restoring session from backup');
+        localStorage.setItem(SESSION_CONFIG.KEY, raw);
+      }
+    }
+    
     if (!raw) return null;
 
     const data = JSON.parse(raw);
     
-    // Check version
+    // Check version - graceful migration
     if (data.version !== SESSION_CONFIG.VERSION) {
-      console.log('Session cache version mismatch, clearing...');
+      // Try to migrate old session format
+      if (data.email && data.name && data.version === '1.0') {
+        console.log('🔄 Migrating session to new version');
+        data.version = SESSION_CONFIG.VERSION;
+        data.lastActivity = data.timestamp;
+        localStorage.setItem(SESSION_CONFIG.KEY, JSON.stringify(data));
+      } else {
+        console.log('Session cache version mismatch, clearing...');
+        clearAuthSession();
+        return null;
+      }
+    }
+
+    // Check TTL based on last activity (not original login time)
+    const activityAge = Date.now() - (data.lastActivity || data.timestamp);
+    if (activityAge > SESSION_CONFIG.TTL) {
+      console.log('Session cache expired due to inactivity, clearing...');
+      showSessionExpiredNotification();
       clearAuthSession();
       return null;
     }
-
-    // Check TTL (15 minutes)
-    const age = Date.now() - data.timestamp;
-    if (age > SESSION_CONFIG.TTL) {
-      console.log('Session cache expired, clearing...');
-      clearAuthSession();
-      return null;
+    
+    // Check if session is about to expire (within warning threshold)
+    const timeRemaining = SESSION_CONFIG.TTL - activityAge;
+    if (timeRemaining < SESSION_CONFIG.WARNING_THRESHOLD && !_sessionWarningShown) {
+      showSessionExpiryWarning(timeRemaining);
     }
 
-    console.log(`✅ Loaded cached session (age: ${Math.floor(age / 1000)}s)`);
+    console.log(`✅ Loaded cached session (activity age: ${Math.floor(activityAge / 1000)}s, ${Math.floor(timeRemaining / 60000)}min remaining)`);
     return data;
   } catch (err) {
     console.warn('Failed to load auth session:', err);
@@ -5898,10 +6112,117 @@ function loadAuthSession() {
 function clearAuthSession() {
   try {
     localStorage.removeItem(SESSION_CONFIG.KEY);
+    sessionStorage.removeItem(SESSION_CONFIG.BACKUP_KEY);
     console.log('🗑️ Auth session cleared');
   } catch (err) {
     console.warn('Failed to clear auth session:', err);
   }
+}
+
+// ✅ NEW: Handle explicit user logout
+function handleLogout() {
+  // Clear auth session
+  clearAuthSession();
+  
+  // Clear schedule caches
+  if (typeof clearScheduleCache === 'function') {
+    clearScheduleCache();
+  }
+  
+  // Clear global identity
+  window._myEmail = null;
+  window._myName = null;
+  window._isManager = null;
+  window._currentUser = null;
+  
+  // Show logout confirmation
+  toast("✅ Signed out successfully", "success");
+  
+  // Close profile modal if open
+  const profileOverlay = document.getElementById('profileOverlay');
+  if (profileOverlay) profileOverlay.style.display = 'none';
+  
+  // Show login screen
+  document.body.classList.add("auth-pending");
+  const loginContainer = document.getElementById("authLoginContainer");
+  if (loginContainer) loginContainer.style.display = "flex";
+  
+  // Reload page after a brief delay
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
+}
+window.handleLogout = handleLogout;
+
+// ✅ NEW: Show warning before session expires
+function showSessionExpiryWarning(timeRemaining) {
+  _sessionWarningShown = true;
+  const minutes = Math.ceil(timeRemaining / 60000);
+  
+  const warning = document.createElement('div');
+  warning.id = 'sessionWarning';
+  warning.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out;
+  `;
+  warning.innerHTML = `
+    <span>⏰ Session expires in ${minutes} minutes</span>
+    <button onclick="refreshSessionTimestamp(); this.parentElement.remove(); toast('Session extended!', 'success');" 
+      style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); 
+             color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+      Extend
+    </button>
+  `;
+  
+  // Remove any existing warning
+  const existing = document.getElementById('sessionWarning');
+  if (existing) existing.remove();
+  
+  document.body.appendChild(warning);
+}
+
+// ✅ NEW: Show notification when session expires
+function showSessionExpiredNotification() {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 24px 32px;
+    background: white;
+    border-radius: 16px;
+    font-size: 14px;
+    z-index: 10000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 400px;
+  `;
+  notification.innerHTML = `
+    <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
+    <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1a1a;">Session Expired</div>
+    <div style="color: #666; margin-bottom: 20px;">Your session has expired due to inactivity. Please sign in again to continue.</div>
+    <button onclick="this.parentElement.remove(); location.reload();" 
+      style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); 
+             color: white; border: none; padding: 12px 24px; border-radius: 10px; 
+             cursor: pointer; font-weight: 700; font-size: 14px;">
+      Sign In Again
+    </button>
+  `;
+  document.body.appendChild(notification);
 }
 
 function showSessionIndicator(isCached) {
@@ -6021,6 +6342,11 @@ if (typeof window !== 'undefined') {
       month: "2-digit",
       day: "2-digit",
     }).format(d);
+  }
+  function pstISODateOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return pstISODate(d);
   }
   
   // --- CLOUD RUN BRIDGE START ---
@@ -6206,20 +6532,6 @@ runGenerate: async function() {
     if (this._success) this._success(json);
   } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
 },
-runArchive: async function() {
-  try {
-    const res = await fetch("./?action=archive", { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    if (this._success) this._success(json);
-  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
-},
-runBoth: async function() {
-  try {
-    const res = await fetch("./?action=sync", { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    if (this._success) this._success(json);
-  } catch (e) { if (this._fail) this._fail(e.message || String(e)); }
-},
             handleMasterScheduleEdit: async function(payload) {
                 console.log("Bridge: Master Edit Request", payload);
                 try {
@@ -6287,6 +6599,9 @@ runBoth: async function() {
   let _isMasterMode = false;
   let _activeProfileRequest = "";
   let _activeMetricsRequest = "";
+  let _activeMetricsEmail = "";
+  let _peopleMeta = [];
+  let _peopleMetaByName = new Map();
 // Schedule date range tracking
   let _scheduleLoadedPast = 0;      // How many past days are loaded
   let _scheduleLoadedFuture = 14;   // How many future days are loaded
@@ -6579,7 +6894,17 @@ function clearScheduleCache() {
 
     // Filter out current user
     const otherManagers = (managers || []).filter(m => m.managerName !== window._myName);
-    const totalOnline = managers?.length || 0;
+
+    const setPresenceVariant = () => {
+      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
+      if (otherManagers.length === 0) {
+        presenceEl.classList.add("mp-solo");
+      } else if (otherManagers.length === 1) {
+        presenceEl.classList.add("mp-one");
+      } else {
+        presenceEl.classList.add("mp-many");
+      }
+    };
 
     // Always show presence - even if you're the only one online
     if (otherManagers.length === 0) {
@@ -6589,15 +6914,7 @@ function clearScheduleCache() {
         <span class="presence-name">Online</span>
       `;
       presenceEl.title = "You are the only manager currently viewing the scheduler";
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     } else if (otherManagers.length === 1) {
       const m = otherManagers[0];
@@ -6607,15 +6924,7 @@ if (otherManagers.length === 0) {
         <span class="presence-view">${m.view}</span>
       `;
       presenceEl.title = `${m.managerName} is viewing ${m.view}${m.area ? ` (${m.area})` : ''}`;
-     presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     } else {
       presenceEl.innerHTML = `
@@ -6625,15 +6934,7 @@ if (otherManagers.length === 0) {
       presenceEl.title = otherManagers.map(m => 
         `${m.managerName}: ${m.view}${m.area ? ` (${m.area})` : ''}`
       ).join('\n');
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-
-if (otherManagers.length === 0) {
-  presenceEl.classList.add("mp-solo");
-} else if (otherManagers.length === 1) {
-  presenceEl.classList.add("mp-one");
-} else {
-  presenceEl.classList.add("mp-many");
-}
+      setPresenceVariant();
 
     }
 
@@ -6725,6 +7026,8 @@ if (otherManagers.length === 0) {
 let _presenceStarted = false;
 let _presenceHeartbeatTimer = null;
 let _presencePollTimer = null;
+let _notificationPollTimer = null;
+let _isEditingSchedule = false; // Flag to prevent refresh during edits
 
 function startManagerPresenceTracking() {
   if (_presenceStarted) return;
@@ -6737,9 +7040,90 @@ function startManagerPresenceTracking() {
   setTimeout(sendManagerHeartbeat, 1000);
   setTimeout(fetchManagerPresence, 2000);
 
-  // Run every 7 minutes (optimized for Cloud Run free tier)
-  _presenceHeartbeatTimer = setInterval(sendManagerHeartbeat, 420000);
-  _presencePollTimer = setInterval(fetchManagerPresence, 420000);
+  // ✅ Presence polling: every 5 minutes (300000ms) - managers only
+  _presenceHeartbeatTimer = setInterval(sendManagerHeartbeat, 300000);
+  _presencePollTimer = setInterval(fetchManagerPresence, 300000);
+  
+  // ✅ Notifications polling: every 2 minutes (120000ms) - managers
+  _notificationPollTimer = setInterval(softRefreshNotifications, 120000);
+}
+
+// ✅ Start notification polling for agents (no presence tracking for agents)
+function startAgentNotificationPolling() {
+  if (window._isManager) return;
+  if (!window._myName) return;
+  
+  // ✅ Poll every 2 minutes (120000ms) for new notifications
+  _notificationPollTimer = setInterval(() => {
+    loadAgentNotifications();
+  }, 120000);
+}
+
+// ✅ Soft refresh - only updates notification data, not the whole UI
+async function softRefreshNotifications() {
+  if (_isEditingSchedule) {
+    console.log("[Notifications] Skipping refresh - user is editing");
+    return;
+  }
+  
+  try {
+    // For managers: check for new pending notifications
+    if (window._isManager) {
+      const res = await fetch('/?action=pendingNotifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      
+      if (data.ok) {
+        const newCount = (data.managerNotifications?.length || 0) + (data.shiftNotifications?.length || 0);
+        const currentCount = pendingNotifications?.length || 0;
+        
+        // Only show indicator if count increased
+        if (newCount > currentCount) {
+          showNewNotificationIndicator(newCount - currentCount);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[Notifications] Soft refresh failed:", err);
+  }
+}
+
+// ✅ Show a non-intrusive indicator when new notifications arrive
+function showNewNotificationIndicator(count) {
+  const notifBtn = $("btnNotif");
+  if (notifBtn) {
+    // Add pulsing glow effect
+    notifBtn.style.animation = "pulse-bell 0.5s ease 3";
+    notifBtn.style.boxShadow = "0 0 12px rgba(239, 68, 68, 0.6)";
+    setTimeout(() => {
+      notifBtn.style.animation = "";
+      notifBtn.style.boxShadow = "";
+    }, 2000);
+  }
+  
+  // Update badge count
+  const badge = $("notifCount");
+  if (badge) {
+    const currentVal = parseInt(badge.textContent) || 0;
+    badge.textContent = currentVal + count;
+    badge.classList.remove("hidden");
+  }
+  
+  // Show toast notification
+  toast(`🔔 ${count} new notification${count > 1 ? 's' : ''} - click bell to view`, "info");
+}
+
+// ✅ Mark editing mode on/off to prevent disruption
+function setEditingMode(isEditing) {
+  _isEditingSchedule = isEditing;
+  if (isEditing) {
+    console.log("[Edit Mode] Enabled - auto-refresh paused");
+  } else {
+    console.log("[Edit Mode] Disabled - auto-refresh resumed");
+  }
 }
 
   // --- 4. LOAD SEQUENCE ---
@@ -6748,32 +7132,83 @@ function startManagerPresenceTracking() {
   // ============================================
   window.onload = function() {
     // ✅ Check for cached session before requiring login
+    // Note: Early check in <head> already hides auth overlay if valid session exists
     const cachedSession = loadAuthSession();
-    if (cachedSession) {
-      console.log('🔓 Restoring cached session:', cachedSession.name);
-      
-      // Set global identity from cache
-      window._myEmail = cachedSession.email;
-      window._myName = cachedSession.name;
-      window._isManager = cachedSession.isManager;
-      window._currentUser = cachedSession.name;
-      
-      // Remove auth-pending to reveal the app
-      document.body.classList.remove("auth-pending");
-      
-      // Show cached session indicator
-      showSessionIndicator(true);
-      
-      // Hide login container
-      const loginContainer = document.getElementById("loginContainer");
-      if (loginContainer) loginContainer.style.display = "none";
+    if (cachedSession || window._hasValidSession) {
+      // Use cached session or validate the early check
+      const session = cachedSession || loadAuthSession(); // Double-check
+      if (session) {
+        console.log('🔓 Restoring cached session:', session.name);
+        
+        // Set global identity from cache
+        window._myEmail = session.email;
+        window._myName = session.name;
+        window._isManager = session.isManager;
+        window._currentUser = session.name;
+        
+        // Ensure auth-pending is removed (may already be hidden by early check)
+        document.body.classList.remove("auth-pending");
+        
+        // Hide auth overlay explicitly
+        const authOverlay = document.getElementById("authOverlay");
+        if (authOverlay) authOverlay.style.display = "none";
+        
+        // Hide login container
+        const loginContainer = document.getElementById("authLoginContainer");
+        if (loginContainer) loginContainer.style.display = "none";
+        
+        // ✅ Refresh session timestamp on page load
+        refreshSessionTimestamp();
+      }
+    } else {
+      // No valid session - ensure login screen is shown
+      document.body.classList.add("auth-pending");
+      const authOverlay = document.getElementById("authOverlay");
+      if (authOverlay) authOverlay.style.display = "flex";
     }
+    
+    // ✅ Set up session activity tracking (refresh on user interactions)
+    setupSessionActivityTracking();
+    
+    // ✅ Set up periodic session validation (every 5 minutes)
+    setInterval(() => {
+      if (window._myEmail) {
+        const session = loadAuthSession();
+        if (!session) {
+          // Session expired, show login
+          document.body.classList.add("auth-pending");
+          const loginContainer = document.getElementById("authLoginContainer");
+          if (loginContainer) loginContainer.style.display = "flex";
+        }
+      }
+    }, 5 * 60 * 1000);
     
     try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
   };
+  
+  // ✅ NEW: Track user activity to keep session alive
+  function setupSessionActivityTracking() {
+    const activityEvents = ['click', 'keypress', 'scroll', 'touchstart'];
+    let lastRefresh = Date.now();
+    const REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh at most every 5 minutes
+    
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastRefresh > REFRESH_INTERVAL) {
+        if (window._myEmail && typeof refreshSessionTimestamp === 'function') {
+          refreshSessionTimestamp();
+          lastRefresh = now;
+        }
+      }
+    };
+    
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity, { passive: true });
+    });
+  }
   function load(force, targetEmail) {
   // ✅ Show/hide login button based on auth state
-  const loginContainer = document.getElementById("loginContainer");
+  const loginContainer = document.getElementById("authLoginContainer");
   if (loginContainer) {
     loginContainer.style.display = (window._myName && window._myEmail) ? "none" : "flex";
   }
@@ -6852,6 +7287,8 @@ function startManagerPresenceTracking() {
     if ($("agentQuickActions")) $("agentQuickActions").style.display = "flex";
     loadAgentNotifications();
     loadPendingSwaps();
+    // ✅ Start polling for new notifications every 60 seconds
+    startAgentNotificationPolling();
   } else {
     if ($("btnAgentNotif")) $("btnAgentNotif").style.display = "none";
     if ($("agentQuickActions")) $("agentQuickActions").style.display = "none";
@@ -6921,6 +7358,11 @@ window.formatDatePST = formatDatePST;
 window.formatTimePST = formatTimePST;
   async function loadSystemData() {
   console.log("Loading system data...");
+  
+  // ✅ Refresh session timestamp on data load (user is active)
+  if (typeof refreshSessionTimestamp === 'function') {
+    refreshSessionTimestamp();
+  }
   
   const isManager = window._isManager;
   const myName = window._myName;
@@ -7006,10 +7448,35 @@ window.formatTimePST = formatTimePST;
       body: JSON.stringify({ isManager: isManager, action: 'getMetadata' })
     });
     const meta = await metaRes.json();
-    _people = (meta.people || []).map(p => p.name || p.id).filter(Boolean);
+    _peopleMeta = Array.isArray(meta.people) ? meta.people : [];
+    _peopleMetaByName = new Map();
+    _peopleMeta.forEach(p => {
+      const display = String(p.name || p.id || "").trim();
+      if (display) _peopleMetaByName.set(display.toLowerCase(), p);
+    });
+    _people = _peopleMeta.map(p => p.name || p.id).filter(Boolean);
     _teams = (meta.teams || []).map(t => t.id || t.name).filter(Boolean);
     if (!_teams.includes("Lunch")) _teams.push("Lunch");
       if (!_teams.includes("1:1 Meeting")) _teams.push("1:1 Meeting");
+    
+    // ✅ Fetch roles from Firestore
+    try {
+      const rolesRes = await fetch('./?action=roles');
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json();
+        if (rolesData.roles && rolesData.roles.length > 0) {
+          _roles = rolesData.roles.map(r => r.id || r.name).filter(Boolean);
+        } else {
+          _roles = ["Agent", "Backup 1", "Backup 2", "Captain"]; // Fallback defaults
+        }
+      } else {
+        _roles = ["Agent", "Backup 1", "Backup 2", "Captain"];
+      }
+    } catch (e) {
+      console.warn("Failed to fetch roles, using defaults:", e);
+      _roles = ["Agent", "Backup 1", "Backup 2", "Captain"];
+    }
+    
     _zendeskMetricsList = meta.zendeskMetrics || [];
     _zendeskMetricsByName = new Map();
     _zendeskMetricsList.forEach(r => { 
@@ -10050,6 +10517,9 @@ function updateAgentRangeLabel() {
     
     // Clear the editing reference
     _editing = null;
+    
+    // ✅ Re-enable auto-refresh
+    setEditingMode(false);
   }
   // --- 8. PROFILES & METRICS ---
   function openProfile(name) {
@@ -10142,7 +10612,9 @@ function handleDateJump(val) {
      if(data.error) { $("profLoader").style.display = "block"; $("profLoader").innerText = data.error; return; }
      $("profContent").style.display = "block";
      
-     $("pName").innerText = data.name; $("pEmail").innerText = data.email; $("pRole").innerText = data.role;
+     $("pName").innerText = data.name; 
+     $("pEmail").innerText = data.email; 
+     if($("pRole")) $("pRole").innerText = data.role || "--";
      $("pSolved").innerText = data.solvedWeek ?? "--"; 
      $("pCSAT").innerText = formatCsatDisplay(data.csatScore);
      
@@ -10150,14 +10622,36 @@ function handleDateJump(val) {
      const url = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(q);
      const el = $("pTickets"); el.innerHTML = "";
      const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.innerText = (data.openTickets ?? "--") + " 🔗";
+     a.style.color = "#0284c7"; a.style.textDecoration = "none";
      el.appendChild(a);
      
      $("pAvatar").src = data.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
-     $("pLogin").innerText = data.lastLogin ? new Date(data.lastLogin).toLocaleDateString() : "Never";
+     
+     // Format last login with more detail
+     if (data.lastLogin) {
+       const loginDate = new Date(data.lastLogin);
+       const now = new Date();
+       const diffMs = now - loginDate;
+       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+       let loginText;
+       if (diffDays === 0) {
+         loginText = "Today at " + loginDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+       } else if (diffDays === 1) {
+         loginText = "Yesterday";
+       } else if (diffDays < 7) {
+         loginText = diffDays + " days ago";
+       } else {
+         loginText = loginDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+       }
+       $("pLogin").innerText = loginText;
+     } else {
+       $("pLogin").innerText = "Never";
+     }
   }
   function renderProfileCached(c) {
      $("profContent").style.display = "block";
      $("pName").innerText = c.agentName; $("pEmail").innerText = c.email; 
+     if($("pRole")) $("pRole").innerText = c.role || "--";
      $("pSolved").innerText = c.solvedWeek ?? "--"; 
      $("pCSAT").innerText = formatCsatDisplay(c.csatPct);
      
@@ -10167,6 +10661,7 @@ function handleDateJump(val) {
         const url = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent("assignee_id:"+c.zendeskUserId);
         const el = $("pTickets"); el.innerHTML = "";
         const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.innerText = (c.openTickets ?? "--") + " 🔗";
+        a.style.color = "#0284c7"; a.style.textDecoration = "none";
         el.appendChild(a);
      }
   }
@@ -10175,13 +10670,17 @@ function handleDateJump(val) {
      const q = ($("metricsSearch").value || "").toLowerCase();
      _people.filter(p => !q || p.toLowerCase().includes(q)).forEach(p => {
          const row = mkDiv("metricsRow");
+         const meta = _peopleMetaByName.get(p.toLowerCase());
+         const email = meta?.email || "";
          row.innerHTML = `<div class="left"><div class="avatar">${p.substring(0,2)}</div><div class="name">${p}</div></div>`;
-         row.onclick = () => openMetricsProfile(p);
+         row.onclick = () => openMetricsProfile(p, email);
          host.appendChild(row);
      });
   }
-  function openMetricsProfile(name) {
+  function openMetricsProfile(name, email) {
     _activeMetricsRequest = name;
+    _activeMetricsEmail = email || "";
+    window._activeMetricsEmail = _activeMetricsEmail;
     
     const d = document.getElementById("metricsDrawer"); 
     d.classList.add("open");
@@ -10202,7 +10701,7 @@ function handleDateJump(val) {
     fetch('./?action=agent-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name })
+      body: JSON.stringify({ name: name, email: email })
     })
     .then(res => res.json())
     .then(data => renderMetricsProfileData(data))
@@ -10215,7 +10714,7 @@ function handleDateJump(val) {
              loader.innerHTML = `<div style="color:#f59e0b; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fcd34d;">
                                   <strong>Taking longer than usual...</strong><br>
                                   The server is still processing. Please wait or try again.<br>
-                                  <button class="btn ghost" style="margin-top:8px; font-size:11px;" onclick="openMetricsProfile('${name}')">Retry</button>
+                                  <button class="btn ghost" style="margin-top:8px; font-size:11px;" onclick="openMetricsProfile('${name}', window._activeMetricsEmail || '')">Retry</button>
                                 </div>`;
         }
     }, 30000);
@@ -10254,19 +10753,160 @@ function handleDateJump(val) {
             document.getElementById("mLogin").innerText = "Never";
         }
     }
-    updateMetricLinks(data);
+    // Zendesk link buttons removed; activity panel handles quick insights
+    // Load hourly activity after profile renders
+    applyActivityDateRange();
+    refreshMetricsActivity();
   }
-  // Force refresh - clears cache and reloads data
+  function formatHourLabel(hour) {
+    const h = hour % 24;
+    const ampm = h >= 12 ? "pm" : "am";
+    const display = h % 12 || 12;
+    return `${display}${ampm}`;
+  }
+  function formatHourRangeLabel(hour) {
+    const next = (hour + 1) % 24;
+    return `${formatHourLabel(hour)}-${formatHourLabel(next)}`;
+  }
+  // Track current activity type
+  let _activityType = 'solved';
+  
+  function setActivityType(type) {
+    _activityType = type;
+    // Update button styles
+    const solvedBtn = document.getElementById('activityTypeSolved');
+    const updatesBtn = document.getElementById('activityTypeUpdates');
+    if (solvedBtn && updatesBtn) {
+      if (type === 'solved') {
+        solvedBtn.style.background = '#fff';
+        solvedBtn.style.color = '#0f172a';
+        solvedBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+        updatesBtn.style.background = 'transparent';
+        updatesBtn.style.color = '#64748b';
+        updatesBtn.style.boxShadow = 'none';
+      } else {
+        updatesBtn.style.background = '#fff';
+        updatesBtn.style.color = '#0f172a';
+        updatesBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+        solvedBtn.style.background = 'transparent';
+        solvedBtn.style.color = '#64748b';
+        solvedBtn.style.boxShadow = 'none';
+      }
+    }
+    refreshMetricsActivity();
+  }
+  
+  function applyActivityDateRange() {
+    const input = document.getElementById("mActivityDate");
+    if (!input) return;
+    const max = pstISODate();
+    const min = pstISODateOffset(-6);
+    input.max = max;
+    input.min = min;
+    if (!input.value || input.value < min || input.value > max) {
+      input.value = max;
+    }
+  }
+  async function refreshMetricsActivity() {
+    const name = (_activeMetricsRequest || document.getElementById("mName")?.innerText || "").trim();
+    const email = (_activeMetricsEmail || "").trim();
+    const dateInput = document.getElementById("mActivityDate");
+    const summaryEl = document.getElementById("mActivitySummary");
+    const listEl = document.getElementById("mActivityList");
+    const emptyEl = document.getElementById("mActivityEmpty");
+
+    if (!name || !summaryEl || !listEl || !emptyEl || !dateInput) return;
+
+    applyActivityDateRange();
+    const date = dateInput.value || pstISODate();
+    if (!dateInput.value) dateInput.value = date;
+
+    summaryEl.textContent = "Loading activity...";
+    listEl.innerHTML = "";
+    emptyEl.textContent = "";
+
+    try {
+      const emailParam = email ? `&email=${encodeURIComponent(email)}` : "";
+      
+      if (_activityType === 'solved') {
+        // Fetch solved tickets
+        const url = `./?action=zendesk/activity&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&startHour=8&endHour=20${emailParam}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.ok) {
+          summaryEl.textContent = "";
+          emptyEl.textContent = data.error || "Unable to load activity.";
+          return;
+        }
+
+        const partialNote = data.incomplete ? " (partial)" : "";
+        summaryEl.textContent = `Solved tickets on ${data.date} (PST): ${data.total}${partialNote}`;
+        emptyEl.textContent = data.incomplete ? "Partial results due to Zendesk export limits." : "";
+        if (!Array.isArray(data.buckets) || data.buckets.length === 0) {
+          emptyEl.textContent = "No solved tickets found for this date.";
+          return;
+        }
+
+        listEl.innerHTML = data.buckets.map(b => `
+          <div style="background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius:8px; padding:8px; text-align:center;">
+            <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">${formatHourRangeLabel(b.hour)}</div>
+            <div style="font-size:16px; font-weight:800; color:${b.count > 0 ? '#16a34a' : 'var(--text-primary)'}; margin-top:4px;">${b.count}</div>
+          </div>
+        `).join("");
+      } else {
+        // Fetch ticket updates/comments
+        const url = `./?action=zendesk/agent-updates&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}${emailParam}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.ok) {
+          summaryEl.textContent = "";
+          emptyEl.textContent = data.error || "Unable to load activity.";
+          return;
+        }
+
+        const partialNote = data.incomplete ? " (partial)" : "";
+        summaryEl.textContent = `Ticket updates on ${data.date} (PST): ${data.totalUpdates}${partialNote}`;
+        
+        // Show work hours (8am - 8pm) breakdown
+        const workHours = (data.hourlyBreakdown || []).filter(h => h.hour >= 8 && h.hour <= 20);
+        
+        if (workHours.length === 0 || data.totalUpdates === 0) {
+          emptyEl.textContent = "No ticket updates found for this date.";
+          return;
+        }
+
+        listEl.innerHTML = workHours.map(b => `
+          <div style="background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius:8px; padding:8px; text-align:center;">
+            <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">${formatHourRangeLabel(b.hour)}</div>
+            <div style="font-size:16px; font-weight:800; color:${b.count > 0 ? '#0284c7' : 'var(--text-primary)'}; margin-top:4px;">${b.count}</div>
+          </div>
+        `).join("");
+        
+        // Show most active hours
+        if (data.activeHours && data.activeHours.length > 0) {
+          const topHours = data.activeHours.slice(0, 3).map(h => formatHourLabel(h.hour)).join(", ");
+          emptyEl.textContent = `Most active: ${topHours}`;
+        }
+      }
+    } catch (err) {
+      summaryEl.textContent = "";
+      emptyEl.textContent = "Failed to load activity.";
+      console.error("Metrics activity error:", err);
+    }
+  }
+  // Force refresh - clears DATA cache only, preserves auth session
 function forceRefresh() {
   console.log("🔄 Force refresh triggered");
   
-  // Clear the local storage cache including auth session
-  clearAuthSession();
+  // ✅ CRITICAL FIX: Do NOT clear auth session on refresh!
+  // Only clear schedule/metadata caches, keep user logged in
   
   if (typeof clearScheduleCache === 'function') {
     clearScheduleCache();
   } else {
-    // Fallback: manually clear cache keys
+    // Fallback: manually clear cache keys (but NOT auth!)
     localStorage.removeItem('musely_schedule_cache');
     localStorage.removeItem('musely_metadata_cache');
     try {
@@ -10278,8 +10918,13 @@ function forceRefresh() {
     } catch(e) {}
   }
   
+  // ✅ Refresh session timestamp on user activity
+  if (window._myEmail && window._myName) {
+    refreshSessionTimestamp();
+  }
+  
   // Show feedback
-  toast("🔄 Refreshing...", "info");
+  toast("🔄 Refreshing data...", "info");
   
   // Reload data
   if (typeof load === 'function') {
@@ -10293,23 +10938,6 @@ function forceRefresh() {
 }
 // Make it globally accessible
 window.forceRefresh = forceRefresh;
-  function updateMetricLinks(data) {
-     let openQ = "", badCsatQ = "";
-     if (data.zendeskUserId) {
-         openQ = "type:ticket status<solved assignee_id:" + data.zendeskUserId;
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee_id:" + data.zendeskUserId;
-     } else if (data.email) {
-         openQ = "type:ticket status<solved assignee:" + data.email;
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee:" + data.email;
-     } else {
-         openQ = "type:ticket status<solved assignee:\"" + data.name + "\"";
-         badCsatQ = "type:ticket satisfaction_rating:bad assignee:\"" + data.name + "\"";
-     }
-     const openUrl = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(openQ);
-     const badUrl  = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(badCsatQ);
-     const openA = document.getElementById("mOpenTicketsLink"); if (openA) openA.href = openUrl;
-     const badA = document.getElementById("mBadCsatLink"); if (badA) badA.href = badUrl;
-  }
   function closeMetricsDrawer() { $("metricsDrawer").classList.remove("open"); }
   function closeProfile() { $("profileOverlay").style.display = "none"; }
   // --- 9. AUDIT & MASTER MODES ---
@@ -10419,10 +11047,21 @@ window.forceRefresh = forceRefresh;
     const contextPill = document.getElementById("managerContextPill");
     // Toggle Views
     if (_isMasterMode) {
-        // UI Updates
-        if(btn) { btn.innerText = "Exit Template Editor"; btn.style.backgroundColor = "#a45953"; btn.style.color = "white"; }
-        if(title) title.innerText = "MASTER TEMPLATE";
-        if(contextPill) { contextPill.style.display="flex"; contextPill.innerText="EDITING GLOBAL RULES"; contextPill.style.backgroundColor="#ef4444"; contextPill.style.borderColor="#b91c1c"; }
+        // UI Updates - Clean glass style
+        if(btn) { 
+          btn.innerText = "← Exit Editor"; 
+          btn.style.backgroundColor = "rgba(255,255,255,0.15)"; 
+          btn.style.color = "rgba(255,255,255,0.9)"; 
+          btn.style.border = "none";
+        }
+        if(title) title.innerText = "Master Template";
+        if(contextPill) { 
+          contextPill.style.display="flex"; 
+          contextPill.innerText="✏️ Editing"; 
+          contextPill.style.backgroundColor="rgba(255,255,255,0.15)"; 
+          contextPill.style.color="rgba(255,255,255,0.9)";
+          contextPill.style.border="none";
+        }
         // HIDE Schedule, SHOW Master
         $("scheduleView").style.display = "none";
         $("metricsView").style.display = "none";
@@ -10474,12 +11113,26 @@ function groupShifts(data) {
   return m;
 }
   
+  // ✅ Format role names for display (Backup1 → "Backup 1", Backup2 → "Backup 2")
+  function formatRoleDisplay(roleId) {
+    if (!roleId) return roleId;
+    // Handle "Backup1" → "Backup 1", "Backup2" → "Backup 2"
+    return roleId
+      .replace(/Backup(\d+)/i, 'Backup $1')
+      .replace(/Captain(\d+)/i, 'Captain $1');
+  }
+  
   function fillSelect(id, list, bl=true, includeCustom=false) { 
     const s=$(id); 
     if(!s)return; 
     s.innerHTML=""; 
     if(bl)s.appendChild(new Option("- Select -","")); 
-    list.forEach(x=>s.appendChild(new Option(x,x))); 
+    // ✅ Special handling for role selects - show formatted display name
+    const isRoleSelect = id === "mstRole";
+    list.forEach(x => {
+      const displayName = isRoleSelect ? formatRoleDisplay(x) : x;
+      s.appendChild(new Option(displayName, x));
+    }); 
     if(includeCustom) s.appendChild(new Option("✏️ Custom...", "__custom__"));
   }
   
@@ -11011,6 +11664,13 @@ window.toast = toast;
         d.ondragstart = (e) => { 
            _dragPerson = p; 
            e.dataTransfer.effectAllowed = "copy";
+           e.dataTransfer.setData("text/plain", p); // Required for Firefox
+           d.style.opacity = "0.5";
+        };
+        d.ondragend = (e) => {
+           d.style.opacity = "1";
+           // Clear drag person after a short delay (allows drop to complete first)
+           setTimeout(() => { _dragPerson = null; }, 100);
         };
         d.onclick = () => {
            _selectedPeople.clear();
@@ -11098,6 +11758,29 @@ if (!style) {
     // 3. The Body
     const sortedPersons = Object.keys(roster).sort();
     
+    // ✅ Helper function to calculate weekly hours for a person
+    function calculateWeeklyHours(personRoster) {
+      let totalHours = 0;
+      days.forEach(day => {
+        const shifts = personRoster[day] || [];
+        shifts.forEach(shift => {
+          if (shift.start && shift.end) {
+            // Skip lunch/break entries for hour calculation
+            const team = String(shift.team || "").toLowerCase();
+            if (team.includes("lunch") || team.includes("break") || team.includes("1:1")) {
+              return; // Don't count lunch/breaks in weekly hours
+            }
+            const startH = parseTimeDecimal(shift.start);
+            const endH = parseTimeDecimal(shift.end);
+            if (!isNaN(startH) && !isNaN(endH) && endH > startH) {
+              totalHours += (endH - startH);
+            }
+          }
+        });
+      });
+      return totalHours;
+    }
+    
     sortedPersons.forEach((person, index) => {
         const row = mkDiv("mst-person-row");
         const bg = index % 2 === 0 ? "#ffffff" : "#f8f9fa"; 
@@ -11106,16 +11789,28 @@ if (!style) {
         row.style.gridTemplateColumns = "180px repeat(7, 1fr)";
         row.style.borderBottom = "1px solid #e0e0e0";
         row.style.alignItems = "stretch"; 
-        // Name Column
+        
+        // ✅ Calculate weekly hours for this person
+        const weeklyHours = calculateWeeklyHours(roster[person]);
+        const hoursDisplay = weeklyHours > 0 ? `<span style="font-size:10px; color:#64748b; font-weight:500; display:block; margin-top:2px;">${weeklyHours.toFixed(1)}h/week</span>` : '';
+        
+        // Name Column with weekly hours
         let html = `
             <div class="mst-person-info" style="
                 padding:12px; font-weight:600; color:#333; 
-                border-right:2px solid #e0e0e0; display:flex; align-items:center;">
-                ${person}
+                border-right:2px solid #e0e0e0; display:flex; flex-direction:column; justify-content:center;">
+                <span>${person}</span>
+                ${hoursDisplay}
             </div>`;
         // Day Columns
         days.forEach((day, i) => {
             const shifts = roster[person][day] || [];
+            // ✅ Sort shifts by start time
+            shifts.sort((a, b) => {
+              const timeA = parseTimeDecimal(a.start);
+              const timeB = parseTimeDecimal(b.start);
+              return timeA - timeB;
+            });
             const borderStyle = i < 6 ?  "border-right:1px solid #eee;" : "";
             html += `<div class="mst-day-cell" 
                         onclick="handleCellClick('${person}', '${day}')"
@@ -11130,13 +11825,26 @@ if (!style) {
                     const displayStart = toAmPm(rawStart);
                     const displayEnd = toAmPm(rawEnd);
                     
-                    // ✅ NEW: Get channel config for color coding
+                    // ✅ Get channel config for color coding
                     const channelName = shift.team || "Other";
                     const config = getChannelConfig(channelName) || { abbrev:"—", color:"#f8fafc", border:"#e2e8f0", text:"#475569" };
-const abbrev = config.abbrev || "—";
+                    const abbrev = config.abbrev || "—";
                     
+                    // ✅ Format role display (Backup1 → "B1", Captain → "Capt")
+                    const rawRole = shift.role || "";
+                    let roleDisplay = "";
+                    if (rawRole && rawRole !== "Agent") {
+                      // Shorten role names for chip display
+                      if (rawRole.match(/Backup\s*1/i)) roleDisplay = "B1";
+                      else if (rawRole.match(/Backup\s*2/i)) roleDisplay = "B2";
+                      else if (rawRole.match(/Backup/i)) roleDisplay = "BU";
+                      else if (rawRole.match(/Captain/i)) roleDisplay = "Capt";
+                      else roleDisplay = rawRole.substring(0, 4);
+                    }
+                    
+                    // ✅ Use openMasterModal for master mode editing
                     html += `<div class="mst-shift-chip" 
-                                onclick="event.stopPropagation(); handleShiftEdit('${person}', '${day}', '${rawStart}', '${rawEnd}', '${shift.team || ''}')"
+                                onclick="event.stopPropagation(); openMasterModal('${person}', '${day}', '${rawStart}', '${rawEnd}', '${shift.team || ''}', '${rawRole}')"
                                 style="
                                 font-size:10px; padding:4px 8px; 
                                 background:${config.color}; 
@@ -11153,7 +11861,7 @@ const abbrev = config.abbrev || "—";
                                 gap:2px;
                                 min-width:70px;
                                 box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                                <span style="font-weight:700;">${abbrev}</span>
+                                <span style="font-weight:700;">${abbrev}${roleDisplay ? ' <span style="font-size:8px; opacity:0.7;">(' + roleDisplay + ')</span>' : ''}</span>
                                 <span style="font-size:9px; opacity:0.8;">${displayStart}-${displayEnd}</span>
                              </div>`;
                 });
@@ -11166,8 +11874,12 @@ const abbrev = config.abbrev || "—";
 }
 // Triggered when clicking an existing blue chip
 function handleShiftEdit(person, day, start, end, team, docId, assignmentId) {
+    // ✅ Mark as editing to prevent auto-refresh disruption
+    setEditingMode(true);
+    
     if (_isMasterMode && !_masterEditEnabled) {
   toast("Click Edit to start making draft changes.", "info");
+  setEditingMode(false);
   return;
 }
 const docEl = document.getElementById("modalDocId");
@@ -11211,8 +11923,12 @@ if (_isMasterMode) {
     document.getElementById("editShiftModal").style.display = "flex";
 }
 function handleCellClick(person, day) {
+    // ✅ Mark as editing to prevent auto-refresh disruption
+    setEditingMode(true);
+    
     if (_isMasterMode && !_masterEditEnabled) {
   toast("Click Edit to start making draft changes.", "info");
+  setEditingMode(false);
   return;
 }
 if (document.getElementById("modalDocId")) document.getElementById("modalDocId").value = "";
@@ -11248,6 +11964,12 @@ if (document.getElementById("modalAssignmentId")) document.getElementById("modal
     updateMasterSelectionBar(); 
   }
   function openMasterModal(p,d,s,e,t,r) { 
+    // ✅ Check if editing is enabled in master mode
+    if (_isMasterMode && !_masterEditEnabled) {
+      toast("Click Edit to start making draft changes.", "info");
+      return;
+    }
+    
     fillSelect("mstTeam", _teams); 
     fillSelect("mstRole", _roles); 
     
@@ -12454,6 +13176,160 @@ function closeMasterModal() {
   $("masterOverlay").style.display = "none";
 }
 
+// ============================================
+// SAVE MASTER SCHEDULE EDIT
+// ============================================
+async function saveMasterEdit() {
+  const person = $("mstPerson").value;
+  const day = $("mstDay").value;
+  const newStart = $("mstStart").value.trim();
+  const newEnd = $("mstEnd").value.trim();
+  const newTeam = $("mstTeam").value;
+  const newRole = $("mstRole").value;
+  const syncToLive = $("mstSync").checked;
+  
+  // Validation
+  if (!person || !day) {
+    toast("Missing person or day information", "error");
+    return;
+  }
+  
+  if (!newStart || !newEnd) {
+    toast("Please enter both start and end times", "error");
+    return;
+  }
+  
+  // Parse times to validate
+  const startDec = parseTimeDecimal(newStart);
+  const endDec = parseTimeDecimal(newEnd);
+  
+  if (startDec >= endDec) {
+    toast("End time must be after start time", "error");
+    return;
+  }
+  
+  // Find the original shift data from master template
+  const originalShift = _masterRawData?.find(item => 
+    item.person === person && 
+    item.day === day
+  );
+  
+  const oldStart = originalShift?.start || "";
+  const oldEnd = originalShift?.end || "";
+  
+  // Determine action (EDIT if original exists, ADD if new)
+  const action = originalShift ? "EDIT" : "ADD";
+  
+  // Convert times to HH:MM format
+  const formattedNewStart = formatTimeHHMM(newStart);
+  const formattedNewEnd = formatTimeHHMM(newEnd);
+  const formattedOldStart = formatTimeHHMM(oldStart);
+  const formattedOldEnd = formatTimeHHMM(oldEnd);
+  
+  try {
+    // Show loading state
+    toast("Saving changes...", "info");
+    
+    // 1. Update the master template (base_schedule)
+    const masterRes = await fetch('/update-master-schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        person,
+        day,
+        oldStart: formattedOldStart,
+        oldEnd: formattedOldEnd,
+        newStart: formattedNewStart,
+        newEnd: formattedNewEnd,
+        newTeam,
+        newRole
+      })
+    });
+    
+    const masterData = await masterRes.json();
+    
+    if (masterData.status !== "success") {
+      throw new Error(masterData.message || "Failed to update master template");
+    }
+    
+    // 2. If sync checkbox is checked, trigger regeneration for affected future dates
+    if (syncToLive) {
+      toast("Syncing to live schedule...", "info");
+      
+      // Trigger a regeneration for the next 14 days
+      // This will apply the updated master template to future schedules
+      try {
+        const genRes = await fetch('./?action=admin/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            days: 14,
+            teamKey: newTeam || "ALL",
+            startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0] // Tomorrow
+          })
+        });
+        const genData = await genRes.json();
+        
+        if (genData.ok) {
+          toast(`✅ Master template updated & synced to future schedule`, "success");
+        } else {
+          toast(`⚠️ Master updated but sync may be incomplete: ${genData.error || 'Unknown error'}`, "warning");
+        }
+      } catch (syncErr) {
+        console.warn("Sync to live failed:", syncErr);
+        toast(`⚠️ Master updated but live sync failed`, "warning");
+      }
+    } else {
+      toast("✅ Master template updated", "success");
+    }
+    
+    // Close modal and refresh view
+    closeMasterModal();
+    
+    // Refresh master view if currently viewing it
+    if (typeof loadMasterTemplateData === 'function') {
+      loadMasterTemplateData();
+    }
+    
+    // Also refresh main schedule data
+    if (typeof loadSystemData === 'function') {
+      setTimeout(() => loadSystemData(), 500);
+    }
+    
+  } catch (err) {
+    console.error("Save Master Edit Error:", err);
+    toast("❌ " + (err.message || "Failed to save changes"), "error");
+  }
+}
+
+// Helper to convert time to HH:MM format (handles AM/PM)
+function formatTimeHHMM(t) {
+  if (!t) return "";
+  const s = String(t).trim();
+  
+  // Handle AM/PM format (e.g., "8:00 AM", "2:30 PM")
+  const ampmMatch = s.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (ampmMatch) {
+    let h = parseInt(ampmMatch[1], 10);
+    const m = ampmMatch[2];
+    const ampm = ampmMatch[3]?.toUpperCase();
+    
+    if (ampm === "PM" && h < 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    
+    return `${String(h).padStart(2, '0')}:${m}`;
+  }
+  
+  // Handle HH:MM or HH:MM:SS format
+  const match = s.match(/^(\d{1,2}):(\d{2})(:\d{2})?$/);
+  if (match) {
+    return `${String(match[1]).padStart(2, '0')}:${match[2]}`;
+  }
+  
+  return s;
+}
+
   // ============================================
 // AGENT NOTIFICATIONS SYSTEM
 // ============================================
@@ -13051,34 +13927,47 @@ async function loadBalances() {
   }
 }
 function updateBalancePill() {
-  const pill = $("balancePill");
-  if (!pill) return;
+  const agentPill = $("balancePill");
+  const managerSignOutPill = $("managerSignOutPill");
   
   if (window._isManager) {
-    pill.style.display = "none"; // Managers see all in modal
+    // ✅ MANAGERS: Hide agent profile pill, show simple sign out pill
+    if (agentPill) agentPill.style.display = "none";
+    if (managerSignOutPill) managerSignOutPill.style.display = "inline-flex";
   } else if (window._myName) {
-    const balance = _balanceData.get(window._myName);
-    if (balance) {
-      // Update the PTO badge
-      const badge = $("ptoBadge");
-      if (badge) {
-        badge.textContent = `${balance.pto}h PTO`;
+    // ✅ AGENTS: Show profile pill with PTO, hide manager sign out pill
+    if (managerSignOutPill) managerSignOutPill.style.display = "none";
+    
+    if (agentPill) {
+      const balance = _balanceData.get(window._myName);
+      if (balance) {
+        const badge = $("ptoBadge");
+        if (badge) {
+          badge.textContent = `${balance.pto}h PTO`;
+        }
+        const text = $("balanceText");
+        if (text) text.textContent = "My Profile";
+        agentPill.style.display = "inline-flex";
       }
-      pill.style.display = "inline-flex";
     }
   }
 }
 function openBalanceModal() {
   const agentView = $("agentBalanceView");
   const managerView = $("managerBalanceView");
+  const modalTitle = $("balanceModalTitle");
   
   if (window._isManager) {
+    // Manager view - PTO Balance management
     agentView.style.display = "none";
     managerView.style.display = "block";
+    if (modalTitle) modalTitle.innerHTML = "📊 Team PTO Balances";
     renderBalanceList();
   } else {
+    // Agent view - Personal profile
     managerView.style.display = "none";
     agentView.style.display = "block";
+    if (modalTitle) modalTitle.innerHTML = "👤 My Profile";
     
     const balance = _balanceData.get(window._myName) || {pto: 0, sick: 0, holiday_bank: 0};
     const ptoHours = parseFloat(balance.pto) || 0;
