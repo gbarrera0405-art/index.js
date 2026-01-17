@@ -8615,8 +8615,6 @@ async function regenerateSchedule() {
   const origEnd = document.getElementById("modalOrigEnd").value;
   const origTeam = document.getElementById("modalOrigTeam")?.value || "";
   const origRole = document.getElementById("modalOrigRole")?.value || "";
-  const origTeam = document.getElementById("modalOrigTeam")?.value || "";
-  const origRole = document.getElementById("modalOrigRole")?.value || "";
   const isAdding = origStart === "NEW";
 
   if (!newStart || !newEnd) {
@@ -8883,6 +8881,8 @@ function deleteShift() {
   const day = document.getElementById("modalDay").value;
   const origStart = document.getElementById("modalOrigStart").value;
   const origEnd = document.getElementById("modalOrigEnd").value;
+  const origTeam = document.getElementById("modalOrigTeam")?.value || "";
+  const origRole = document.getElementById("modalOrigRole")?.value || "";
 
   // ✅ MASTER MODE = draft-only delete (no backend)
   if (_isMasterMode) {
