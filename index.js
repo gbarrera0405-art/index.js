@@ -69,17 +69,16 @@ async function sendShiftNotification(agentEmail, shiftData) {
  */
 async function getAgentEmailByName(name) {
   if (!name) return null;
-  
-  const snap = await db.collection("people").get();
+
+  const { people } = await getCachedMetadata();
   const target = String(name).toLowerCase().trim();
-  
-  for (const doc of snap.docs) {
-    const d = doc.data();
-    const dbName = String(d.name || "").toLowerCase().trim();
-    
+
+  for (const p of people) {
+    const dbName = String(p.name || p.id || "").toLowerCase().trim();
+
     // Match full name or first name
     if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
-      return d.email || null;
+      return p.email || null;
     }
   }
   
@@ -95,11 +94,24 @@ const metadataCache = {
   people: null,
   teams: null,
   lastFetch: 0,
-  TTL: 5 * 60 * 1000 // 5 minutes
+  TTL: 10 * 60 * 1000, // 10 minutes (increased from 5)
+  invalidateAfter: null // Timestamp to force invalidation
 };
-async function getCachedMetadata() {
+
+// Function to invalidate cache (call after updates to people/teams)
+function invalidateMetadataCache() {
+  metadataCache.invalidateAfter = Date.now();
+  console.log("🗑️ Metadata cache marked for invalidation");
+}
+
+async function getCachedMetadata(forceRefresh = false) {
   const now = Date.now();
-  if (metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
+  
+  // Check if cache should be invalidated
+  const shouldInvalidate = forceRefresh || 
+    (metadataCache.invalidateAfter && metadataCache.lastFetch < metadataCache.invalidateAfter);
+  
+  if (!shouldInvalidate && metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
     console.log("📦 Serving metadata from cache");
     return { people: metadataCache.people, teams: metadataCache.teams };
   }
@@ -113,6 +125,7 @@ async function getCachedMetadata() {
   metadataCache.people = peopleSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   metadataCache.teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   metadataCache.lastFetch = now;
+  metadataCache.invalidateAfter = null;
   
   return { people: metadataCache.people, teams: metadataCache.teams };
 }
@@ -128,9 +141,224 @@ const zdFetch = async (url) => {
     const res = await fetch(url, {
         headers: { 'Authorization': `Basic ${auth}` }
     });
-    if (!res.ok) throw new Error(`Zendesk API Error: ${res.statusText}`);
-    return res.json();
+    const text = await res.text();
+    if (!res.ok) {
+        const err = new Error(`Zendesk API Error: ${res.status} ${res.statusText}`);
+        err.status = res.status;
+        err.body = text;
+        throw err;
+    }
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const err = new Error("Zendesk API Error: Invalid JSON response");
+        err.status = res.status;
+        err.body = text;
+        throw err;
+    }
 };
+const ZD_QUEUE_QUERY = String(process.env.ZD_QUEUE_QUERY || "").trim();
+const ZD_QUEUE_CREATED_QUERY = String(process.env.ZD_QUEUE_CREATED_QUERY || ZD_QUEUE_QUERY || "").trim();
+const ZD_QUEUE_SOLVED_QUERY = String(process.env.ZD_QUEUE_SOLVED_QUERY || ZD_QUEUE_QUERY || "").trim();
+const ZD_QUEUE_SUPPORT_TYPE_FIELD_ID = process.env.ZD_QUEUE_SUPPORT_TYPE_FIELD_ID || "";
+const ZD_QUEUE_SUPPORT_TYPE_VALUE = process.env.ZD_QUEUE_SUPPORT_TYPE_VALUE || "Agent";
+const ZD_QUEUE_FILTER_DISABLED = String(process.env.ZD_QUEUE_FILTER_DISABLE || "").toLowerCase() === "true";
+
+const DEFAULT_QUEUE_FILTER = {
+  allowedChannels: ["chat", "web", "web_form", "email", "web_widget", "api"],
+  allowedRecipients: [
+    "support@musely.com",
+    "mdsupport@musely.com",
+    "support@musely.zendesk.com",
+    "sellersupport@musely.com",
+    "musely@musely.com",
+    "no-reply@musely.com"
+  ],
+  excludedOrganizations: ["server", "bbb alerts"],
+  excludedTags: ["call_back_request_form"],
+  requireUnassigned: false
+};
+
+const queueFilterConfig = (() => {
+  if (ZD_QUEUE_FILTER_DISABLED) return null;
+  const raw = process.env.ZD_QUEUE_FILTER_JSON;
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn("Invalid ZD_QUEUE_FILTER_JSON, using defaults.");
+    }
+  }
+  return DEFAULT_QUEUE_FILTER;
+})();
+
+const ZENDESK_ORG_CACHE_MS = 12 * 60 * 60 * 1000;
+const zendeskOrgCache = new Map();
+const ZENDESK_USER_CACHE_MS = 6 * 60 * 60 * 1000;
+const zendeskUserCache = new Map();
+async function getZendeskUserByEmail(email) {
+  if (!email) return null;
+  const key = String(email).toLowerCase();
+  const cached = zendeskUserCache.get(key);
+  if (cached && Date.now() - cached.cachedAt < ZENDESK_USER_CACHE_MS) {
+    return cached;
+  }
+
+  const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${email}`)}`;
+  const userRes = await zdFetch(userSearchUrl);
+  const user = userRes.users?.[0];
+  if (!user) return null;
+
+  const entry = { 
+    id: user.id, 
+    name: user.name, 
+    email: user.email, 
+    role: user.role || null,
+    custom_role_id: user.custom_role_id || null,
+    last_login_at: user.last_login_at || null,
+    photo: user.photo || null,
+    cachedAt: Date.now() 
+  };
+  zendeskUserCache.set(key, entry);
+  return entry;
+}
+async function getZendeskOrgNamesByIds(ids) {
+  const unique = Array.from(new Set(ids.map(String)));
+  const missing = unique.filter(id => !zendeskOrgCache.has(id));
+  const chunkSize = 100;
+  for (let i = 0; i < missing.length; i += chunkSize) {
+    const chunk = missing.slice(i, i + chunkSize);
+    if (!chunk.length) continue;
+    const url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/organizations/show_many.json?ids=${chunk.join(",")}`;
+    const data = await zdFetch(url);
+    (data.organizations || []).forEach(org => {
+      zendeskOrgCache.set(String(org.id), { name: org.name, cachedAt: Date.now() });
+    });
+  }
+  const now = Date.now();
+  const map = new Map();
+  unique.forEach(id => {
+    const cached = zendeskOrgCache.get(id);
+    if (!cached) return;
+    if (now - cached.cachedAt > ZENDESK_ORG_CACHE_MS) return;
+    map.set(id, cached.name);
+  });
+  return map;
+}
+function normalizeZendeskValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+function ticketRecipient(ticket) {
+  return ticket?.recipient ||
+    ticket?.via?.source?.from?.address ||
+    ticket?.via?.source?.from?.email ||
+    "";
+}
+function ticketChannel(ticket) {
+  return ticket?.via?.channel || "";
+}
+function ticketSupportType(ticket) {
+  if (!ZD_QUEUE_SUPPORT_TYPE_FIELD_ID) return null;
+  const fieldId = String(ZD_QUEUE_SUPPORT_TYPE_FIELD_ID);
+  const field = (ticket.custom_fields || []).find(f => String(f.id) === fieldId);
+  return field?.value || null;
+}
+function isQueueFilterEnabled() {
+  if (!queueFilterConfig) return false;
+  const { allowedChannels, allowedRecipients, excludedOrganizations, excludedTags } = queueFilterConfig;
+  return Boolean(
+    (allowedChannels && allowedChannels.length) ||
+    (allowedRecipients && allowedRecipients.length) ||
+    (excludedOrganizations && excludedOrganizations.length) ||
+    (excludedTags && excludedTags.length) ||
+    ZD_QUEUE_SUPPORT_TYPE_FIELD_ID
+  );
+}
+async function filterTicketsForQueue(tickets, { requireUnassigned = false, allowedAssigneeIds = null } = {}) {
+  if (!isQueueFilterEnabled()) return tickets;
+  const allowedChannels = new Set((queueFilterConfig.allowedChannels || []).map(normalizeZendeskValue));
+  const allowedRecipients = new Set((queueFilterConfig.allowedRecipients || []).map(normalizeZendeskValue));
+  const excludedOrganizations = new Set((queueFilterConfig.excludedOrganizations || []).map(normalizeZendeskValue));
+  const excludedTags = new Set((queueFilterConfig.excludedTags || []).map(normalizeZendeskValue));
+
+  let orgNameMap = null;
+  if (excludedOrganizations.size) {
+    const orgIds = tickets.map(t => t.organization_id).filter(Boolean);
+    orgNameMap = await getZendeskOrgNamesByIds(orgIds);
+  }
+
+  return tickets.filter(ticket => {
+    if (requireUnassigned && ticket.assignee_id) return false;
+    if (allowedAssigneeIds && ticket.assignee_id && !allowedAssigneeIds.has(Number(ticket.assignee_id))) return false;
+
+    const channel = normalizeZendeskValue(ticketChannel(ticket));
+    const recipient = normalizeZendeskValue(ticketRecipient(ticket));
+    if ((allowedChannels.size || allowedRecipients.size) && !allowedChannels.has(channel) && !allowedRecipients.has(recipient)) {
+      return false;
+    }
+
+    if (excludedTags.size) {
+      const tags = (ticket.tags || []).map(normalizeZendeskValue);
+      if (tags.some(tag => excludedTags.has(tag))) return false;
+    }
+
+    if (excludedOrganizations.size && orgNameMap && ticket.organization_id) {
+      const orgName = normalizeZendeskValue(orgNameMap.get(String(ticket.organization_id)) || "");
+      if (orgName && excludedOrganizations.has(orgName)) return false;
+    }
+
+    if (ZD_QUEUE_SUPPORT_TYPE_FIELD_ID) {
+      const supportType = normalizeZendeskValue(ticketSupportType(ticket));
+      if (supportType !== normalizeZendeskValue(ZD_QUEUE_SUPPORT_TYPE_VALUE)) return false;
+    }
+
+    return true;
+  });
+}
+async function zdSearchExportAll(query, maxPages = 25) {
+  let results = [];
+  let pages = 0;
+  let afterCursor = null;
+  let hasMore = true;
+
+  while (hasMore && pages < maxPages) {
+    pages++;
+    let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search/export.json?query=${encodeURIComponent(query)}`;
+    if (afterCursor) url += `&after_cursor=${encodeURIComponent(afterCursor)}`;
+
+    const data = await zdFetch(url);
+    results = results.concat(data.results || []);
+    hasMore = Boolean(data.meta?.has_more);
+    afterCursor = data.meta?.after_cursor || null;
+  }
+
+  return { results, incomplete: hasMore && pages >= maxPages };
+}
+async function zdSearchAll(query, maxPages = 10) {
+  let results = [];
+  let pages = 0;
+  let next = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100`;
+
+  while (next && pages < maxPages) {
+    pages++;
+    const data = await zdFetch(next);
+    results = results.concat(data.results || []);
+    next = data.next_page || null;
+  }
+
+  return { results, incomplete: Boolean(next) };
+}
+async function zdSearchWithFallback(query, exportPages = 25, searchPages = 10) {
+  try {
+    return await zdSearchExportAll(query, exportPages);
+  } catch (err) {
+    const status = err?.status;
+    const isUnprocessable = status === 422 || /unprocessable/i.test(err?.message || "");
+    if (!isUnprocessable) throw err;
+    return zdSearchAll(query, searchPages);
+  }
+}
 /** ------------------------
  * Helpers
  * ------------------------ */
@@ -277,6 +505,38 @@ function normalizeValue(v) {
 }
 function toIsoNow() {
   return new Date().toISOString();
+}
+function getPstDateKey(isoDate) {
+  const dt = new Date(isoDate);
+  if (Number.isNaN(dt.getTime())) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dt);
+}
+function getPstHour(isoDate) {
+  const dt = new Date(isoDate);
+  if (Number.isNaN(dt.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: '2-digit',
+    hour12: false
+  }).formatToParts(dt);
+  const hourPart = parts.find(p => p.type === 'hour');
+  return hourPart ? Number(hourPart.value) : null;
+}
+function getRecentPstDates(days) {
+  const list = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = getPstDateKey(d.toISOString());
+    if (key) list.push(key);
+  }
+  return list;
 }
 
 /**
@@ -549,7 +809,6 @@ if (action) path = "/" + action;
       "/assignment/add",
       "/assignment/delete",
       "/admin/generate",
-      "/admin/archive",
       "/admin/seed-base",
       "/update-master-schedule",
       "/agent-profile",
@@ -579,6 +838,8 @@ if (action) path = "/" + action;
       "/schedule/extended",
       "/schedule/past", 
       "/schedule/future",
+      "/zendesk/activity",
+      "/zendesk/agent-updates",
       "/agent/notifications",
       "/agent/notifications/read",
       "/swap/request",
@@ -1277,7 +1538,18 @@ if (path === "/audit/logs" && req.method === "GET") {
                 if (personDoc.empty) {
                     return res.status(403).json({ error: "Access Denied: User not in system." });
                 }
+                const personRef = personDoc.docs[0].ref;
                 const userData = personDoc.docs[0].data();
+                const lastLoginAt = toIsoNow();
+                await personRef.set({ lastLoginAt }, { merge: true });
+                if (metadataCache.people) {
+                  metadataCache.people = metadataCache.people.map(p => {
+                    if ((p.email || "").toLowerCase() === String(email).toLowerCase()) {
+                      return { ...p, lastLoginAt };
+                    }
+                    return p;
+                  });
+                }
                 return res.status(200).json({
                     userEmail: email,
                     matchedPerson: userData.name,
@@ -1426,9 +1698,20 @@ if (path === "/audit/logs" && req.method === "GET") {
       }
     }
     if (path === "/roles" && req.method === "GET") {
-      const snap = await db.collection("roles").orderBy("sort", "asc").get();
-      const roles = snap.docs.map((d) => ({ id: d.id, ...normalizeValue(d.data()) }));
-      return res.status(200).json({ count: roles.length, roles });
+      try {
+        const snap = await db.collection("roles").get();
+        const roles = snap.docs.map((d) => ({ id: d.id, ...normalizeValue(d.data()) }));
+        // Sort alphabetically by id, but put "Agent" first
+        roles.sort((a, b) => {
+          if (a.id === "Agent") return -1;
+          if (b.id === "Agent") return 1;
+          return (a.id || "").localeCompare(b.id || "");
+        });
+        return res.status(200).json({ count: roles.length, roles });
+      } catch (e) {
+        console.error("Roles fetch error:", e);
+        return res.status(200).json({ count: 0, roles: [] });
+      }
     }
     // initDashboard - OPTIMIZED to handle agent vs manager differently
     if (path === "/initdashboard" && req.method === "POST") {
@@ -3593,37 +3876,6 @@ if (path === "/holiday/bank" && req.method === "POST") {
       }
       return res.status(200).json({ ok: true, daysGenerated: daysForward, details: log });
     }
-    // Archive old days
-    if (path === "/admin/archive" && req.method === "POST") {
-      const body = readJsonBody(req);
-      const daysAgo = parseInt(body.daysAgo || "30", 10);
-      
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - daysAgo);
-      const cutoffStr = cutoff.toISOString().split("T")[0]; // YYYY-MM-DD
-      const oldDocs = await db.collection("scheduleDays")
-        .where("date", "<", cutoffStr)
-        .get();
-      if (oldDocs.empty) {
-        return res.status(200).json({ ok: true, archived: 0, message: "No old docs found." });
-      }
-      const batch = db.batch();
-      let count = 0;
-      oldDocs.forEach(doc => {
-        const data = doc.data();
-        const typeKey = data.typeKey || normalizeTimeOffType(data.type || "");
-        const isMakeUp = typeKey === "make_up";
-        const archiveRef = db.collection("scheduleArchive").doc(doc.id);
-        
-        // Copy to Archive
-        batch.set(archiveRef, { ...data, archivedAt: toIsoNow() });
-        // Delete from Live
-        batch.delete(doc.ref);
-        count++;
-      });
-      await batch.commit();
-      return res.status(200).json({ ok: true, archived: count, cutoff: cutoffStr });
-    }
     // Import Base Schedule (V2: Includes Team & Time Fix)
     if (path === "/admin/seed-base" && req.method === "POST") {
       const body = readJsonBody(req);
@@ -3719,40 +3971,93 @@ if (path === "/holiday/bank" && req.method === "POST") {
     }
     if (path === "/agent-profile" && req.method === "POST") {
       try {
-        const { name } = readJsonBody(req);
-        if (!name) return res.status(400).json({ error: "No name provided" });
-        // 1. Find the agent's email from Firestore
+        const { name, email } = readJsonBody(req);
+        if (!name && !email) return res.status(400).json({ error: "No name or email provided" });
+        
+        // 1. Find the agent's email from Firestore (just to get email if only name provided)
         const { people } = await getCachedMetadata();
         let agentEmail = "";
-        
-        const target = name.toLowerCase().trim();
-        for (const p of people) {
-          const dbName = String(p.name || p.id || "").toLowerCase().trim();
-          
-          // Match full name or first name
-          if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
-            agentEmail = p.email; 
-            break;
+
+        if (email) {
+          const lowerEmail = String(email).toLowerCase().trim();
+          const match = people.find(p => String(p.email || "").toLowerCase().trim() === lowerEmail);
+          if (match) {
+            agentEmail = match.email;
+          } else {
+            agentEmail = email; // Use provided email even if not in Firestore
           }
         }
-        if (!agentEmail) {
-          throw new Error(`Agent ${name} found in Firestore, but they are missing an email address.`);
+
+        if (!agentEmail && name) {
+          const target = String(name).toLowerCase().trim();
+          for (const p of people) {
+            const dbName = String(p.name || p.id || "").toLowerCase().trim();
+            // Match full name or first name
+            if (dbName === target || dbName.split(" ")[0] === target.split(" ")[0]) {
+              agentEmail = p.email;
+              break;
+            }
+          }
         }
-        // 2. Lookup User in Zendesk
+
+        if (!agentEmail) {
+          throw new Error(`Agent ${name || email} found in Firestore, but they are missing an email address.`);
+        }
+        
+        // 2. Lookup User in Zendesk - get FULL user details for role and last login
         const userSearchUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/users/search.json?query=${encodeURIComponent(`type:user email:${agentEmail}`)}`;
         const userRes = await zdFetch(userSearchUrl);
-        if (!userRes.users?.length) throw new Error("Email not found in Zendesk.");
+        const zdUser = userRes.users?.[0];
+        if (!zdUser) throw new Error("Email not found in Zendesk.");
         
-        const user = userRes.users[0];
+        // Get custom role name if available
+        let roleName = zdUser.role || "--";
+        if (zdUser.custom_role_id) {
+          try {
+            const roleUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/custom_roles/${zdUser.custom_role_id}.json`;
+            const roleRes = await zdFetch(roleUrl);
+            if (roleRes.custom_role?.name) {
+              roleName = roleRes.custom_role.name;
+            }
+          } catch (e) {
+            console.warn("Could not fetch custom role:", e.message);
+          }
+        }
         
-        // 3 & 4. Fetch Open and Solved Tickets with per_page=100 for efficiency
-        const oneWeekAgo = new Date();
+        // 3. Fetch Open Tickets
+        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${zdUser.id} status<solved`)}&per_page=100`;
+        
+        // 4. Fetch Solved Tickets (Last 7 Days) - use updated_at as fallback since solved_at isn't always indexed
+        const now = new Date();
+        const oneWeekAgo = new Date(now);
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         const date7 = oneWeekAgo.toISOString().split('T')[0];
         
-        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status<solved`)}&per_page=100`;
-        const solvedUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee:${user.id} status:solved solved>${date7}`)}&per_page=100`;
-        // 5. Fetch CSAT (Last 30 Days - optimized for speed)
+        // Use a function to get all solved tickets with pagination
+        const getSolvedCount = async () => {
+          let totalCount = 0;
+          let pageCount = 0;
+          const maxPages = 10;
+          
+          // First try with solved>= query
+          let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${zdUser.id} status:solved solved>=${date7}`)}&per_page=100`;
+          
+          while (url && pageCount < maxPages) {
+            pageCount++;
+            const data = await zdFetch(url);
+            totalCount = data.count || totalCount; // Use the count from first response
+            url = data.next_page || null;
+            
+            // If we got a count, we can trust it
+            if (data.count !== undefined) {
+              return data.count;
+            }
+          }
+          
+          return totalCount;
+        };
+        
+        // 5. Fetch CSAT (Last 30 Days) - include both good/good_with_comment and bad/bad_with_comment
         const daysBack = 30;
         const endSec = Math.floor(Date.now() / 1000) - 120;
         const startSec = endSec - (daysBack * 24 * 60 * 60);
@@ -3762,13 +4067,13 @@ if (path === "/holiday/bank" && req.method === "POST") {
             let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&score=${encodeURIComponent(score)}&per_page=100`;
             
             let safetyPages = 0;
-            const maxPages = 5; // Limit pagination for faster response
+            const maxPages = 10; // Increased pages for more complete data
             while (url && safetyPages < maxPages) {
                 safetyPages++;
                 const data = await zdFetch(url);
                 const ratings = data.satisfaction_ratings || [];
                 for (const r of ratings) {
-                    if (Number(r.assignee_id) === Number(user.id)) {
+                    if (Number(r.assignee_id) === Number(zdUser.id)) {
                         count++;
                     }
                 }
@@ -3778,32 +4083,233 @@ if (path === "/holiday/bank" && req.method === "POST") {
             return count;
         };
         
-        // Execute all fetches in parallel for ~60-70% speed improvement
-        const [openRes, solvedRes, good, bad] = await Promise.all([
+        // Execute all fetches in parallel for speed
+        const [openRes, solvedCount, goodCount, goodWithCommentCount, badCount, badWithCommentCount] = await Promise.all([
           zdFetch(openUrl),
-          zdFetch(solvedUrl),
+          getSolvedCount(),
           getCsatCount("good"),
-          getCsatCount("bad")
+          getCsatCount("good_with_comment"),
+          getCsatCount("bad"),
+          getCsatCount("bad_with_comment")
         ]);
         
-        const total = good + bad;
-        const csatDisplay = total ? Math.round((good / total) * 100) + "%" : "--";
-        // 6. Return standard object to UI
+        // Calculate CSAT: (good + good_with_comment) / total
+        const totalGood = goodCount + goodWithCommentCount;
+        const totalBad = badCount + badWithCommentCount;
+        const totalRatings = totalGood + totalBad;
+        const csatDisplay = totalRatings ? Math.round((totalGood / totalRatings) * 100) + "%" : "--";
+        
+        // 6. Return standard object to UI - using Zendesk data for role and last login
         return res.status(200).json({
             found: true,
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            avatar: user.photo ? user.photo.content_url : null,
-            role: user.role,
-            lastLogin: user.last_login_at,
+            id: zdUser.id,
+            name: zdUser.name,
+            email: zdUser.email,
+            avatar: zdUser.photo ? zdUser.photo.content_url : null,
+            role: roleName,
+            lastLogin: zdUser.last_login_at || null,
             openTickets: openRes.count || 0,
-            solvedWeek: solvedRes.count || 0,
-            csatScore: csatDisplay
+            solvedWeek: solvedCount || 0,
+            csatScore: csatDisplay,
+            csatDetails: {
+              good: totalGood,
+              bad: totalBad,
+              total: totalRatings
+            }
         });
       } catch (error) {
         console.error("Profile Error:", error);
         return res.status(500).json({ error: error.message });
+      }
+    }
+    if (path === "/zendesk/activity" && req.method === "GET") {
+      try {
+        const name = String(req.query.name || "").trim();
+        const email = String(req.query.email || "").trim();
+        const date = String(req.query.date || "").trim();
+        const startHourRaw = Number(req.query.startHour ?? 8);
+        const endHourRaw = Number(req.query.endHour ?? 20);
+
+        if (!name) return res.status(400).json({ ok: false, error: "Missing agent name." });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return res.status(400).json({ ok: false, error: "Invalid date format. Use YYYY-MM-DD." });
+        }
+
+        const startHour = Number.isFinite(startHourRaw) ? Math.min(23, Math.max(0, startHourRaw)) : 8;
+        const endHour = Number.isFinite(endHourRaw) ? Math.min(23, Math.max(0, endHourRaw)) : 20;
+        if (endHour < startHour) {
+          return res.status(400).json({ ok: false, error: "End hour must be after start hour." });
+        }
+
+        const recentDates = getRecentPstDates(7);
+        if (!recentDates.includes(date)) {
+          return res.status(400).json({ ok: false, error: "Date must be within the last 7 days." });
+        }
+
+        const agentEmail = email || await getAgentEmailByName(name);
+        if (!agentEmail) {
+          return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
+        }
+
+        const user = await getZendeskUserByEmail(agentEmail);
+        if (!user) {
+          return res.status(404).json({ ok: false, error: "Email not found in Zendesk." });
+        }
+
+        // Expand date range to capture timezone differences (PST is UTC-8)
+        // We need tickets solved anytime during the PST day, which spans two UTC days
+        const queryStart = new Date(`${date}T00:00:00-08:00`); // Start of PST day
+        queryStart.setDate(queryStart.getDate() - 1); // Buffer for safety
+        const queryEnd = new Date(`${date}T23:59:59-08:00`); // End of PST day  
+        queryEnd.setDate(queryEnd.getDate() + 1); // Buffer for safety
+        
+        const startDateStr = queryStart.toISOString().split('T')[0];
+        const endDateStr = queryEnd.toISOString().split('T')[0];
+
+        // Use updated>= query as a proxy since solved_at isn't always searchable
+        // For solved tickets on a specific date, we search for status:solved AND updated in range
+        let query = `type:ticket assignee_id:${user.id} status:solved updated>=${startDateStr} updated<=${endDateStr}`;
+        if (ZD_QUEUE_SOLVED_QUERY) {
+          query += ` ${ZD_QUEUE_SOLVED_QUERY}`;
+        }
+        
+        console.log(`Activity query for ${name} on ${date}: ${query}`);
+        
+        const searchRes = await zdSearchWithFallback(query, 50, 20);
+        let results = searchRes.results;
+        if (isQueueFilterEnabled()) {
+          results = await filterTicketsForQueue(results);
+        }
+
+        const buckets = [];
+        for (let h = startHour; h <= endHour; h++) {
+          buckets.push({ hour: h, count: 0 });
+        }
+
+        let matchedTickets = 0;
+        for (const ticket of results) {
+          // Try multiple timestamp fields - Zendesk can be inconsistent
+          const timestamp = ticket.solved_at || ticket.updated_at;
+          if (!timestamp) continue;
+          
+          const pstDate = getPstDateKey(timestamp);
+          if (pstDate !== date) continue;
+          
+          matchedTickets++;
+          const hour = getPstHour(timestamp);
+          if (hour === null || hour < startHour || hour > endHour) continue;
+          const bucket = buckets[hour - startHour];
+          if (bucket) bucket.count++;
+        }
+
+        const total = buckets.reduce((sum, b) => sum + b.count, 0);
+        console.log(`Activity result: ${results.length} tickets from API, ${matchedTickets} matched date, ${total} in hour range`);
+        
+        return res.status(200).json({
+          ok: true,
+          name: user.name,
+          date,
+          startHour,
+          endHour,
+          total,
+          buckets,
+          incomplete: searchRes.incomplete,
+          debug: {
+            apiResults: results.length,
+            matchedDate: matchedTickets,
+            query: query
+          }
+        });
+      } catch (error) {
+        console.error("Zendesk Activity Error:", error);
+        return res.status(500).json({ ok: false, error: error.message });
+      }
+    }
+    // New endpoint: Track all ticket updates by an agent (more comprehensive activity view)
+    if (path === "/zendesk/agent-updates" && req.method === "GET") {
+      try {
+        const name = String(req.query.name || "").trim();
+        const email = String(req.query.email || "").trim();
+        const date = String(req.query.date || "").trim();
+
+        if (!name && !email) {
+          return res.status(400).json({ ok: false, error: "Missing agent name or email." });
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return res.status(400).json({ ok: false, error: "Invalid date format. Use YYYY-MM-DD." });
+        }
+
+        const agentEmail = email || await getAgentEmailByName(name);
+        if (!agentEmail) {
+          return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
+        }
+
+        const user = await getZendeskUserByEmail(agentEmail);
+        if (!user) {
+          return res.status(404).json({ ok: false, error: "Email not found in Zendesk." });
+        }
+
+        // Search for all tickets updated by this user on the given date
+        // This includes replies, status changes, field updates, etc.
+        const startDate = new Date(`${date}T00:00:00-08:00`);
+        startDate.setDate(startDate.getDate() - 1);
+        const endDate = new Date(`${date}T23:59:59-08:00`);
+        endDate.setDate(endDate.getDate() + 1);
+        
+        const startStr = startDate.toISOString().split('T')[0];
+        const endStr = endDate.toISOString().split('T')[0];
+
+        // Query for tickets where this agent made updates
+        const query = `type:ticket updated>=${startStr} updated<=${endStr} commenter:${user.email}`;
+        
+        const searchRes = await zdSearchWithFallback(query, 100, 20);
+        let results = searchRes.results;
+
+        // Group by hour (PST)
+        const hourlyActivity = {};
+        for (let h = 0; h < 24; h++) {
+          hourlyActivity[h] = { tickets: 0, ticketIds: [] };
+        }
+
+        let matchedCount = 0;
+        for (const ticket of results) {
+          const timestamp = ticket.updated_at;
+          if (!timestamp) continue;
+          
+          const pstDate = getPstDateKey(timestamp);
+          if (pstDate !== date) continue;
+          
+          matchedCount++;
+          const hour = getPstHour(timestamp);
+          if (hour !== null && hourlyActivity[hour]) {
+            hourlyActivity[hour].tickets++;
+            hourlyActivity[hour].ticketIds.push(ticket.id);
+          }
+        }
+
+        // Calculate summary stats
+        const totalUpdates = Object.values(hourlyActivity).reduce((sum, h) => sum + h.tickets, 0);
+        const activeHours = Object.entries(hourlyActivity)
+          .filter(([_, data]) => data.tickets > 0)
+          .map(([hour, data]) => ({ hour: parseInt(hour), count: data.tickets }))
+          .sort((a, b) => b.count - a.count);
+
+        return res.status(200).json({
+          ok: true,
+          name: user.name,
+          email: user.email,
+          date,
+          totalUpdates,
+          activeHours,
+          hourlyBreakdown: Object.entries(hourlyActivity).map(([hour, data]) => ({
+            hour: parseInt(hour),
+            count: data.tickets
+          })),
+          incomplete: searchRes.incomplete
+        });
+      } catch (error) {
+        console.error("Agent Updates Error:", error);
+        return res.status(500).json({ ok: false, error: error.message });
       }
     }
     return res.status(404).json({ error: "Not found" });
