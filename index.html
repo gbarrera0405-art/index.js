@@ -8028,6 +8028,41 @@ function parseTimeDecimal(t) {
   const [h, m] = t.split(':').map(Number);
   return h + (m || 0) / 60;
 }
+function normalizeShiftInterval(shift) {
+  if (!shift || !shift.start || !shift.end) return null;
+  const channel = shift.team || "";
+  const config = getChannelConfig(channel);
+  if (config && config.isBreak) return null;
+  const start = parseTimeDecimal(shift.start);
+  const end = parseTimeDecimal(shift.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  const normalizedEnd = end < start ? end + 24 : end;
+  return [start, normalizedEnd];
+}
+function mergeIntervals(intervals) {
+  const sorted = intervals.slice().sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  sorted.forEach(([start, end]) => {
+    if (!merged.length || start > merged[merged.length - 1][1]) {
+      merged.push([start, end]);
+      return;
+    }
+    merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], end);
+  });
+  return merged;
+}
+function calculateDailyHours(shifts) {
+  const intervals = (shifts || []).map(normalizeShiftInterval).filter(Boolean);
+  if (!intervals.length) return 0;
+  const merged = mergeIntervals(intervals);
+  const total = merged.reduce((sum, [start, end]) => sum + Math.max(0, end - start), 0);
+  return Math.round(total * 10) / 10;
+}
+function formatWeeklyHours(hours) {
+  const rounded = Math.round(hours * 10) / 10;
+  const text = rounded % 1 === 0 ? String(rounded.toFixed(0)) : String(rounded);
+  return `${text}h/week`;
+}
 async function regenerateAllSchedule() {
   const result = await Swal.fire({
     title: '🔄 Regenerate Entire Schedule?',
@@ -11160,12 +11195,17 @@ if (!style) {
         row.style.gridTemplateColumns = "180px repeat(7, 1fr)";
         row.style.borderBottom = "1px solid #e0e0e0";
         row.style.alignItems = "stretch"; 
+        const weeklyHours = days.reduce((sum, day) => sum + calculateDailyHours(roster[person][day] || []), 0);
+        const weeklyLabel = formatWeeklyHours(weeklyHours);
         // Name Column
         let html = `
             <div class="mst-person-info" style="
                 padding:12px; font-weight:600; color:#333; 
                 border-right:2px solid #e0e0e0; display:flex; align-items:center;">
-                ${person}
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                  <span>${person}</span>
+                  <span style="font-size:11px; color:#94a3b8; font-weight:600;">${weeklyLabel}</span>
+                </div>
             </div>`;
         // Day Columns
         days.forEach((day, i) => {
