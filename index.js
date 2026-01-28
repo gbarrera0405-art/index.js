@@ -87,15 +87,18 @@ async function getAgentEmailByName(name) {
 }
 const db = new Firestore();
 // ============================================
-// SIMPLE IN-MEMORY CACHE (for metadata)
-// Reduces reads for people/teams which rarely change
+// ENHANCED IN-MEMORY CACHE (for metadata)
+// Uses stale-while-revalidate pattern for better performance
+// Includes request coalescing to prevent thundering herd
 // ============================================
 const metadataCache = {
   people: null,
   teams: null,
   lastFetch: 0,
-  TTL: 10 * 60 * 1000, // 10 minutes (increased from 5)
-  invalidateAfter: null // Timestamp to force invalidation
+  TTL: 10 * 60 * 1000, // 10 minutes - serve fresh data
+  STALE_TTL: 30 * 60 * 1000, // 30 minutes - serve stale while refreshing
+  invalidateAfter: null,
+  refreshPromise: null // For request coalescing
 };
 
 // Function to invalidate cache (call after updates to people/teams)
@@ -106,16 +109,43 @@ function invalidateMetadataCache() {
 
 async function getCachedMetadata(forceRefresh = false) {
   const now = Date.now();
+  const age = now - metadataCache.lastFetch;
   
   // Check if cache should be invalidated
   const shouldInvalidate = forceRefresh || 
     (metadataCache.invalidateAfter && metadataCache.lastFetch < metadataCache.invalidateAfter);
   
-  if (!shouldInvalidate && metadataCache.people && metadataCache.teams && (now - metadataCache.lastFetch) < metadataCache.TTL) {
-    console.log("📦 Serving metadata from cache");
+  // Return fresh cache immediately (within TTL)
+  if (!shouldInvalidate && metadataCache.people && metadataCache.teams && age < metadataCache.TTL) {
     return { people: metadataCache.people, teams: metadataCache.teams };
   }
   
+  // Stale-while-revalidate: return stale data while refreshing in background
+  if (!shouldInvalidate && metadataCache.people && metadataCache.teams && age < metadataCache.STALE_TTL) {
+    if (!metadataCache.refreshPromise) {
+      // Start background refresh (don't await)
+      metadataCache.refreshPromise = refreshMetadataFromFirestore()
+        .finally(() => { metadataCache.refreshPromise = null; });
+    }
+    return { people: metadataCache.people, teams: metadataCache.teams };
+  }
+  
+  // No cache or cache too old - fetch synchronously
+  // Use request coalescing to prevent thundering herd
+  if (metadataCache.refreshPromise) {
+    await metadataCache.refreshPromise;
+    return { people: metadataCache.people, teams: metadataCache.teams };
+  }
+  
+  metadataCache.refreshPromise = refreshMetadataFromFirestore();
+  try {
+    return await metadataCache.refreshPromise;
+  } finally {
+    metadataCache.refreshPromise = null;
+  }
+}
+
+async function refreshMetadataFromFirestore() {
   console.log("🔄 Fetching fresh metadata from Firestore");
   const [peopleSnap, teamsSnap] = await Promise.all([
     db.collection("people").get(),
@@ -124,7 +154,7 @@ async function getCachedMetadata(forceRefresh = false) {
   
   metadataCache.people = peopleSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   metadataCache.teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  metadataCache.lastFetch = now;
+  metadataCache.lastFetch = Date.now();
   metadataCache.invalidateAfter = null;
   
   return { people: metadataCache.people, teams: metadataCache.teams };
@@ -669,6 +699,226 @@ function clampDays(d, max = 60) {
   const n = parseInt(d || "14", 10) || 14;
   return Math.min(Math.max(n, 1), max);
 }
+
+// ============================================
+// SCHEDULE CACHE (short-lived for concurrent requests)
+// Prevents thundering herd when multiple agents load simultaneously
+// ============================================
+const scheduleCache = {
+  data: new Map(),
+  TTL: 60 * 1000, // 1 minute cache
+  pendingRequests: new Map() // For request coalescing
+};
+
+function getScheduleCacheKey(startDate, days) {
+  return `${startDate}:${days}`;
+}
+
+async function getScheduleWithCache(startDate, days, db) {
+  const cacheKey = getScheduleCacheKey(startDate, days);
+  const now = Date.now();
+  
+  // Check cache first
+  const cached = scheduleCache.data.get(cacheKey);
+  if (cached && (now - cached.timestamp) < scheduleCache.TTL) {
+    return cached.results;
+  }
+  
+  // Request coalescing - if there's already a pending request, wait for it
+  if (scheduleCache.pendingRequests.has(cacheKey)) {
+    return scheduleCache.pendingRequests.get(cacheKey);
+  }
+  
+  // Create the fetch promise
+  const endDate = new Date(new Date(startDate + "T00:00:00Z").getTime() + days * 24 * 60 * 60 * 1000);
+  const endStr = endDate.toISOString().split('T')[0];
+  
+  const fetchPromise = db.collection("scheduleDays")
+    .where("date", ">=", startDate)
+    .where("date", "<=", endStr)
+    .get()
+    .then(snapshot => {
+      const results = [];
+      snapshot.forEach(doc => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+      // Cache the results
+      scheduleCache.data.set(cacheKey, { results, timestamp: Date.now() });
+      return results;
+    });
+  
+  scheduleCache.pendingRequests.set(cacheKey, fetchPromise);
+  
+  try {
+    return await fetchPromise;
+  } finally {
+    scheduleCache.pendingRequests.delete(cacheKey);
+  }
+}
+
+// Clean up old cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of scheduleCache.data) {
+    if (now - value.timestamp > scheduleCache.TTL * 2) {
+      scheduleCache.data.delete(key);
+    }
+  }
+}, 5 * 60 * 1000); // Clean every 5 minutes
+
+// ============================================
+// HELPER: Get Agent's Team/Channel History
+// Returns list of teams the agent has worked on
+// ============================================
+async function getAgentTeamHistory(db, agentName, lookbackDays = 90) {
+  const teams = new Set();
+  const today = new Date();
+  const lookbackDate = new Date(today);
+  lookbackDate.setDate(lookbackDate.getDate() - lookbackDays);
+  const lookbackStr = lookbackDate.toISOString().split('T')[0];
+  
+  try {
+    // Query past schedules for this agent
+    const snap = await db.collection("scheduleDays")
+      .where("date", ">=", lookbackStr)
+      .get();
+    
+    const agentNameLower = String(agentName).toLowerCase().trim();
+    
+    snap.forEach(doc => {
+      const data = doc.data();
+      const assignments = data.assignments || [];
+      const docTeam = data.team || doc.id.split("__")[1] || "";
+      
+      assignments.forEach(a => {
+        const person = String(a.person || "").toLowerCase().trim();
+        if (person === agentNameLower) {
+          if (docTeam) teams.add(docTeam);
+        }
+      });
+    });
+    
+    return Array.from(teams);
+  } catch (err) {
+    console.error("getAgentTeamHistory error:", err);
+    return [];
+  }
+}
+
+// ============================================
+// HELPER: Find Coverage Needs for a Date
+// Returns teams that need coverage (have open shifts or are understaffed)
+// ============================================
+async function findCoverageNeeds(db, targetDate) {
+  const needs = [];
+  
+  try {
+    // Get all schedule docs for this date
+    const snap = await db.collection("scheduleDays")
+      .where("date", "==", targetDate)
+      .get();
+    
+    snap.forEach(doc => {
+      const data = doc.data();
+      const team = data.team || doc.id.split("__")[1] || "";
+      const assignments = data.assignments || [];
+      
+      // Count open shifts
+      const openCount = assignments.filter(a => {
+        const person = String(a.person || "").toLowerCase().trim();
+        return person === "open" || a.isOpenShift === true;
+      }).length;
+      
+      if (openCount > 0) {
+        needs.push({
+          team,
+          docId: doc.id,
+          openCount,
+          priority: openCount // More open shifts = higher priority
+        });
+      }
+    });
+    
+    // Sort by priority (most open shifts first)
+    needs.sort((a, b) => b.priority - a.priority);
+    
+    return needs;
+  } catch (err) {
+    console.error("findCoverageNeeds error:", err);
+    return [];
+  }
+}
+
+// ============================================
+// HELPER: Suggest Make-up Assignment
+// Returns best team assignment for an agent's make-up time
+// Considers: team history, coverage needs, day of week (no Live Chat on weekends)
+// ============================================
+async function suggestMakeupAssignment(db, agentName, makeupDate) {
+  // 1. Get agent's team history
+  const teamHistory = await getAgentTeamHistory(db, agentName);
+  console.log(`Make-up suggestion for ${agentName} on ${makeupDate}: history=[${teamHistory.join(", ")}]`);
+  
+  if (teamHistory.length === 0) {
+    return { suggested: null, reason: "No team history found for agent" };
+  }
+  
+  // 2. Check if it's a weekend (Live Chat is Mon-Fri only)
+  const dateObj = new Date(makeupDate + "T12:00:00");
+  const dayOfWeek = dateObj.getDay(); // 0=Sun, 6=Sat
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  
+  // 3. Filter out Live Chat if weekend
+  let eligibleTeams = teamHistory;
+  if (isWeekend) {
+    eligibleTeams = teamHistory.filter(t => {
+      const tLower = t.toLowerCase();
+      return !tLower.includes("live") && !tLower.includes("chat") && !tLower.includes("livechat");
+    });
+    console.log(`Weekend detected - filtered Live Chat. Eligible: [${eligibleTeams.join(", ")}]`);
+  }
+  
+  if (eligibleTeams.length === 0) {
+    return { 
+      suggested: null, 
+      reason: isWeekend ? "Agent only has Live Chat history, but Live Chat is closed on weekends" : "No eligible teams"
+    };
+  }
+  
+  // 4. Get coverage needs for the date
+  const coverageNeeds = await findCoverageNeeds(db, makeupDate);
+  console.log(`Coverage needs on ${makeupDate}: ${JSON.stringify(coverageNeeds)}`);
+  
+  // 5. Find best match: team agent has worked + has coverage need
+  for (const need of coverageNeeds) {
+    const needTeamLower = need.team.toLowerCase().replace(/[\s\-_\/]+/g, '');
+    for (const histTeam of eligibleTeams) {
+      const histTeamLower = histTeam.toLowerCase().replace(/[\s\-_\/]+/g, '');
+      if (needTeamLower.includes(histTeamLower) || histTeamLower.includes(needTeamLower)) {
+        return {
+          suggested: {
+            team: need.team,
+            docId: need.docId,
+            reason: `Matched agent history (${histTeam}) with coverage need (${need.openCount} open)`
+          },
+          eligibleTeams,
+          coverageNeeds
+        };
+      }
+    }
+  }
+  
+  // 6. No coverage need match - return first eligible team
+  return {
+    suggested: {
+      team: eligibleTeams[0],
+      reason: `Using first eligible team from history (no specific coverage need found)`
+    },
+    eligibleTeams,
+    coverageNeeds
+  };
+}
+
 function buildScheduleDocIds(teamKey, start, days) {
   const startDate = new Date(`${start}T00:00:00Z`);
   if (isNaN(startDate.getTime())) throw new Error("Invalid start date");
@@ -838,8 +1088,6 @@ if (action) path = "/" + action;
       "/schedule/extended",
       "/schedule/past", 
       "/schedule/future",
-      "/zendesk/activity",
-      "/zendesk/agent-updates",
       "/agent/notifications",
       "/agent/notifications/read",
       "/swap/request",
@@ -859,7 +1107,19 @@ if (action) path = "/" + action;
       "/agent/notifications/clear",
       "/debug/base-schedule",
       "/open-shifts",
-      "/open-shifts/fill"
+      "/open-shifts/fill",
+      "/meeting-rotation/list",
+      "/meeting-rotation/save",
+      "/meeting-rotation/fairness",
+      "/meeting-rotation/suggest",
+      "/meeting-rotation/delete",
+      "/meeting-rotation/eligible",
+      "/weekly-assignments/list",
+      "/weekly-assignments/save",
+      "/weekly-assignments/my",
+      "/weekly-assignments/delete",
+      "/agent/team-history",
+      "/makeup/auto-assign"
     ].includes(path);
 
     if (!isApi) {
@@ -899,6 +1159,7 @@ if (action) path = "/" + action;
     // ============================================
     // NEW: OPTIMIZED AGENT SCHEDULE ENDPOINT
     // Only reads the specific assignments for one agent
+    // Uses schedule cache to reduce Firestore reads
     // ============================================
     if (path === "/agent/schedule" && req.method === "POST") {
       const body = readJsonBody(req);
@@ -909,23 +1170,15 @@ if (action) path = "/" + action;
         return res.status(400).json({ error: "agentName is required" });
       }
       console.log(`📱 Agent schedule request: ${agentName}, ${days} days from ${startParam}`);
-      // Calculate date range
-      const startDate = new Date(`${startParam}T00:00:00Z`);
-      const endDate = new Date(startDate);
-      endDate.setUTCDate(endDate.getUTCDate() + days);
-      const endStr = endDate.toISOString().split('T')[0];
-      // Query only schedule days in the date range
-      // This is more efficient than fetching all docs
-      const snapshot = await db.collection("scheduleDays")
-        .where("date", ">=", startParam)
-        .where("date", "<=", endStr)
-        .get();
-      console.log(`📊 Found ${snapshot.size} schedule day docs`);
+      
+      // Use cache with request coalescing
+      const allDocs = await getScheduleWithCache(startParam, days, db);
+      
+      console.log(`📊 Found ${allDocs.length} schedule day docs (from cache or Firestore)`);
       const results = [];
       let totalAssignments = 0;
       let agentAssignments = 0;
-      snapshot.forEach(doc => {
-        const d = doc.data();
+      allDocs.forEach(d => {
         totalAssignments += (d.assignments || []).length;
         // Filter assignments to only this agent
         const agentShifts = (d.assignments || []).filter(a => {
@@ -935,9 +1188,9 @@ if (action) path = "/" + action;
         agentAssignments += agentShifts.length;
         if (agentShifts.length > 0) {
           results.push({
-            id: doc.id,
+            id: d.id,
             date: d.date,
-            team: d.team || doc.id.split("__")[1] || "",
+            team: d.team || (d.id ? d.id.split("__")[1] : "") || "",
             assignments: agentShifts.map(a => {
               const s = a.start ? hhmm(a.start) : "";
               const e = a.end ? hhmm(a.end) : "";
@@ -962,7 +1215,7 @@ if (action) path = "/" + action;
         agentName: agentName,
         schedule: { results },
         meta: {
-          docsScanned: snapshot.size,
+          docsScanned: allDocs.length,
           totalAssignments,
           agentAssignments,
           cacheHint: "5min"
@@ -2465,6 +2718,20 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         
         console.log(`🔄 Swap request created: ${fromPerson} -> ${toPerson} for ${shiftDate}`);
         
+        // ✅ ADD AUDIT LOG FOR SWAP REQUEST CREATED
+        try {
+          await db.collection("audit_log").add({
+            action: "SHIFT_SWAP_REQUESTED",
+            manager: fromPerson,
+            target: `${fromPerson} → ${toPerson}`,
+            details: `Swap request sent for ${shiftDate}. ${fromPerson} requested ${toPerson} to take their shift (${shiftStart || ''}-${shiftEnd || ''} ${team || ''}).`,
+            date: shiftDate || new Date().toISOString().split('T')[0],
+            timestamp: new Date().toISOString()
+          });
+        } catch (auditErr) {
+          console.warn("Failed to create audit log for swap request:", auditErr.message);
+        }
+        
         return res.status(200).json({ ok: true, swapId: swapRef.id });
         
       } catch (err) {
@@ -2573,6 +2840,30 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
                 fromPerson: swapData.fromPerson,
                 toPerson: swapData.toPerson
               });
+              
+              // ✅ ADD AUDIT LOG ENTRY FOR SHIFT SWAP
+              try {
+                await db.collection("audit_log").add({
+                  action: "SHIFT_SWAP",
+                  manager: swapData.toPerson, // The person who accepted
+                  target: `${swapData.fromPerson} → ${swapData.toPerson}`,
+                  details: `Shift swap accepted for ${swapData.shiftDate}. ${swapData.fromPerson}'s shift (${swapData.shiftStart || ''}-${swapData.shiftEnd || ''} ${swapData.team || ''}) transferred to ${swapData.toPerson}.`,
+                  date: swapData.shiftDate || new Date().toISOString().split('T')[0],
+                  timestamp: new Date().toISOString(),
+                  metadata: {
+                    swapId,
+                    fromPerson: swapData.fromPerson,
+                    toPerson: swapData.toPerson,
+                    shiftDate: swapData.shiftDate,
+                    shiftStart: swapData.shiftStart,
+                    shiftEnd: swapData.shiftEnd,
+                    team: swapData.team
+                  }
+                });
+                logWithTrace(traceId, 'info', 'swap/respond', 'Audit log entry created for swap');
+              } catch (auditErr) {
+                logWithTrace(traceId, 'warn', 'swap/respond', 'Failed to create audit log for swap', { error: auditErr.message });
+              }
             }
           }
         }
@@ -2589,6 +2880,22 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           createdAt: new Date().toISOString(),
           read: false
         });
+
+        // ✅ LOG DECLINED SWAPS TO AUDIT AS WELL
+        if (response === "declined") {
+          try {
+            await db.collection("audit_log").add({
+              action: "SHIFT_SWAP_DECLINED",
+              manager: swapData.toPerson,
+              target: `${swapData.fromPerson} → ${swapData.toPerson}`,
+              details: `Shift swap declined for ${swapData.shiftDate}. ${swapData.toPerson} declined to take ${swapData.fromPerson}'s shift.`,
+              date: swapData.shiftDate || new Date().toISOString().split('T')[0],
+              timestamp: new Date().toISOString()
+            });
+          } catch (auditErr) {
+            logWithTrace(traceId, 'warn', 'swap/respond', 'Failed to create audit log for declined swap', { error: auditErr.message });
+          }
+        }
 
         logWithTrace(traceId, 'info', 'swap/respond', 'Swap response processed', {
           swapId,
@@ -2618,7 +2925,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         logWithTrace(traceId, 'info', 'manager/heartbeat', 'Recording manager heartbeat');
 
         const body = readJsonBody(req);
-        const { managerName, view, area } = body; // view: "Master Template" | "Daily Schedule" | etc, area: team name or date
+        const { managerName, view, area, isEditing, editingTarget } = body; // Enhanced presence data
 
         if (!managerName) {
           return res.status(400).json({ error: "Missing managerName" });
@@ -2631,6 +2938,8 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           managerName,
           view: view || "Unknown",
           area: area || "",
+          isEditing: isEditing || false,
+          editingTarget: editingTarget || null,
           lastHeartbeat: now,
           updatedAt: now
         }, { merge: true });
@@ -2638,7 +2947,8 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         logWithTrace(traceId, 'info', 'manager/heartbeat', 'Heartbeat recorded', {
           managerName,
           view,
-          area
+          area,
+          isEditing
         });
 
         return res.status(200).json({ ok: true });
@@ -2671,6 +2981,8 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         managerName: data.managerName,
         view: data.view,
         area: data.area,
+        isEditing: data.isEditing || false,
+        editingTarget: data.editingTarget || null,
         lastHeartbeat: data.lastHeartbeat
       });
     });
@@ -3420,6 +3732,119 @@ const idx = assignments.findIndex(a => {
           decision
         });
 
+        // 7. AUTO-ASSIGN MAKE-UP TIME (if approved and it's a make-up request with a date)
+        let makeupAssignment = null;
+        if (decision === "approved" && resolvedData.typeKey === "make_up" && resolvedData.makeUpDate) {
+          try {
+            logWithTrace(traceId, 'info', 'timeoff/resolve', 'Auto-assigning make-up time', {
+              person: resolvedData.person,
+              makeUpDate: resolvedData.makeUpDate
+            });
+            
+            const suggestion = await suggestMakeupAssignment(db, resolvedData.person, resolvedData.makeUpDate);
+            
+            if (suggestion.suggested && suggestion.suggested.team) {
+              const makeupTeam = suggestion.suggested.team;
+              const makeupDocId = `${resolvedData.makeUpDate}__${getCanonicalTeamKey(makeupTeam)}`;
+              const makeupDocRef = db.collection("scheduleDays").doc(makeupDocId);
+              
+              // Check if doc exists, if not create it
+              const makeupDoc = await makeupDocRef.get();
+              
+              if (makeupDoc.exists) {
+                // Add assignment to existing doc
+                const makeupData = makeupDoc.data();
+                const makeupAssignments = makeupData.assignments || [];
+                
+                // Check for open shift to fill
+                const openIdx = makeupAssignments.findIndex(a => {
+                  const person = String(a.person || "").toLowerCase().trim();
+                  return person === "open" || a.isOpenShift === true;
+                });
+                
+                if (openIdx !== -1) {
+                  // Fill the open shift
+                  makeupAssignments[openIdx] = {
+                    ...makeupAssignments[openIdx],
+                    person: resolvedData.person,
+                    isOpenShift: false,
+                    isMakeup: true,
+                    makeupFor: resolvedData.date,
+                    filledAt: new Date().toISOString()
+                  };
+                } else {
+                  // Add new assignment with same hours as original request
+                  makeupAssignments.push({
+                    id: `makeup_${Date.now()}`,
+                    person: resolvedData.person,
+                    start: resolvedData.shiftStart ? hhmm(resolvedData.shiftStart.replace(/\s*(AM|PM)/i, '')) : "09:00",
+                    end: resolvedData.shiftEnd ? hhmm(resolvedData.shiftEnd.replace(/\s*(AM|PM)/i, '')) : "17:00",
+                    role: "Agent",
+                    isMakeup: true,
+                    makeupFor: resolvedData.date,
+                    createdAt: new Date().toISOString()
+                  });
+                }
+                
+                await makeupDocRef.update({
+                  assignments: makeupAssignments,
+                  updatedAt: new Date().toISOString()
+                });
+              } else {
+                // Create new schedule doc for the make-up date
+                await makeupDocRef.set({
+                  date: resolvedData.makeUpDate,
+                  team: makeupTeam,
+                  assignments: [{
+                    id: `makeup_${Date.now()}`,
+                    person: resolvedData.person,
+                    start: resolvedData.shiftStart ? hhmm(resolvedData.shiftStart.replace(/\s*(AM|PM)/i, '')) : "09:00",
+                    end: resolvedData.shiftEnd ? hhmm(resolvedData.shiftEnd.replace(/\s*(AM|PM)/i, '')) : "17:00",
+                    role: "Agent",
+                    isMakeup: true,
+                    makeupFor: resolvedData.date,
+                    createdAt: new Date().toISOString()
+                  }],
+                  createdAt: new Date().toISOString()
+                });
+              }
+              
+              makeupAssignment = {
+                team: makeupTeam,
+                date: resolvedData.makeUpDate,
+                reason: suggestion.suggested.reason
+              };
+              
+              // Notify agent of their make-up assignment
+              await db.collection("agent_notifications").add({
+                recipientName: resolvedData.person,
+                type: "makeup_assigned",
+                message: `📋 Your make-up time has been scheduled: ${resolvedData.makeUpDate} with ${makeupTeam}`,
+                shiftDate: resolvedData.makeUpDate,
+                team: makeupTeam,
+                createdAt: new Date().toISOString(),
+                read: false
+              });
+              
+              logWithTrace(traceId, 'info', 'timeoff/resolve', 'Make-up auto-assigned', {
+                person: resolvedData.person,
+                makeUpDate: resolvedData.makeUpDate,
+                team: makeupTeam
+              });
+            } else {
+              logWithTrace(traceId, 'warn', 'timeoff/resolve', 'No make-up assignment suggestion available', {
+                person: resolvedData.person,
+                reason: suggestion.reason
+              });
+            }
+          } catch (makeupErr) {
+            // Don't fail the whole request if make-up assignment fails
+            logWithTrace(traceId, 'error', 'timeoff/resolve', 'Make-up auto-assign failed', {
+              error: makeupErr.message
+            });
+          }
+        }
+
         // Add to audit log
         const auditAction = decision === "approved" ? "APPROVE_TIMEOFF" : "DENY_TIMEOFF";
         const typeLabel = resolvedData.typeKey === "make_up" ? "Make-Up" : "PTO";
@@ -3432,7 +3857,7 @@ const idx = assignments.findIndex(a => {
           timestamp: new Date().toISOString()
         });
 
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ ok: true, makeupAssignment });
       } catch (err) {
         logWithTrace(traceId, 'error', 'timeoff/resolve', 'Error resolving time-off request', {
           error: err.message,
@@ -4024,82 +4449,35 @@ if (path === "/holiday/bank" && req.method === "POST") {
           }
         }
         
-        // 3. Fetch Open Tickets
-        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${zdUser.id} status<solved`)}&per_page=100`;
+        // 3. Fetch Open Tickets with DETAILS (ID, subject, URL) for clickable links
+        const openQuery = `type:ticket assignee_id:${zdUser.id} status<solved`;
+        const openUrl = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(openQuery)}&per_page=100`;
         
-        // 4. Fetch Solved Tickets (Last 7 Days) - use updated_at as fallback since solved_at isn't always indexed
-        const now = new Date();
-        const oneWeekAgo = new Date(now);
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const date7 = oneWeekAgo.toISOString().split('T')[0];
+        // Fetch open tickets with details
+        const openRes = await zdFetch(openUrl);
+        const openTicketsList = (openRes.results || []).map(ticket => ({
+          id: ticket.id,
+          subject: ticket.subject || "(No subject)",
+          status: ticket.status,
+          priority: ticket.priority,
+          created_at: ticket.created_at,
+          updated_at: ticket.updated_at,
+          url: `https://${ZD_CONFIG.subdomain}.zendesk.com/agent/tickets/${ticket.id}`
+        }));
         
-        // Use a function to get all solved tickets with pagination
-        const getSolvedCount = async () => {
-          let totalCount = 0;
-          let pageCount = 0;
-          const maxPages = 10;
-          
-          // First try with solved>= query
-          let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/search.json?query=${encodeURIComponent(`type:ticket assignee_id:${zdUser.id} status:solved solved>=${date7}`)}&per_page=100`;
-          
-          while (url && pageCount < maxPages) {
-            pageCount++;
-            const data = await zdFetch(url);
-            totalCount = data.count || totalCount; // Use the count from first response
-            url = data.next_page || null;
-            
-            // If we got a count, we can trust it
-            if (data.count !== undefined) {
-              return data.count;
-            }
-          }
-          
-          return totalCount;
-        };
+        // Sort by updated_at descending (most recent first)
+        openTicketsList.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
         
-        // 5. Fetch CSAT (Last 30 Days) - include both good/good_with_comment and bad/bad_with_comment
-        const daysBack = 30;
-        const endSec = Math.floor(Date.now() / 1000) - 120;
-        const startSec = endSec - (daysBack * 24 * 60 * 60);
+        console.log(`Found ${openTicketsList.length} open tickets for ${zdUser.name}`);
         
-        const getCsatCount = async (score) => {
-            let count = 0;
-            let url = `https://${ZD_CONFIG.subdomain}.zendesk.com/api/v2/satisfaction_ratings.json?start_time=${startSec}&end_time=${endSec}&score=${encodeURIComponent(score)}&per_page=100`;
-            
-            let safetyPages = 0;
-            const maxPages = 10; // Increased pages for more complete data
-            while (url && safetyPages < maxPages) {
-                safetyPages++;
-                const data = await zdFetch(url);
-                const ratings = data.satisfaction_ratings || [];
-                for (const r of ratings) {
-                    if (Number(r.assignee_id) === Number(zdUser.id)) {
-                        count++;
-                    }
-                }
-                
-                url = data.next_page || null;
-            }
-            return count;
-        };
+        // NOTE: We're removing the solved/CSAT fetching below because:
+        // - CSAT API double-counts (good includes good_with_comment)
+        // - Solved count uses wrong timestamps (solved_at not returned by Search)
+        // For accurate metrics, use Zendesk Explore instead.
         
-        // Execute all fetches in parallel for speed
-        const [openRes, solvedCount, goodCount, goodWithCommentCount, badCount, badWithCommentCount] = await Promise.all([
-          zdFetch(openUrl),
-          getSolvedCount(),
-          getCsatCount("good"),
-          getCsatCount("good_with_comment"),
-          getCsatCount("bad"),
-          getCsatCount("bad_with_comment")
-        ]);
+        // 4. (REMOVED) Fetch Solved Tickets - Metrics moved to Zendesk Explore
         
-        // Calculate CSAT: (good + good_with_comment) / total
-        const totalGood = goodCount + goodWithCommentCount;
-        const totalBad = badCount + badWithCommentCount;
-        const totalRatings = totalGood + totalBad;
-        const csatDisplay = totalRatings ? Math.round((totalGood / totalRatings) * 100) + "%" : "--";
-        
-        // 6. Return standard object to UI - using Zendesk data for role and last login
+        // 5. Return standard object to UI
         return res.status(200).json({
             found: true,
             id: zdUser.id,
@@ -4108,210 +4486,711 @@ if (path === "/holiday/bank" && req.method === "POST") {
             avatar: zdUser.photo ? zdUser.photo.content_url : null,
             role: roleName,
             lastLogin: zdUser.last_login_at || null,
-            openTickets: openRes.count || 0,
-            solvedWeek: solvedCount || 0,
-            csatScore: csatDisplay,
-            csatDetails: {
-              good: totalGood,
-              bad: totalBad,
-              total: totalRatings
-            }
+            // Return count AND ticket details for clickable links
+            openTickets: openTicketsList.length,
+            openTicketsList: openTicketsList.slice(0, 25) // Limit to 25 for UI performance
+            // NOTE: solvedWeek and csatScore removed - use Zendesk Explore for accurate metrics
         });
       } catch (error) {
         console.error("Profile Error:", error);
         return res.status(500).json({ error: error.message });
       }
     }
-    if (path === "/zendesk/activity" && req.method === "GET") {
+
+    // ============================================
+    // MEETING ROTATION ENDPOINTS
+    // Tracks who covers Live Chat during team meetings
+    // Structure:
+    // - Captain: Primary LC coverage (misses meeting) - stays fixed unless calloff
+    // - Backups: Set as Away in Zendesk, ATTEND meeting - rotated for fairness
+    // - LC Agents: Cover Live Chat (miss meeting) - rotated for fairness
+    // ============================================
+    
+    // GET /meeting-rotation/list - Get rotations for a date range
+    if (path === "/meeting-rotation/list" && req.method === "GET") {
       try {
-        const name = String(req.query.name || "").trim();
-        const email = String(req.query.email || "").trim();
-        const date = String(req.query.date || "").trim();
-        const startHourRaw = Number(req.query.startHour ?? 8);
-        const endHourRaw = Number(req.query.endHour ?? 20);
-
-        if (!name) return res.status(400).json({ ok: false, error: "Missing agent name." });
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          return res.status(400).json({ ok: false, error: "Invalid date format. Use YYYY-MM-DD." });
-        }
-
-        const startHour = Number.isFinite(startHourRaw) ? Math.min(23, Math.max(0, startHourRaw)) : 8;
-        const endHour = Number.isFinite(endHourRaw) ? Math.min(23, Math.max(0, endHourRaw)) : 20;
-        if (endHour < startHour) {
-          return res.status(400).json({ ok: false, error: "End hour must be after start hour." });
-        }
-
-        const recentDates = getRecentPstDates(7);
-        if (!recentDates.includes(date)) {
-          return res.status(400).json({ ok: false, error: "Date must be within the last 7 days." });
-        }
-
-        const agentEmail = email || await getAgentEmailByName(name);
-        if (!agentEmail) {
-          return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
-        }
-
-        const user = await getZendeskUserByEmail(agentEmail);
-        if (!user) {
-          return res.status(404).json({ ok: false, error: "Email not found in Zendesk." });
-        }
-
-        // Expand date range to capture timezone differences (PST is UTC-8)
-        // We need tickets solved anytime during the PST day, which spans two UTC days
-        const queryStart = new Date(`${date}T00:00:00-08:00`); // Start of PST day
-        queryStart.setDate(queryStart.getDate() - 1); // Buffer for safety
-        const queryEnd = new Date(`${date}T23:59:59-08:00`); // End of PST day  
-        queryEnd.setDate(queryEnd.getDate() + 1); // Buffer for safety
+        const startDate = req.query.start || "";
+        const endDate = req.query.end || "";
         
-        const startDateStr = queryStart.toISOString().split('T')[0];
-        const endDateStr = queryEnd.toISOString().split('T')[0];
-
-        // Use updated>= query as a proxy since solved_at isn't always searchable
-        // For solved tickets on a specific date, we search for status:solved AND updated in range
-        let query = `type:ticket assignee_id:${user.id} status:solved updated>=${startDateStr} updated<=${endDateStr}`;
-        if (ZD_QUEUE_SOLVED_QUERY) {
-          query += ` ${ZD_QUEUE_SOLVED_QUERY}`;
+        let query = db.collection("meeting_rotations").orderBy("date", "asc");
+        
+        if (startDate) {
+          query = query.where("date", ">=", startDate);
+        }
+        if (endDate) {
+          query = query.where("date", "<=", endDate);
         }
         
-        console.log(`Activity query for ${name} on ${date}: ${query}`);
+        const snap = await query.limit(100).get();
+        const rotations = snap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
         
-        const searchRes = await zdSearchWithFallback(query, 50, 20);
-        let results = searchRes.results;
-        if (isQueueFilterEnabled()) {
-          results = await filterTicketsForQueue(results);
+        return res.status(200).json({ ok: true, rotations });
+      } catch (err) {
+        console.error("Meeting rotation list error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // POST /meeting-rotation/save - Save/update a rotation
+    if (path === "/meeting-rotation/save" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { 
+          date, 
+          meetingType,        // "thursday", "wednesday", "allhands"
+          meetingTimeEST,     // e.g., "3:00 PM - 4:15 PM"
+          meetingTimePST,     // auto-calculated
+          captain,            // Fixed - only changes if calloff
+          backup1,            // Rotated for fairness - ATTENDS meeting
+          backup2,            // Rotated for fairness - ATTENDS meeting
+          lcAgents,           // Array of LC agents (MISS meeting) - rotated for fairness
+          notes,
+          allHandsPtoAgents,  // Agents getting PTO for staying late
+          manager
+        } = body;
+        
+        if (!date) {
+          return res.status(400).json({ error: "Date is required" });
         }
-
-        const buckets = [];
-        for (let h = startHour; h <= endHour; h++) {
-          buckets.push({ hour: h, count: 0 });
-        }
-
-        let matchedTickets = 0;
-        for (const ticket of results) {
-          // Try multiple timestamp fields - Zendesk can be inconsistent
-          const timestamp = ticket.solved_at || ticket.updated_at;
-          if (!timestamp) continue;
+        
+        // Use date as document ID
+        const docId = date;
+        const saveData = {
+          date,
+          meetingType: meetingType || "thursday",
+          meetingTimeEST: meetingTimeEST || "3:00 PM - 4:15 PM",
+          meetingTimePST: meetingTimePST || "12:00 PM - 1:15 PM",
+          captain: captain || "",
+          backup1: backup1 || "",
+          backup2: backup2 || "",
+          lcAgents: lcAgents || [],
+          notes: notes || "",
+          allHandsPtoAgents: allHandsPtoAgents || [],
+          updatedAt: new Date().toISOString(),
+          updatedBy: manager || "Admin"
+        };
+        
+        await db.collection("meeting_rotations").doc(docId).set(saveData, { merge: true });
+        
+        // If All Hands meeting with PTO agents, auto-add 1 hour PTO
+        if (meetingType === "allhands" && allHandsPtoAgents && allHandsPtoAgents.length > 0) {
+          const ptoHours = 1; // All Hands is typically 1 hour
           
-          const pstDate = getPstDateKey(timestamp);
-          if (pstDate !== date) continue;
+          for (const agentName of allHandsPtoAgents) {
+            try {
+              const balanceRef = db.collection("accrued_hours").doc(agentName);
+              const balSnap = await balanceRef.get();
+              const currentPto = balSnap.exists ? (parseFloat(balSnap.data().pto) || 0) : 0;
+              
+              await balanceRef.set({
+                pto: currentPto + ptoHours,
+                lastUpdated: new Date().toISOString(),
+                lastAllHandsCredit: date
+              }, { merge: true });
+              
+              // Notify agent
+              await db.collection("agent_notifications").add({
+                recipientName: agentName,
+                type: "pto_credit",
+                message: `🎉 You've been credited ${ptoHours} hour PTO for staying for All Hands on ${date}`,
+                createdAt: new Date().toISOString(),
+                read: false
+              });
+              
+              console.log(`✅ PTO credit: ${agentName} +${ptoHours}h (All Hands ${date})`);
+            } catch (ptoErr) {
+              console.error(`Failed to add PTO for ${agentName}:`, ptoErr);
+            }
+          }
           
-          matchedTickets++;
-          const hour = getPstHour(timestamp);
-          if (hour === null || hour < startHour || hour > endHour) continue;
-          const bucket = buckets[hour - startHour];
-          if (bucket) bucket.count++;
+          // Audit log
+          await db.collection("audit_log").add({
+            action: "ALL_HANDS_PTO_CREDIT",
+            manager: manager || "System",
+            target: allHandsPtoAgents.join(", "),
+            details: `+${ptoHours}h PTO to ${allHandsPtoAgents.length} agents for All Hands`,
+            date,
+            timestamp: new Date().toISOString()
+          });
         }
-
-        const total = buckets.reduce((sum, b) => sum + b.count, 0);
-        console.log(`Activity result: ${results.length} tickets from API, ${matchedTickets} matched date, ${total} in hour range`);
+        
+        console.log(`✅ Meeting rotation saved for ${date} (${meetingType})`);
+        return res.status(200).json({ ok: true, date, savedData: saveData });
+      } catch (err) {
+        console.error("Meeting rotation save error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // GET /meeting-rotation/fairness - Get fairness stats for Backups and LC Agents
+    if (path === "/meeting-rotation/fairness" && req.method === "GET") {
+      try {
+        const lookbackWeeks = parseInt(req.query.weeks || "12");
+        const today = new Date();
+        const lookbackDate = new Date(today);
+        lookbackDate.setDate(lookbackDate.getDate() - (lookbackWeeks * 7));
+        const lookbackStr = lookbackDate.toISOString().split('T')[0];
+        
+        // Get all rotations in lookback period
+        const snap = await db.collection("meeting_rotations")
+          .where("date", ">=", lookbackStr)
+          .orderBy("date", "desc")
+          .get();
+        
+        // Count assignments per person (NOT counting captains - they're fixed)
+        const stats = {
+          backup: {},       // Times as backup (attends meeting but on standby)
+          lcAgent: {},      // Times as LC agent (misses meeting)
+          totalMeetings: snap.size
+        };
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          
+          // Backups (rotate for fairness)
+          if (data.backup1) {
+            stats.backup[data.backup1] = (stats.backup[data.backup1] || 0) + 1;
+          }
+          if (data.backup2) {
+            stats.backup[data.backup2] = (stats.backup[data.backup2] || 0) + 1;
+          }
+          
+          // LC Agents (rotate for fairness - these miss the meeting)
+          const lcAgents = data.lcAgents || [];
+          for (const agent of lcAgents) {
+            stats.lcAgent[agent] = (stats.lcAgent[agent] || 0) + 1;
+          }
+        });
+        
+        // Build fairness report
+        const { people } = await getCachedMetadata();
+        const fairnessReport = people
+          .filter(p => p.active !== false)
+          .map(person => {
+            const name = person.name;
+            const asBackup = stats.backup[name] || 0;
+            const asLcAgent = stats.lcAgent[name] || 0;
+            const meetingsMissed = asLcAgent; // Only LC Agents miss meetings
+            
+            return {
+              name,
+              asBackup,           // On standby but attends
+              asLcAgent,          // Covers LC, misses meeting
+              meetingsMissed,     // = asLcAgent
+              totalAssignments: asBackup + asLcAgent
+            };
+          })
+          .sort((a, b) => b.meetingsMissed - a.meetingsMissed);
+        
+        return res.status(200).json({ 
+          ok: true, 
+          lookbackWeeks,
+          totalMeetings: stats.totalMeetings,
+          stats,
+          fairnessReport
+        });
+      } catch (err) {
+        console.error("Meeting rotation fairness error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // GET /meeting-rotation/suggest - Suggest fair assignments for a date
+    if (path === "/meeting-rotation/suggest" && req.method === "GET") {
+      try {
+        const date = req.query.date || "";
+        if (!date) {
+          return res.status(400).json({ error: "Date is required" });
+        }
+        
+        // Get fairness stats from last 12 weeks
+        const lookbackWeeks = 12;
+        const today = new Date();
+        const lookbackDate = new Date(today);
+        lookbackDate.setDate(lookbackDate.getDate() - (lookbackWeeks * 7));
+        const lookbackStr = lookbackDate.toISOString().split('T')[0];
+        
+        const snap = await db.collection("meeting_rotations")
+          .where("date", ">=", lookbackStr)
+          .orderBy("date", "desc")
+          .get();
+        
+        // Count assignments
+        const backupCount = {};
+        const lcAgentCount = {};
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          if (data.backup1) backupCount[data.backup1] = (backupCount[data.backup1] || 0) + 1;
+          if (data.backup2) backupCount[data.backup2] = (backupCount[data.backup2] || 0) + 1;
+          (data.lcAgents || []).forEach(a => {
+            lcAgentCount[a] = (lcAgentCount[a] || 0) + 1;
+          });
+        });
+        
+        // Find Live Chat eligible agents from schedule history
+        const eligibleSnap = await db.collection("scheduleDays")
+          .where("date", ">=", lookbackStr)
+          .get();
+        
+        const lcEligible = new Set();
+        eligibleSnap.forEach(doc => {
+          const data = doc.data();
+          const team = (data.team || doc.id.split("__")[1] || "").toLowerCase();
+          if (team.includes("live") || team.includes("chat") || team.includes("livechat")) {
+            (data.assignments || []).forEach(a => {
+              if (a.person && a.person.toLowerCase() !== "open") {
+                lcEligible.add(a.person);
+              }
+            });
+          }
+        });
+        
+        // Suggest backups: those with FEWEST backup assignments
+        const suggestedBackups = Array.from(lcEligible)
+          .map(name => ({ name, count: backupCount[name] || 0 }))
+          .sort((a, b) => a.count - b.count)
+          .slice(0, 4)
+          .map(x => x.name);
+        
+        // Suggest LC agents: those with FEWEST LC agent assignments (missed fewest meetings)
+        const suggestedLcAgents = Array.from(lcEligible)
+          .map(name => ({ name, count: lcAgentCount[name] || 0 }))
+          .sort((a, b) => a.count - b.count)
+          .slice(0, 6)
+          .map(x => x.name);
         
         return res.status(200).json({
           ok: true,
-          name: user.name,
           date,
-          startHour,
-          endHour,
-          total,
-          buckets,
-          incomplete: searchRes.incomplete,
-          debug: {
-            apiResults: results.length,
-            matchedDate: matchedTickets,
-            query: query
-          }
+          lcEligibleAgents: Array.from(lcEligible),
+          suggestedBackups,
+          suggestedLcAgents,
+          backupCounts: backupCount,
+          lcAgentCounts: lcAgentCount
         });
-      } catch (error) {
-        console.error("Zendesk Activity Error:", error);
-        return res.status(500).json({ ok: false, error: error.message });
+      } catch (err) {
+        console.error("Meeting rotation suggest error:", err);
+        return res.status(500).json({ error: err.message });
       }
     }
-    // New endpoint: Track all ticket updates by an agent (more comprehensive activity view)
-    if (path === "/zendesk/agent-updates" && req.method === "GET") {
+
+    // POST /meeting-rotation/delete - Delete a rotation
+    if (path === "/meeting-rotation/delete" && req.method === "POST") {
       try {
-        const name = String(req.query.name || "").trim();
-        const email = String(req.query.email || "").trim();
-        const date = String(req.query.date || "").trim();
-
-        if (!name && !email) {
-          return res.status(400).json({ ok: false, error: "Missing agent name or email." });
-        }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          return res.status(400).json({ ok: false, error: "Invalid date format. Use YYYY-MM-DD." });
-        }
-
-        const agentEmail = email || await getAgentEmailByName(name);
-        if (!agentEmail) {
-          return res.status(404).json({ ok: false, error: `No email found for ${name}.` });
-        }
-
-        const user = await getZendeskUserByEmail(agentEmail);
-        if (!user) {
-          return res.status(404).json({ ok: false, error: "Email not found in Zendesk." });
-        }
-
-        // Search for all tickets updated by this user on the given date
-        // This includes replies, status changes, field updates, etc.
-        const startDate = new Date(`${date}T00:00:00-08:00`);
-        startDate.setDate(startDate.getDate() - 1);
-        const endDate = new Date(`${date}T23:59:59-08:00`);
-        endDate.setDate(endDate.getDate() + 1);
+        const body = readJsonBody(req);
+        const { date } = body;
         
-        const startStr = startDate.toISOString().split('T')[0];
-        const endStr = endDate.toISOString().split('T')[0];
-
-        // Query for tickets where this agent made updates
-        const query = `type:ticket updated>=${startStr} updated<=${endStr} commenter:${user.email}`;
-        
-        const searchRes = await zdSearchWithFallback(query, 100, 20);
-        let results = searchRes.results;
-
-        // Group by hour (PST)
-        const hourlyActivity = {};
-        for (let h = 0; h < 24; h++) {
-          hourlyActivity[h] = { tickets: 0, ticketIds: [] };
+        if (!date) {
+          return res.status(400).json({ error: "Date is required" });
         }
+        
+        // Find and delete the rotation for this date
+        const snap = await db.collection("meeting_rotations")
+          .where("date", "==", date)
+          .limit(1)
+          .get();
+        
+        if (snap.empty) {
+          return res.status(404).json({ error: "Rotation not found for this date" });
+        }
+        
+        const docRef = snap.docs[0].ref;
+        await docRef.delete();
+        
+        console.log(`✅ Meeting rotation deleted for ${date}`);
+        return res.status(200).json({ ok: true, date });
+      } catch (err) {
+        console.error("Meeting rotation delete error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
 
-        let matchedCount = 0;
-        for (const ticket of results) {
-          const timestamp = ticket.updated_at;
-          if (!timestamp) continue;
+    // GET /meeting-rotation/eligible - Get agents scheduled for LC on a specific date during meeting time
+    if (path === "/meeting-rotation/eligible" && req.method === "GET") {
+      try {
+        const date = req.query.date || "";
+        const meetingType = req.query.type || "thursday"; // thursday, wednesday, allhands
+        
+        if (!date) {
+          return res.status(400).json({ error: "Date is required" });
+        }
+        
+        // Meeting times in PST (24hr format)
+        let meetingStart, meetingEnd;
+        if (meetingType === "allhands") {
+          meetingStart = 16; // 4pm PST
+          meetingEnd = 17;   // 5pm PST
+        } else {
+          // Thursday/Wednesday meetings: 12-1:15pm PST
+          meetingStart = 12;
+          meetingEnd = 14; // Include some buffer
+        }
+        
+        // Get Live Chat schedule for this date
+        const snap = await db.collection("scheduleDays")
+          .where("date", "==", date)
+          .get();
+        
+        const lcAgents = new Set();
+        const allAgentsOnDate = new Set();
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          const team = (data.team || doc.id.split("__")[1] || "").toLowerCase();
+          const isLiveChat = team.includes("live") || team.includes("chat") || team.includes("livechat") || team === "lc";
           
-          const pstDate = getPstDateKey(timestamp);
-          if (pstDate !== date) continue;
-          
-          matchedCount++;
-          const hour = getPstHour(timestamp);
-          if (hour !== null && hourlyActivity[hour]) {
-            hourlyActivity[hour].tickets++;
-            hourlyActivity[hour].ticketIds.push(ticket.id);
+          (data.assignments || []).forEach(a => {
+            if (!a.person || a.person.toLowerCase() === "open") return;
+            
+            allAgentsOnDate.add(a.person);
+            
+            // Check if this agent is on LC during meeting time
+            if (isLiveChat) {
+              const start = parseFloat(a.start) || 0;
+              const end = parseFloat(a.end) || 24;
+              
+              // Check if shift overlaps with meeting time
+              if (start < meetingEnd && end > meetingStart) {
+                lcAgents.add(a.person);
+              }
+            }
+          });
+        });
+        
+        // Also get historical LC agents for backup suggestions
+        const lookbackDays = 90;
+        const lookbackDate = new Date();
+        lookbackDate.setDate(lookbackDate.getDate() - lookbackDays);
+        const lookbackStr = lookbackDate.toISOString().split('T')[0];
+        
+        const histSnap = await db.collection("scheduleDays")
+          .where("date", ">=", lookbackStr)
+          .get();
+        
+        const historicalLc = new Set();
+        histSnap.forEach(doc => {
+          const data = doc.data();
+          const team = (data.team || doc.id.split("__")[1] || "").toLowerCase();
+          if (team.includes("live") || team.includes("chat") || team.includes("livechat") || team === "lc") {
+            (data.assignments || []).forEach(a => {
+              if (a.person && a.person.toLowerCase() !== "open") {
+                historicalLc.add(a.person);
+              }
+            });
           }
-        }
-
-        // Calculate summary stats
-        const totalUpdates = Object.values(hourlyActivity).reduce((sum, h) => sum + h.tickets, 0);
-        const activeHours = Object.entries(hourlyActivity)
-          .filter(([_, data]) => data.tickets > 0)
-          .map(([hour, data]) => ({ hour: parseInt(hour), count: data.tickets }))
-          .sort((a, b) => b.count - a.count);
-
+        });
+        
         return res.status(200).json({
           ok: true,
-          name: user.name,
-          email: user.email,
           date,
-          totalUpdates,
-          activeHours,
-          hourlyBreakdown: Object.entries(hourlyActivity).map(([hour, data]) => ({
-            hour: parseInt(hour),
-            count: data.tickets
-          })),
-          incomplete: searchRes.incomplete
+          meetingType,
+          lcAgentsOnDate: Array.from(lcAgents),           // Agents on LC during meeting time
+          allAgentsOnDate: Array.from(allAgentsOnDate),   // All agents scheduled that day
+          historicalLcAgents: Array.from(historicalLc)    // Agents with LC history
         });
-      } catch (error) {
-        console.error("Agent Updates Error:", error);
-        return res.status(500).json({ ok: false, error: error.message });
+      } catch (err) {
+        console.error("Meeting rotation eligible error:", err);
+        return res.status(500).json({ error: err.message });
       }
     }
+
+    // ============================================
+    // WEEKLY ASSIGNMENTS ENDPOINTS
+    // Tracks Team Member Tips, Moments That Made Me Smile, etc.
+    // ============================================
+    
+    // GET /weekly-assignments/list - Get assignments for a date range
+    if (path === "/weekly-assignments/list" && req.method === "GET") {
+      try {
+        const startDate = req.query.start || "";
+        const endDate = req.query.end || "";
+        
+        let query = db.collection("weekly_assignments").orderBy("weekOf", "desc");
+        
+        if (startDate) {
+          query = query.where("weekOf", ">=", startDate);
+        }
+        if (endDate) {
+          query = query.where("weekOf", "<=", endDate);
+        }
+        
+        const snap = await query.limit(52).get(); // Up to a year of weeks
+        const assignments = snap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        return res.status(200).json({ ok: true, assignments });
+      } catch (err) {
+        console.error("Weekly assignments list error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // POST /weekly-assignments/save - Save/update weekly assignment
+    if (path === "/weekly-assignments/save" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { weekOf, teamMemberTips, momentsThatMadeSmile, ticketWalkthroughs, teamBuilding, teamBuildingVolunteer, csatWorkshop, notes, events } = body;
+        
+        if (!weekOf) {
+          return res.status(400).json({ error: "weekOf date is required" });
+        }
+        
+        // Use weekOf as document ID
+        const docId = weekOf;
+        await db.collection("weekly_assignments").doc(docId).set({
+          weekOf,
+          teamMemberTips: teamMemberTips || [],  // Array of names
+          momentsThatMadeSmile: momentsThatMadeSmile || [], // Array of names
+          ticketWalkthroughs: ticketWalkthroughs || "", // Single name
+          teamBuilding: teamBuilding || "", // Single name
+          teamBuildingVolunteer: teamBuildingVolunteer || "", // Single name
+          csatWorkshop: csatWorkshop || "", // Single name
+          notes: notes || "",
+          events: events || [], // Array of event strings like "Thursday & All Hands"
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        
+        console.log(`✅ Weekly assignments saved for ${weekOf}`);
+        return res.status(200).json({ ok: true, weekOf });
+      } catch (err) {
+        console.error("Weekly assignments save error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // GET /weekly-assignments/my - Get current agent's assignments
+    if (path === "/weekly-assignments/my" && req.method === "GET") {
+      try {
+        const agentName = req.query.name || "";
+        
+        if (!agentName) {
+          return res.status(400).json({ error: "Agent name is required" });
+        }
+        
+        const agentNameLower = agentName.toLowerCase().trim();
+        
+        // Get assignments from the last 4 weeks and next 4 weeks
+        const today = new Date();
+        const fourWeeksAgo = new Date(today);
+        fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+        const fourWeeksAhead = new Date(today);
+        fourWeeksAhead.setDate(fourWeeksAhead.getDate() + 28);
+        
+        const snap = await db.collection("weekly_assignments")
+          .where("weekOf", ">=", fourWeeksAgo.toISOString().split('T')[0])
+          .where("weekOf", "<=", fourWeeksAhead.toISOString().split('T')[0])
+          .get();
+        
+        const myAssignments = [];
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          const roles = [];
+          
+          // Check each assignment type
+          const tips = data.teamMemberTips || [];
+          if (tips.some(n => n.toLowerCase().trim() === agentNameLower)) {
+            roles.push("Team Member Tips");
+          }
+          
+          const moments = data.momentsThatMadeSmile || [];
+          if (moments.some(n => n.toLowerCase().trim() === agentNameLower)) {
+            roles.push("Moments That Made Me Smile");
+          }
+          
+          if (String(data.ticketWalkthroughs || "").toLowerCase().trim() === agentNameLower) {
+            roles.push("Ticket Walkthroughs");
+          }
+          
+          if (String(data.teamBuilding || "").toLowerCase().trim() === agentNameLower) {
+            roles.push("Team Building");
+          }
+          
+          if (String(data.teamBuildingVolunteer || "").toLowerCase().trim() === agentNameLower) {
+            roles.push("Team Building Volunteer");
+          }
+          
+          if (String(data.csatWorkshop || "").toLowerCase().trim() === agentNameLower) {
+            roles.push("CSAT Workshop");
+          }
+          
+          if (roles.length > 0) {
+            myAssignments.push({
+              weekOf: data.weekOf,
+              roles,
+              events: data.events || []
+            });
+          }
+        });
+        
+        // Sort by date descending
+        myAssignments.sort((a, b) => b.weekOf.localeCompare(a.weekOf));
+        
+        return res.status(200).json({ ok: true, assignments: myAssignments });
+      } catch (err) {
+        console.error("My weekly assignments error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // POST /weekly-assignments/delete - Delete a weekly assignment
+    if (path === "/weekly-assignments/delete" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { weekOf } = body;
+        
+        if (!weekOf) {
+          return res.status(400).json({ error: "weekOf is required" });
+        }
+        
+        const docRef = db.collection("weekly_assignments").doc(weekOf);
+        const doc = await docRef.get();
+        
+        if (!doc.exists) {
+          return res.status(404).json({ error: "Weekly assignment not found for this week" });
+        }
+        
+        await docRef.delete();
+        
+        console.log(`✅ Weekly assignment deleted for ${weekOf}`);
+        return res.status(200).json({ ok: true, weekOf });
+      } catch (err) {
+        console.error("Weekly assignments delete error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // ============================================
+    // AGENT TEAM HISTORY ENDPOINT
+    // Returns teams the agent has worked on (for make-up auto-assignment)
+    // ============================================
+    if (path === "/agent/team-history" && req.method === "GET") {
+      try {
+        const agentName = req.query.name || "";
+        const lookbackDays = parseInt(req.query.lookback || "90");
+        
+        if (!agentName) {
+          return res.status(400).json({ error: "Agent name is required" });
+        }
+        
+        const teams = await getAgentTeamHistory(db, agentName, lookbackDays);
+        
+        return res.status(200).json({ 
+          ok: true, 
+          agentName,
+          lookbackDays,
+          teams 
+        });
+      } catch (err) {
+        console.error("Agent team history error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // ============================================
+    // MAKE-UP AUTO-ASSIGNMENT ENDPOINT
+    // Suggests where to assign an agent for make-up time
+    // ============================================
+    if (path === "/makeup/auto-assign" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { agentName, makeupDate, autoAssign } = body;
+        
+        if (!agentName || !makeupDate) {
+          return res.status(400).json({ error: "agentName and makeupDate are required" });
+        }
+        
+        // Get suggestion
+        const suggestion = await suggestMakeupAssignment(db, agentName, makeupDate);
+        
+        // If autoAssign is true and we have a suggestion with a docId, create the assignment
+        if (autoAssign && suggestion.suggested && suggestion.suggested.docId) {
+          const { docId, team } = suggestion.suggested;
+          const docRef = db.collection("scheduleDays").doc(docId);
+          
+          // Find an open shift to fill
+          await db.runTransaction(async (tx) => {
+            const doc = await tx.get(docRef);
+            if (!doc.exists) {
+              throw new Error("Schedule document not found");
+            }
+            
+            const data = doc.data();
+            const assignments = data.assignments || [];
+            
+            // Find first open shift
+            const openIdx = assignments.findIndex(a => {
+              const person = String(a.person || "").toLowerCase().trim();
+              return person === "open" || a.isOpenShift === true;
+            });
+            
+            if (openIdx === -1) {
+              // No open shift - add new assignment at default hours
+              assignments.push({
+                id: `makeup_${Date.now()}`,
+                person: agentName,
+                start: "09:00",
+                end: "17:00",
+                role: "Agent",
+                isMakeup: true,
+                createdAt: new Date().toISOString()
+              });
+            } else {
+              // Fill the open shift
+              assignments[openIdx] = {
+                ...assignments[openIdx],
+                person: agentName,
+                isOpenShift: false,
+                isMakeup: true,
+                filledAt: new Date().toISOString()
+              };
+            }
+            
+            tx.update(docRef, { 
+              assignments, 
+              updatedAt: new Date().toISOString() 
+            });
+          });
+          
+          // Create notification for agent
+          await db.collection("agent_notifications").add({
+            recipientName: agentName,
+            type: "makeup_assigned",
+            message: `📋 Your make-up time has been scheduled for ${makeupDate} with ${team}`,
+            shiftDate: makeupDate,
+            team: team,
+            createdAt: new Date().toISOString(),
+            read: false
+          });
+          
+          console.log(`✅ Make-up auto-assigned: ${agentName} to ${team} on ${makeupDate}`);
+          
+          return res.status(200).json({
+            ok: true,
+            assigned: true,
+            suggestion
+          });
+        }
+        
+        // Just return the suggestion without assigning
+        return res.status(200).json({
+          ok: true,
+          assigned: false,
+          suggestion
+        });
+        
+      } catch (err) {
+        console.error("Make-up auto-assign error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+   
     return res.status(404).json({ error: "Not found" });
   } catch (err) {
     console.error("ERROR:", err);
