@@ -133,22 +133,59 @@
   --presence-dot: #34d399;
   }
   
-  body { margin: 0; padding: 0; background: var(--bg-primary); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.2s, color 0.2s; }
+  body { 
+    margin: 0; 
+    padding: 0; 
+    background: radial-gradient(circle at 20% 20%, rgba(179,126,120,0.12), transparent 35%), 
+                radial-gradient(circle at 80% 0%, rgba(236,208,176,0.15), transparent 32%), 
+                var(--bg-primary);
+    color: var(--text-primary); 
+    height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+    overflow: hidden; 
+    transition: background-color 0.2s, color 0.2s; 
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 120px 120px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body.dark-mode { 
+    background: radial-gradient(circle at 20% 20%, rgba(164,89,83,0.18), transparent 38%), 
+                radial-gradient(circle at 80% 0%, rgba(88,70,64,0.26), transparent 34%), 
+                var(--bg-primary);
+  }
+  body.dark-mode::before {
+    opacity: 0.06;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+  }
   
   /* --- HEADER --- */
-  .header { 
-    height: 64px; 
-    background: var(--header-bg);
-    border-bottom: 1px solid var(--border-color);
+.header { 
+    height: 68px; 
+    background: linear-gradient(135deg, var(--header-bg) 0%, color-mix(in srgb, var(--header-bg) 75%, #fff 10%));
+    border-bottom: 1px solid color-mix(in srgb, var(--header-bg) 60%, #000 15%);
     display: flex; 
     align-items: center; 
     justify-content: space-between; 
-    padding: 0 24px; 
-    flex: 0 0 64px; 
-    box-shadow: none; 
+    padding: 0 28px; 
+    flex: 0 0 68px; 
+    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.45); 
     z-index: 600; 
     position: relative;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    backdrop-filter: blur(6px);
   }
   .hLeft { display: flex; align-items: center; gap: 16px; }
   .hTitle { 
@@ -599,7 +636,15 @@ body.dark-mode .chip.active{
   .skel-head { height: 30px; width: 60%; margin-bottom: 10px; }
   .skel-card { height: 80px; width: 100%; }
   .main { flex: 1; display: flex; overflow: hidden; position: relative; }
-  .content { flex: 1; overflow: hidden; padding: 20px; position: relative; display: flex; flex-direction: column; }
+.content { 
+    flex: 1; 
+    overflow: hidden; 
+    padding: 24px; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 16px;
+  }
   /* === CALENDAR WRAPPER === */
   #calViewWrapper {
     flex: 1;
@@ -688,35 +733,57 @@ body.dark-mode .dayCol.today{
   .dayBody::-webkit-scrollbar { display: none; }
   /* --- NEW SCHEDULE VIEW STYLES --- */
 .schedule-container {
-  display: flex;
+  display: grid;
+  grid-template-columns: 180px 1fr;
   gap: 20px;
   height: 100%;
   overflow: hidden; /* inner parts scroll */
+  align-items: start;
 }
 /* LEFT SIDEBAR (Day Tabs) */
-.day-tabs {
+  .day-tabs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 160px;
+  gap: 10px;
+  width: 180px;
   flex-shrink: 0;
   overflow-y: auto;
-  padding-right: 4px; /* room for scrollbar */
+  padding: 8px 4px 8px 0;
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 140px);
+  padding-right: 8px;
 }
 .day-tab {
   padding: 14px;
   background: var(--day-tab-bg);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s, color 0.2s;
   color: #fff;
   border-color: color-mix(in srgb, var(--day-tab-bg) 70%, #000 30%);
+  box-shadow: 0 10px 24px -18px rgba(0,0,0,0.35);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  backdrop-filter: blur(4px);
 }
-.day-tab:hover {
+  .day-tab .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background: rgba(255,255,255,0.85);
+    display:inline-block;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.12);
+  }
+  .day-tab:hover {
   background: var(--day-tab-hover-bg);
   border-color: var(--accent-header);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px -22px rgba(0,0,0,0.55);
 }
 .day-tab:hover,
 body.dark-mode .shift-chip:hover,
@@ -724,11 +791,12 @@ body.dark-mode #loadMoreControls button:hover{
   border-color: var(--accent-primary) !important;
   color: var(--accent-primary) !important;
 }
-.day-tab.active{
+  .day-tab.active{
   background: var(--accent-selected);
   border-color: var(--accent-selected);
   color: #1a0e0d;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 16px 32px -18px rgba(0,0,0,0.35);
+  transform: translateY(-1px);
 }
 body.dark-mode .day-tab.active{
   background: var(--accent-selected);
@@ -740,23 +808,37 @@ body.dark-mode .day-tab.active{
 /* MAIN CONTENT (Right Side) */
 .day-content {
   flex: 1;
-  background: var(--day-content-bg);
-  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.9), var(--day-content-bg));
+  border-radius: 20px;
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px var(--shadow-sm);
-  transition: background-color 0.2s, border-color 0.2s;
+  box-shadow: 0 12px 34px -18px rgba(0,0,0,0.25);
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.day-content::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: radial-gradient(circle at 80% 20%, rgba(236,208,176,0.16), transparent 35%);
 }
 .day-content-header {
-  padding: 20px 24px;
+  padding: 20px 24px 14px 24px;
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #334155;
   border-bottom-color: color-mix(in srgb, var(--accent-header) 60%, #000 40%);
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.94), var(--day-content-bg));
+  color: var(--text-primary);
+  backdrop-filter: blur(6px);
+  z-index: 2;
 }
 .day-content-body {
   flex: 1;
@@ -825,10 +907,10 @@ body.dark-mode .countBadge.warn{ color:#fca5a5; }
 }
 body.dark-mode .countBadge.ok{ color:#86efac; }
 /* SHIFT GRID */
-.shifts-grid {
+  .shifts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 /* List (vertical) view mode */
 .shifts-grid.view-list {
@@ -904,16 +986,18 @@ body.dark-mode .manager-presence-pill.mp-conflict { background: linear-gradient(
 .shift-card-b {
   background: var(--shift-card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 14px;
-  transition: all 0.2s;
+  border-radius: 16px;
+  padding: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s, background-color 0.2s;
   border-left: 4px solid #cbd5e1; /* Default Color */
   position: relative;
   cursor: pointer;
+  box-shadow: 0 10px 30px -22px rgba(0,0,0,0.45);
+  backdrop-filter: blur(2px);
 }
 .shift-card-b:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px var(--shadow-md);
+  box-shadow: 0 18px 32px -18px rgba(0,0,0,0.35);
   border-color: var(--text-tertiary); /* Hover border */
 }
 .sc-time { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display:flex; justify-content:space-between;}
