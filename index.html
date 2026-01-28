@@ -830,15 +830,75 @@ body.dark-mode .countBadge.ok{ color:#86efac; }
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
 }
+/* List (vertical) view mode */
+.shifts-grid.view-list {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.shifts-grid.view-list .shift-card-b {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+}
+.shifts-grid.view-list .sc-time {
+  min-width: 110px;
+  margin-bottom: 0;
+}
+.shifts-grid.view-list .sc-name {
+  min-width: 130px;
+  font-size: 14px;
+}
+.shifts-grid.view-list .sc-role {
+  margin-top: 0;
+}
 /* Light mode */
 .manager-presence-pill.mp-solo { background: rgba(255,255,255,0.35); border: 1px solid rgba(0,0,0,0.10); }
 .manager-presence-pill.mp-one  { background: linear-gradient(135deg, rgba(179,126,120,0.40), rgba(143,95,90,0.35)); border: 1px solid rgba(179,126,120,0.35); }
 .manager-presence-pill.mp-many { background: linear-gradient(135deg, rgba(164,89,83,0.40),  rgba(143,74,69,0.35)); border: 1px solid rgba(164,89,83,0.35); }
+.manager-presence-pill.mp-editing { background: linear-gradient(135deg, rgba(245,158,11,0.40), rgba(217,119,6,0.35)); border: 1px solid rgba(245,158,11,0.45); }
+.manager-presence-pill.mp-conflict { background: linear-gradient(135deg, rgba(239,68,68,0.50), rgba(220,38,38,0.45)); border: 1px solid rgba(239,68,68,0.6); animation: conflict-pulse 1.5s ease-in-out infinite; }
+@keyframes conflict-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  50% { box-shadow: 0 0 12px 4px rgba(239,68,68,0.3); }
+}
+
+/* Presence editing indicators */
+.presence-dot.editing { background: #f59e0b !important; animation: editing-pulse 1s ease-in-out infinite; }
+.presence-dot.conflict { background: #ef4444 !important; animation: editing-pulse 0.8s ease-in-out infinite; }
+@keyframes editing-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+.presence-editing-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(245,158,11,0.2);
+  border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 4px;
+  color: #b45309;
+  font-weight: 600;
+}
+.presence-conflict-text {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 11px;
+}
+body.dark-mode .presence-editing-badge {
+  background: rgba(245,158,11,0.15);
+  border-color: rgba(245,158,11,0.35);
+  color: #fbbf24;
+}
+body.dark-mode .presence-conflict-text {
+  color: #fca5a5;
+}
 
 /* Dark mode */
 body.dark-mode .manager-presence-pill.mp-solo { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); }
 body.dark-mode .manager-presence-pill.mp-one  { background: linear-gradient(135deg, rgba(168,115,109,0.22), rgba(110,71,67,0.18)); border: 1px solid rgba(168,115,109,0.35); }
 body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135deg, rgba(196,112,106,0.22), rgba(164,89,83,0.18)); border: 1px solid rgba(196,112,106,0.35); }
+body.dark-mode .manager-presence-pill.mp-editing { background: linear-gradient(135deg, rgba(245,158,11,0.25), rgba(217,119,6,0.20)); border: 1px solid rgba(245,158,11,0.35); }
+body.dark-mode .manager-presence-pill.mp-conflict { background: linear-gradient(135deg, rgba(239,68,68,0.35), rgba(220,38,38,0.30)); border: 1px solid rgba(239,68,68,0.5); }
 
 /* NEW CARD STYLE */
 .shift-card-b {
@@ -2466,6 +2526,94 @@ body.agent-mode .agent-toolbar {
   box-shadow: 0 4px 12px rgba(179,126,120,0.4);
 }
 
+/* Agent Schedule Banner */
+.agent-schedule-banner {
+  display: none;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+body.agent-mode .agent-schedule-banner {
+  display: grid;
+}
+.agent-schedule-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
+}
+.agent-schedule-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.agent-schedule-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.agent-schedule-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+.agent-schedule-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+.agent-schedule-pill.off {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.agent-schedule-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary, #1e293b);
+}
+.agent-schedule-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+.agent-schedule-team {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #f1f5f9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+.agent-schedule-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #f1f5f9);
+  overflow: hidden;
+}
+.agent-schedule-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #b37e78 0%, #8f5f5a 100%);
+  transition: width 0.3s ease;
+}
+.agent-schedule-date {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+
 /* Dark mode agent toolbar */
 body.dark-mode .agent-toolbar {
   background: #1a0e0d;
@@ -2483,6 +2631,36 @@ body.dark-mode .agent-toolbar-btn.secondary {
 }
 
 body.dark-mode .agent-toolbar-btn.secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+body.dark-mode .agent-schedule-banner {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+body.dark-mode .agent-schedule-card {
+  background: var(--card-bg);
+  border-color: var(--border-color);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode .agent-schedule-pill {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--text-secondary);
+}
+body.dark-mode .agent-schedule-pill.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+body.dark-mode .agent-schedule-pill.off {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+body.dark-mode .agent-schedule-team {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+body.dark-mode .agent-schedule-progress {
   background: var(--bg-tertiary);
 }
 
@@ -2833,6 +3011,10 @@ body.dark-mode .agent-toolbar-btn.secondary:hover {
   50% {
     box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
   }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 /* ============================================
    COVERAGE SUMMARY BANNER
@@ -3791,6 +3973,80 @@ body.dark-mode .cov-empty-desc {
   margin-bottom: 0;
 }
 .zendesk-stats .agent-stat-card {
+  flex-direction: column;
+}
+
+/* Clickable ticket list styles */
+.ticket-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  color: inherit;
+}
+.ticket-list-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  transform: translateX(4px);
+}
+.ticket-list-item:last-child {
+  margin-bottom: 0;
+}
+.ticket-id-badge {
+  background: var(--accent-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.ticket-subject {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ticket-priority {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.ticket-priority.high, .ticket-priority.urgent {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+.ticket-priority.normal {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+}
+.ticket-priority.low {
+  background: rgba(156, 163, 175, 0.15);
+  color: #6b7280;
+}
+.ticket-arrow {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+body.dark-mode .ticket-list-item {
+  background: var(--bg-tertiary);
+}
+body.dark-mode .ticket-list-item:hover {
+  background: var(--bg-secondary);
+}
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
@@ -4040,6 +4296,8 @@ body.dark-mode .adminCard{background: rgba(35,35,35,0.95); border-color: rgba(17
 .adminIconGreen{background: rgba(34,197,94,0.16);}
 .adminIconBlue{background: rgba(59,130,246,0.16);}
 .adminIconPurple{background: rgba(139,92,246,0.16);}
+.adminIconOrange{background: rgba(249,115,22,0.16);}
+.adminIconTeal{background: rgba(20,184,166,0.16);}
 .adminIconSlate{background: rgba(148,163,184,0.14);}
 .adminCardText{flex:1;}
 .adminCardTitle{font-weight:900; font-size:13px;}
@@ -4334,25 +4592,242 @@ body.dark-mode #loadMoreControls button:hover{
 .overlay{ background: rgba(26,14,13,0.40) !important; }
 body.dark-mode .overlay{ background: rgba(0,0,0,0.72) !important; }
 
-.modal{
+/* =============================================================
+   UNIFIED MODAL DESIGN SYSTEM
+   Professional, consistent modal styling across all views
+   ============================================================= */
+
+/* Base Modal Styles */
+.modal {
   background: var(--card-bg) !important;
-  border-color: var(--border-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 60px -15px rgba(0,0,0,0.3), 0 10px 25px -10px rgba(0,0,0,0.15) !important;
   color: var(--text-primary) !important;
+  overflow: hidden;
 }
-.mHeader{
-  background: var(--header-bg) !important;
+
+/* Unified Modal Header - Gradient with brand colors */
+.mHead, .mHeader, .modal-header {
+  background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%) !important;
   color: #fff !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--header-bg) 65%, #000 35%) !important;
+  padding: 20px 24px !important;
+  border-bottom: none !important;
+  position: relative;
 }
-.mBody{
+.mHead::after, .mHeader::after, .modal-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+}
+.mTitle, .modal-title {
+  font-weight: 700 !important;
+  font-size: 17px !important;
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mHead .btn, .mHeader .btn, .modal-header .btn {
+  background: rgba(255,255,255,0.15) !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  color: #fff !important;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease !important;
+}
+.mHead .btn:hover, .mHeader .btn:hover, .modal-header .btn:hover {
+  background: rgba(255,255,255,0.25) !important;
+  transform: scale(1.05);
+}
+
+/* Unified Modal Body */
+.mBody, .modal-body {
   background: var(--bg-secondary) !important;
   color: var(--text-primary) !important;
+  padding: 24px !important;
 }
-.modal input, .modal select, .modal textarea{
+
+/* Unified Modal Footer */
+.mFoot, .modal-footer {
+  background: var(--bg-tertiary) !important;
+  border-top: 1px solid var(--border-color) !important;
+  padding: 16px 24px !important;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Unified Form Elements in Modals */
+.modal input, .modal select, .modal textarea {
   background: var(--input-bg) !important;
-  border-color: var(--border-color) !important;
+  border: 2px solid var(--border-color) !important;
+  border-radius: 10px !important;
   color: var(--text-primary) !important;
+  padding: 12px 14px !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
 }
+.modal input:focus, .modal select:focus, .modal textarea:focus {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring) !important;
+  outline: none !important;
+}
+.modal label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 8px !important;
+  display: block;
+}
+
+/* Unified Action Buttons */
+.modal-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  width: 100%;
+}
+.modal-action-btn:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-tertiary);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px var(--modal-btn-shadow);
+}
+.modal-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.modal-action-icon.swap { background: linear-gradient(135deg, var(--modal-gradient-start), var(--modal-gradient-end)); color: #fff; }
+.modal-action-icon.timeoff { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; }
+.modal-action-icon.info { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; }
+.modal-action-icon.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; }
+.modal-action-content h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.modal-action-content p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Unified Info Cards in Modals */
+.modal-info-card {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+.modal-info-card.highlight {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 8%, var(--bg-secondary) 92%) 0%, var(--bg-secondary) 100%);
+  border-color: var(--accent-primary);
+}
+
+/* Unified Detail Rows */
+.modal-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.modal-detail-row:last-child { border-bottom: none; }
+.modal-detail-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.modal-detail-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Unified Button Styles */
+.modal .btn-primary, .modal .btnPrimary {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, color-mix(in srgb, var(--accent-primary) 85%, #000 15%) 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 12px 24px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px var(--modal-btn-shadow) !important;
+}
+.modal .btn-primary:hover, .modal .btnPrimary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px var(--modal-btn-hover-shadow) !important;
+}
+.modal .btn-secondary, .modal .btnSecondary, .modal .btn.ghost {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 2px solid var(--border-color) !important;
+  padding: 10px 20px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+}
+.modal .btn-secondary:hover, .modal .btnSecondary:hover, .modal .btn.ghost:hover {
+  background: var(--bg-primary) !important;
+  border-color: var(--text-secondary) !important;
+}
+.modal .btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+/* Section Dividers in Modals */
+.modal-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 20px 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* Smooth Animations */
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal {
+  animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =============================================================
+   END UNIFIED MODAL DESIGN SYSTEM
+   ============================================================= */
 
 /* Primary CTA buttons (Request Time Off) */
 .btnPrimary, .btnRequestTimeOff, #btnRequestTimeOff, [data-action="requestTimeOff"]{
@@ -4765,6 +5240,42 @@ body.dark-mode .bulkModal .mBody {
 <button type="button" class="iconBtn" title="Refresh schedule data" onclick="forceRefresh()">
         <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
       </button>
+      <!-- View Toggle (Grid/List) -->
+      <button type="button" class="iconBtn" id="btnViewToggle" title="Toggle Grid/List View" onclick="toggleShiftView()">
+        <svg id="viewToggleIcon" viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" fill="currentColor"/></svg>
+      </button>
+      <!-- Timezone Selector -->
+      <div style="position: relative; display: inline-block;">
+        <button type="button" class="iconBtn" id="btnTimezone" title="Timezone Settings" onclick="toggleTimezoneDropdown()">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+        </button>
+        <div id="timezoneDropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 8px; min-width: 200px; z-index: 1000;">
+          <div style="font-size: 11px; color: var(--text-secondary); padding: 4px 8px; font-weight: 600; border-bottom: 1px solid var(--border-color); margin-bottom: 6px;">Display Times In:</div>
+          <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 13px;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
+            <input type="radio" name="timezone" value="PST" checked onchange="setUserTimezone('PST')"> 
+            <span>🌴 Pacific (PST)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 13px;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
+            <input type="radio" name="timezone" value="MST" onchange="setUserTimezone('MST')"> 
+            <span>🏔️ Mountain (MST)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 13px;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
+            <input type="radio" name="timezone" value="CST" onchange="setUserTimezone('CST')"> 
+            <span>🌽 Central (CST)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 13px;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
+            <input type="radio" name="timezone" value="EST" onchange="setUserTimezone('EST')"> 
+            <span>🏙️ Eastern (EST)</span>
+          </label>
+          <div style="border-top: 1px solid var(--border-color); margin-top: 6px; padding-top: 8px; font-size: 10px; color: var(--text-secondary); text-align: center;">
+            ℹ️ PST always shown in parentheses
+          </div>
+        </div>
+      </div>
+      <!-- Google Calendar Export -->
+      <button type="button" class="iconBtn" id="btnExportCal" title="Export to Google Calendar" onclick="exportToGoogleCalendar()">
+        <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-2 5h-5v5h5v-5z" fill="currentColor"/></svg>
+      </button>
       <button class="iconBtn" id="drawerToggle" title="Tools" onclick="toggleDrawer()">
         <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-6h14v6zm0-8H5V5h14v6z"/></svg>
       </button>
@@ -4818,6 +5329,64 @@ body.dark-mode .bulkModal .mBody {
   <button class="agent-toolbar-btn primary" onclick="openFutureTimeOffModal()">
     🏖️ Request Time Off
   </button>
+</div>
+<!-- Agent Schedule Banner (Current + Next Shift) -->
+<div id="agentScheduleBanner" class="agent-schedule-banner" style="display:none;">
+  <div class="agent-schedule-card current">
+    <div class="agent-schedule-card-head">
+      <span class="agent-schedule-label">Current Shift</span>
+      <span class="agent-schedule-pill off" id="agentCurrentShiftStatus">Off</span>
+    </div>
+    <div class="agent-schedule-time" id="agentCurrentShiftTime">--</div>
+    <div class="agent-schedule-meta">
+      <span class="agent-schedule-team" id="agentCurrentShiftTeam">--</span>
+      <span id="agentCurrentShiftRole"></span>
+    </div>
+    <div class="agent-schedule-progress" id="agentCurrentShiftProgressWrap">
+      <div class="agent-schedule-progress-bar" id="agentCurrentShiftProgress"></div>
+    </div>
+  </div>
+  <div class="agent-schedule-card next">
+    <div class="agent-schedule-card-head">
+      <span class="agent-schedule-label">Next Shift</span>
+      <span class="agent-schedule-pill" id="agentNextShiftStatus">Upcoming</span>
+    </div>
+    <div class="agent-schedule-time" id="agentNextShiftTime">--</div>
+    <div class="agent-schedule-meta">
+      <span class="agent-schedule-team" id="agentNextShiftTeam">--</span>
+      <span id="agentNextShiftRole"></span>
+    </div>
+    <div class="agent-schedule-date" id="agentNextShiftDate"></div>
+  </div>
+</div>
+
+<!-- Agent Assignments Banner (NEW - Shows Meeting Role & Weekly Assignments) -->
+<div id="agentAssignmentsBanner" style="display:none; padding: 0 24px; margin-bottom: 16px;">
+  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+    <!-- Meeting Role Card -->
+    <div id="agentMeetingRoleCard" style="display: none; flex: 1; min-width: 280px; background: var(--bg-secondary); border-radius: 12px; padding: 14px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-sm);">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <span id="agentMeetingRoleIcon" style="font-size: 20px;">📅</span>
+        <div>
+          <div id="agentMeetingRoleLabel" style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Meeting Role</div>
+          <div id="agentMeetingRoleDate" style="font-size: 11px; color: var(--text-secondary);">Date</div>
+        </div>
+      </div>
+      <div id="agentMeetingRoleDesc" style="font-size: 11px; padding: 8px; background: var(--bg-tertiary); border-radius: 6px; color: var(--text-secondary);"></div>
+    </div>
+    
+    <!-- Weekly Assignments Card -->
+    <div id="agentWeeklyAssignCard" style="display: none; flex: 1; min-width: 280px; background: var(--bg-secondary); border-radius: 12px; padding: 14px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-sm);">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <span style="font-size: 20px;">🎯</span>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Your Assignments</div>
+          <div id="agentWeeklyAssignWeek" style="font-size: 11px; color: var(--text-secondary);">This Week</div>
+        </div>
+      </div>
+      <div id="agentWeeklyAssignList" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+    </div>
+  </div>
 </div>
   <!-- MAIN -->
   <div class="main">
@@ -4942,44 +5511,28 @@ body.dark-mode .open-shift {
                 <img id="mAvatar" src="" style="width:72px; height:72px; border-radius:50%; background:#e2e8f0; margin:10px auto 10px; border:3px solid #fff; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
                 <div id="mName" style="font-size:18px; font-weight:900; color:#0f172a;"></div>
                 <div id="mEmail" style="font-size:12px; color:#64748b; margin-bottom:14px;"></div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; text-align:left; margin: 0 auto; max-width: 360px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; text-align:left; margin: 0 auto; max-width: 360px;">
                   <div style="background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd;">
-                    <div style="font-size:10px; font-weight:800; color:#0369a1;">OPEN</div>
+                    <div style="font-size:10px; font-weight:800; color:#0369a1;">OPEN TICKETS</div>
                     <div id="mOpen" style="font-size:18px; font-weight:900; color:#0284c7;">--</div>
                   </div>
-                  <div style="background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
-                    <div style="font-size:10px; font-weight:800; color:#15803d;">SOLVED (7d)</div>
-                    <div id="mSolved" style="font-size:18px; font-weight:900; color:#16a34a;">--</div>
-                  </div>
-                  <div style="background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #fed7aa;">
-                    <div style="font-size:10px; font-weight:800; color:#c2410c;">CSAT (30d)</div>
-                    <div id="mCSAT" style="font-size:18px; font-weight:900; color:#ea580c;">--</div>
+                  <div style="background:#fdf2f8; padding:10px; border-radius:8px; border:1px solid #fbcfe8;">
+                    <div style="font-size:10px; font-weight:800; color:#be185d;">ROLE</div>
+                    <div id="mRole" style="font-size:14px; font-weight:800; color:#db2777;">--</div>
                   </div>
                 </div>
-                <div style="margin:14px auto 0; max-width: 360px; text-align:left;">
-                  <div style="background:#fdf2f8; padding:12px; border-radius:12px; border:1px solid #fbcfe8;">
-                    <div style="font-size:10px; font-weight:900; color:#be185d; text-transform:uppercase;">Role</div>
-                    <div id="mRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:6px;">--</div>
-                  </div>
-                  <div style="margin-top:10px; font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
-                  <div style="margin-top:10px; font-size:11px; color:#64748b;">Zendesk activity is shown in the hourly breakdown below.</div>
-                  <div id="mActivitySection" style="margin-top:16px; max-width:360px; text-align:left;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                      <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px;">Hourly Activity (last 7 days)</div>
-                    </div>
-                    <!-- Activity Type Toggle -->
-                    <div style="display:flex; gap:4px; margin-bottom:10px; background:#f1f5f9; padding:4px; border-radius:8px;">
-                      <button type="button" id="activityTypeSolved" class="seg-btn active" style="flex:1; padding:6px 10px; font-size:11px; font-weight:600; border:none; border-radius:6px; cursor:pointer; background:#fff; color:#0f172a; box-shadow:0 1px 2px rgba(0,0,0,0.05);" onclick="setActivityType('solved')">🎫 Solved</button>
-                      <button type="button" id="activityTypeUpdates" class="seg-btn" style="flex:1; padding:6px 10px; font-size:11px; font-weight:600; border:none; border-radius:6px; cursor:pointer; background:transparent; color:#64748b;" onclick="setActivityType('updates')">💬 Updates</button>
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
-                      <input type="date" id="mActivityDate" style="flex:1; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px; background:var(--input-bg); color:var(--text-primary);" onchange="refreshMetricsActivity()">
-                      <button type="button" class="btn ghost" style="padding:6px 10px; font-size:11px;" onclick="refreshMetricsActivity()">Load</button>
-                    </div>
-                    <div id="mActivitySummary" style="font-size:11px; color:#64748b; margin-bottom:6px;"></div>
-                    <div id="mActivityList" style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;"></div>
-                    <div id="mActivityEmpty" style="font-size:11px; color:#94a3b8; margin-top:6px;"></div>
-                  </div>
+                <!-- Clickable ticket list for managers -->
+                <div id="mTicketsList" style="margin:12px auto 0; max-width: 360px; max-height: 180px; overflow-y: auto; display: none;">
+                  <!-- Populated by JS -->
+                </div>
+                <div id="mTicketsEmpty" style="margin:8px auto 0; max-width: 360px; text-align: center; color: var(--text-tertiary); font-size: 12px; display: none;">
+                  🎉 No open tickets!
+                </div>
+                <div style="margin:10px auto 0; max-width: 360px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; font-size: 11px; color: var(--text-secondary); text-align: center;">
+                  💡 For CSAT &amp; Solved metrics, view <a href="https://musely.zendesk.com/explore" target="_blank" style="color: var(--accent-primary);">Zendesk Explore</a>
+                </div>
+                <div style="margin:10px auto 0; max-width: 360px; text-align:left;">
+                  <div style="font-size:11px; color:#94a3b8;">Last Login: <span id="mLogin">--</span></div>
                 </div>
               </div>
             </div>
@@ -5075,18 +5628,26 @@ body.dark-mode .open-shift {
       </div>
       <input type="hidden" id="modalOrigStart">
       <input type="hidden" id="modalOrigEnd">
+      <input type="hidden" id="modalOrigTeam">
+      <input type="hidden" id="modalOrigRole">
       <input type="hidden" id="modalDocId">
       <input type="hidden" id="modalAssignmentId">
-      <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Channel</label>
-        <select id="modalTeam" onchange="toggleCustomChannel(this)" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Channel</label>
+          <select id="modalTeam" onchange="toggleCustomChannel(this)" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Role</label>
+          <select id="modalRole" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
+        </div>
       </div>
       <div id="customChannelWrapper" style="margin-bottom:20px; display:none;">
         <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Custom Channel Name</label>
         <input type="text" id="modalCustomChannel" placeholder="Enter custom channel name..." style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;">
       </div>
       <div style="display:flex; justify-content:space-between; padding-top:16px; border-top:1px solid var(--border-color, #e2e8f0);">
-        <button type="button" onclick="deleteShift()" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Delete</button>
+        <button type="button" id="modalDeleteBtn" onclick="deleteShift()" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Delete</button>
         <div style="display:flex; gap:10px;">
           <button type="button" onclick="closeModal()" style="background:var(--bg-tertiary, #f1f5f9); color:var(--text-secondary, #64748b); border:1px solid var(--border-color, #e2e8f0); padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancel</button>
           <button type="button" onclick="saveShift()" style="background:#b37e78; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Save</button>
@@ -5226,23 +5787,18 @@ body.dark-mode .open-shift {
           <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: #e2e8f0; margin-bottom: 15px; border: 3px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: #0f172a;">Name</h2>
           <div id="pEmail" style="font-size: 12px; color: #64748b; margin-bottom: 20px;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c7a2aaa6aeab87a2bfa6aab7aba2e9a4a8aa">[email&#160;protected]</a></div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: left;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left;">
             <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-              <div style="font-size: 10px; font-weight: 700; color: #0369a1;">OPEN</div>
+              <div style="font-size: 10px; font-weight: 700; color: #0369a1;">OPEN TICKETS</div>
               <div id="pTickets" style="font-size: 20px; font-weight: 800; color: #0284c7;">--</div>
             </div>
-            <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
-              <div style="font-size: 10px; font-weight: 700; color: #15803d;">SOLVED (7d)</div>
-              <div id="pSolved" style="font-size: 20px; font-weight: 800; color: #16a34a;">--</div>
-            </div>
-            <div style="background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px solid #fed7aa;">
-              <div style="font-size: 10px; font-weight: 700; color: #c2410c;">CSAT (30d)</div>
-              <div id="pCSAT" style="font-size: 20px; font-weight: 800; color: #ea580c;">--</div>
+            <div style="background:#fdf2f8; padding:10px; border-radius:8px; border:1px solid #fbcfe8;">
+              <div style="font-size:10px; font-weight:700; color:#be185d;">ROLE</div>
+              <div id="pRole" style="font-size:14px; font-weight:800; color:#db2777;">--</div>
             </div>
           </div>
-          <div style="margin-top: 16px; background:#fdf2f8; padding:12px; border-radius:12px; border:1px solid #fbcfe8; text-align:left;">
-            <div style="font-size:10px; font-weight:900; color:#be185d; text-transform:uppercase;">Role</div>
-            <div id="pRole" style="font-size:14px; font-weight:800; color:#db2777; margin-top:4px;">--</div>
+          <div style="margin-top: 10px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; font-size: 11px; color: var(--text-secondary); text-align: center;">
+            💡 For CSAT &amp; Solved metrics, view <a href="https://musely.zendesk.com/explore" target="_blank" style="color: var(--accent-primary);">Zendesk Explore</a>
           </div>
           <div style="margin-top: 12px; font-size: 11px; color: #94a3b8;">Last Login: <span id="pLogin">--</span></div>
           
@@ -5391,6 +5947,30 @@ body.dark-mode .open-shift {
             </div>
           </div>
 
+          <!-- Meeting Rotation (NEW) -->
+          <div class="adminCard" onclick="openMeetingRotationModal()">
+            <div class="adminCardTop">
+              <div class="adminIcon adminIconOrange">📅</div>
+              <div class="adminCardText">
+                <div class="adminCardTitle">Meeting Rotation</div>
+                <div class="adminCardDesc">Thursday Live Chat coverage</div>
+              </div>
+              <span class="adminChip">Rotation</span>
+            </div>
+          </div>
+
+          <!-- Weekly Assignments (NEW) -->
+          <div class="adminCard" onclick="openWeeklyAssignmentsModal()">
+            <div class="adminCardTop">
+              <div class="adminIcon adminIconTeal">🎯</div>
+              <div class="adminCardText">
+                <div class="adminCardTitle">Weekly Assignments</div>
+                <div class="adminCardDesc">Tips, Moments, Walkthroughs</div>
+              </div>
+              <span class="adminChip">Assign</span>
+            </div>
+          </div>
+
         <!-- Danger Zone -->
         <div class="dangerCard">
           <div class="dangerTop">
@@ -5510,6 +6090,247 @@ body.dark-mode .open-shift {
       </div>
     </div>
   </div>
+  
+  <!-- Meeting Rotation Modal (Enhanced) -->
+  <div id="meetingRotationModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeMeetingRotationModal()">
+    <div class="modal" style="width: 600px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+      <!-- Sticky Header -->
+      <div class="mHead" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); flex-shrink: 0; position: sticky; top: 0; z-index: 10;">
+        <span class="mTitle" style="color: white;">📅 Meeting Rotation</span>
+        <button type="button" class="btn ghost" style="color: white; font-size: 18px; padding: 4px 10px;" onclick="closeMeetingRotationModal()">✕</button>
+      </div>
+      
+      <!-- Scrollable Body -->
+      <div class="mBody" style="overflow-y: auto; flex: 1; padding: 16px;">
+        <!-- Quick Setup Row -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div>
+            <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Type</label>
+            <select id="rotationMeetingType" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--input-bg); color: var(--text-primary); font-size: 12px;" onchange="onMeetingTypeChange()">
+              <option value="thursday">Thursday (Weekly)</option>
+              <option value="wednesday">Wednesday (Monthly)</option>
+              <option value="allhands">All Hands</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Date</label>
+            <input type="date" id="rotationDate" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--input-bg); color: var(--text-primary); font-size: 12px;" onchange="loadRotationForDate()">
+          </div>
+          <div>
+            <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Time (PST)</label>
+            <input type="text" id="rotationTimePST" readonly style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 12px;" value="12:00-1:15 PM">
+          </div>
+        </div>
+        
+        <!-- Hidden EST time selector -->
+        <select id="rotationTimeEST" style="display: none;" onchange="convertMeetingTime()">
+          <option value="3:00 PM - 4:15 PM">3:00 PM - 4:15 PM</option>
+          <option value="3:45 PM - 5:00 PM">3:45 PM - 5:00 PM</option>
+          <option value="7:00 PM - 8:00 PM">7:00 PM - 8:00 PM</option>
+        </select>
+        
+        <!-- Coverage Assignment Card -->
+        <div style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+          <div style="font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--text-primary);">👥 Live Chat Coverage During Meeting</div>
+          <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; padding: 10px; background: var(--bg-secondary); border-radius: 6px; border-left: 3px solid #6366f1;">
+            <div style="font-weight: 600; margin-bottom: 4px;">📋 Who does what:</div>
+            <div>• <strong style="color: #1e40af;">LC Agents</strong> = <strong>MISS</strong> meeting (cover Live Chat)</div>
+            <div>• <strong style="color: #065f46;">Backups</strong> = <strong>ATTEND</strong> meeting (set Away, jump in if busy)</div>
+            <div>• <strong style="color: #92400e;">Captain</strong> = <strong>ATTEND</strong> meeting (steers ship, last resort)</div>
+            <div style="margin-top: 6px; font-style: italic;">Queue priority: LC Agents → Backups → Captain</div>
+          </div>
+          
+          <!-- Role Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <!-- Captain -->
+            <div style="background: #fef3c7; padding: 10px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+              <div style="font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 6px;">👤 Captain <span style="font-weight: 400; opacity: 0.8;">(Attends - Last Resort)</span></div>
+              <select id="rotationCaptain" style="width: 100%; padding: 6px 8px; border: 1px solid #fcd34d; border-radius: 4px; background: white; font-size: 12px; color: #333;">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+            
+            <!-- Notes -->
+            <div style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">📝 Notes</div>
+              <input type="text" id="rotationNotes" placeholder="Social Segment, Team Building..." style="width: 100%; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 12px; color: var(--text-primary);">
+            </div>
+          </div>
+          
+          <!-- Backups Row -->
+          <div style="background: #d1fae5; padding: 10px; border-radius: 8px; border-left: 3px solid #10b981; margin-bottom: 10px;">
+            <div style="font-size: 11px; font-weight: 600; color: #065f46; margin-bottom: 6px;">🔄 Backups <span style="font-weight: 400; opacity: 0.8;">(Attend Meeting - Away in Zendesk)</span></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <select id="rotationBackup1" style="width: 100%; padding: 6px 8px; border: 1px solid #6ee7b7; border-radius: 4px; background: white; font-size: 12px; color: #333;">
+                <option value="">Backup #1</option>
+              </select>
+              <select id="rotationBackup2" style="width: 100%; padding: 6px 8px; border: 1px solid #6ee7b7; border-radius: 4px; background: white; font-size: 12px; color: #333;">
+                <option value="">Backup #2</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- LC Agents -->
+          <div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 11px; font-weight: 600; color: #1e40af;">💬 LC Agents <span style="font-weight: 400; opacity: 0.8;">(Miss Meeting - Cover LC)</span></div>
+              <div style="display: flex; gap: 4px;">
+                <select id="addLcAgentSelect" style="padding: 4px 6px; border: 1px solid #93c5fd; border-radius: 4px; background: white; font-size: 11px; color: #333; min-width: 100px;">
+                  <option value="">+ Add</option>
+                </select>
+                <button type="button" onclick="addLcAgent()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 10px; cursor: pointer;">Add</button>
+              </div>
+            </div>
+            <div id="lcAgentsContainer" style="display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px;">
+              <span style="color: #64748b; font-size: 10px; font-style: italic;">None assigned</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- All Hands PTO Section (conditional) -->
+        <div id="allHandsPtoSection" style="display: none; background: #fce7f3; padding: 10px; border-radius: 8px; margin-bottom: 14px; border-left: 3px solid #ec4899;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="font-size: 11px; font-weight: 600; color: #9d174d;">🎁 PTO Credit <span style="font-weight: 400;">(+1hr for staying late)</span></div>
+            <div style="display: flex; gap: 4px;">
+              <select id="addPtoAgentSelect" style="padding: 4px 6px; border: 1px solid #f9a8d4; border-radius: 4px; background: white; font-size: 11px; min-width: 100px;">
+                <option value="">+ Add</option>
+              </select>
+              <button type="button" onclick="addPtoAgent()" style="padding: 4px 8px; background: #ec4899; color: white; border: none; border-radius: 4px; font-size: 10px; cursor: pointer;">Add</button>
+            </div>
+          </div>
+          <div id="allHandsPtoAgents" style="display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px;">
+            <span style="color: #64748b; font-size: 10px; font-style: italic;">None</span>
+          </div>
+        </div>
+        
+        <!-- Collapsible Sections -->
+        <details style="margin-bottom: 10px;">
+          <summary style="cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-secondary); padding: 8px; background: var(--bg-tertiary); border-radius: 6px;">📊 Fairness Stats (who's missed most meetings)</summary>
+          <div id="fairnessStats" style="padding: 10px; font-size: 11px; background: var(--bg-secondary); border-radius: 0 0 6px 6px; max-height: 150px; overflow-y: auto;">
+            <div style="color: var(--text-secondary);">Loading...</div>
+          </div>
+        </details>
+        
+        <details>
+          <summary style="cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-secondary); padding: 8px; background: var(--bg-tertiary); border-radius: 6px;">📜 Recent Rotations</summary>
+          <div id="rotationHistory" style="padding: 10px; font-size: 11px; background: var(--bg-secondary); border-radius: 0 0 6px 6px; max-height: 120px; overflow-y: auto;">
+            <div style="color: var(--text-secondary);">Loading...</div>
+          </div>
+        </details>
+      </div>
+      
+      <!-- Sticky Footer -->
+      <div class="mFoot" style="flex-shrink: 0; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn ghost" onclick="closeMeetingRotationModal()">Cancel</button>
+        <button type="button" class="btn primary" onclick="saveRotation()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Assignments Modal (Redesigned) -->
+  <div id="weeklyAssignmentsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeWeeklyAssignmentsModal()">
+    <div class="modal" style="width: 550px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+      <!-- Sticky Header -->
+      <div class="mHead" style="flex-shrink: 0; position: sticky; top: 0; z-index: 10;">
+        <span class="mTitle">🎯 Weekly Assignments</span>
+        <button type="button" class="btn ghost" style="font-size: 18px; padding: 4px 10px;" onclick="closeWeeklyAssignmentsModal()">✕</button>
+      </div>
+      
+      <!-- Scrollable Body -->
+      <div class="mBody" style="overflow-y: auto; flex: 1; padding: 16px;">
+        <!-- Week Selector -->
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+          <label style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">Week of:</label>
+          <input type="date" id="weeklyAssignmentDate" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--input-bg); color: var(--text-primary); font-size: 12px;" onchange="loadWeeklyAssignments()">
+        </div>
+        
+        <!-- Presentation Assignments -->
+        <div style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+          <div style="font-weight: 700; font-size: 12px; margin-bottom: 12px; color: var(--text-primary);">🎤 LC Sync Presentations</div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <!-- Team Member Tips -->
+            <div style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">🎤 Team Member Tips</div>
+              <select id="weeklyTips1" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary); margin-bottom: 4px;">
+                <option value="">Person 1</option>
+              </select>
+              <select id="weeklyTips2" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary);">
+                <option value="">Person 2</option>
+              </select>
+            </div>
+            
+            <!-- Moments -->
+            <div style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">😊 Moments That Made Me Smile</div>
+              <select id="weeklyMoments1" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary); margin-bottom: 4px;">
+                <option value="">Person 1</option>
+              </select>
+              <select id="weeklyMoments2" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary);">
+                <option value="">Person 2</option>
+              </select>
+            </div>
+            
+            <!-- Ticket Walkthroughs -->
+            <div style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">🎫 Ticket Walkthroughs</div>
+              <select id="weeklyWalkthroughs" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary);">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+            
+            <!-- CSAT Workshop -->
+            <div style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">📈 CSAT Workshop</div>
+              <select id="weeklyCsatWorkshop" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary);">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Team Building -->
+        <div style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+          <div style="font-weight: 700; font-size: 12px; margin-bottom: 10px; color: var(--text-primary);">🏗️ Team Building</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Lead</div>
+              <select id="weeklyTeamBuilding" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary);">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Volunteer</div>
+              <select id="weeklyVolunteer" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); font-size: 11px; color: var(--text-primary);">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Special Events -->
+        <div style="margin-bottom: 14px;">
+          <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">📆 Special Events This Week</div>
+          <input type="text" id="weeklyEvents" placeholder="e.g., Thursday & All Hands, Social Segment" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--input-bg); font-size: 12px; color: var(--text-primary);">
+        </div>
+        
+        <!-- History (Collapsible) -->
+        <details>
+          <summary style="cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-secondary); padding: 8px; background: var(--bg-tertiary); border-radius: 6px;">📜 Recent Weeks</summary>
+          <div id="weeklyAssignmentHistory" style="padding: 10px; font-size: 11px; background: var(--bg-secondary); border-radius: 0 0 6px 6px; max-height: 100px; overflow-y: auto;">
+            <div style="color: var(--text-secondary);">Loading...</div>
+          </div>
+        </details>
+      </div>
+      
+      <!-- Sticky Footer -->
+      <div class="mFoot" style="flex-shrink: 0; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn ghost" onclick="closeWeeklyAssignmentsModal()">Cancel</button>
+        <button type="button" class="btn primary" onclick="saveWeeklyAssignments()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ✅ Notifications Panel (NOT inside any overlay/div) -->
   <div id="notifPanel"
        style="display:none; position:fixed; top:74px; right:20px; width:360px; background:#fff; border:1px solid #e2e8f0; box-shadow:0 10px 25px rgba(0,0,0,0.1); border-radius:16px; z-index:3001; overflow:hidden;"
@@ -5565,34 +6386,38 @@ body.dark-mode .open-shift {
         <div class="profile-section">
           <div class="profile-section-header">
             <span class="section-icon">📊</span>
-            <span class="section-title">This Week's Performance</span>
+            <span class="section-title">Open Tickets</span>
           </div>
-          <div class="agent-stats-grid zendesk-stats">
-            <div class="agent-stat-card">
-              <div class="agent-stat-icon" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
+          <!-- Open tickets count with clickable list -->
+          <div id="agentTicketsContainer">
+            <div class="agent-stat-card" style="flex-direction: column; align-items: stretch;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div class="agent-stat-icon" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); width: 40px; height: 40px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="agent-stat-value" id="agentZendeskOpens" style="font-size: 24px;">--</div>
+                  <div class="agent-stat-label">Open Tickets</div>
+                </div>
               </div>
-              <div class="agent-stat-info">
-                <div class="agent-stat-value" id="agentZendeskOpens">--</div>
-                <div class="agent-stat-label">Tickets Opened</div>
+              <!-- Clickable ticket list -->
+              <div id="agentTicketsList" style="max-height: 200px; overflow-y: auto; display: none;">
+                <!-- Populated by JS -->
+              </div>
+              <div id="agentTicketsLoading" style="text-align: center; color: var(--text-secondary); font-size: 12px; padding: 8px;">
+                Loading tickets...
+              </div>
+              <div id="agentTicketsEmpty" style="text-align: center; color: var(--text-tertiary); font-size: 12px; padding: 8px; display: none;">
+                🎉 No open tickets!
               </div>
             </div>
-            <div class="agent-stat-card">
-              <div class="agent-stat-icon" style="background: linear-gradient(135deg, #d8636b 0%, #b54f56 100%);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <div class="agent-stat-info">
-                <div class="agent-stat-value" id="agentZendeskSolved">--</div>
-                <div class="agent-stat-label">Tickets Solved</div>
-              </div>
-            </div>
+          </div>
+          <div style="margin-top: 10px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; font-size: 11px; color: var(--text-secondary);">
+            💡 <strong>Tip:</strong> For detailed metrics (CSAT, solved by hour), check <a href="https://musely.zendesk.com/explore" target="_blank" style="color: var(--accent-primary);">Zendesk Explore</a>
           </div>
         </div>
         
@@ -5629,6 +6454,28 @@ body.dark-mode .open-shift {
                 <div class="agent-stat-label">Shifts This Week</div>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <!-- Weekly Assignments Section (for agents) -->
+        <div class="profile-section" id="agentWeeklyAssignmentsSection" style="display: none;">
+          <div class="profile-section-header">
+            <span class="section-icon">🎯</span>
+            <span class="section-title">Your Assignments</span>
+          </div>
+          <div id="agentWeeklyAssignments" style="font-size: 13px;">
+            <div style="color: var(--text-secondary);">Loading...</div>
+          </div>
+        </div>
+        
+        <!-- Thursday Rotation Section (for agents covering) -->
+        <div class="profile-section" id="agentRotationSection" style="display: none;">
+          <div class="profile-section-header">
+            <span class="section-icon">📅</span>
+            <span class="section-title">Thursday Meeting Coverage</span>
+          </div>
+          <div id="agentRotationInfo" style="font-size: 13px; padding: 10px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 8px; color: #92400e;">
+            <div style="color: var(--text-secondary);">Loading...</div>
           </div>
         </div>
         
@@ -5815,10 +6662,15 @@ body.dark-mode .open-shift {
             </label>
           </div>
         </div>
-        <!-- Make Up Date (shown by default since Make Up is default) -->
+        <!-- Make Up Date(s) - supports multiple dates -->
         <div id="agMakeUpWrap" style="margin-bottom:16px;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Make Up Date</label>
-          <input type="date" id="agMakeUpDate" style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;">
+          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Make Up Date(s)</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="date" id="agMakeUpDate" style="flex:1; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;">
+            <button type="button" onclick="addMakeUpDate()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">+ Add</button>
+          </div>
+          <div id="makeUpDatesList" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 6px;">💡 Add multiple dates if you need to spread make-up time across several days</div>
         </div>
         <!-- Reason -->
         <div style="margin-bottom:16px;">
@@ -6308,6 +7160,273 @@ if (typeof window !== 'undefined') {
     document.addEventListener('DOMContentLoaded', initDarkMode);
   } else {
     initDarkMode();
+  }
+}
+
+// ============================================
+// [SECTION 3.5] USER PREFERENCES & FEATURES
+// ============================================
+const USER_PREFS_KEY = 'musely_user_prefs';
+
+function getUserPrefs() {
+  try {
+    const saved = localStorage.getItem(USER_PREFS_KEY);
+    return saved ? JSON.parse(saved) : { shiftView: 'grid', timezone: 'PST' };
+  } catch (e) {
+    return { shiftView: 'grid', timezone: 'PST' };
+  }
+}
+
+function saveUserPrefs(prefs) {
+  try {
+    localStorage.setItem(USER_PREFS_KEY, JSON.stringify(prefs));
+  } catch (e) {
+    console.error('Failed to save preferences:', e);
+  }
+}
+
+// Initialize user preferences
+function initUserPrefs() {
+  const prefs = getUserPrefs();
+  
+  // Apply view preference
+  if (prefs.shiftView === 'list') {
+    document.querySelectorAll('.shifts-grid').forEach(g => g.classList.add('view-list'));
+    updateViewToggleIcon(true);
+  }
+  
+  // Apply timezone preference
+  const tzRadio = document.querySelector(`input[name="timezone"][value="${prefs.timezone}"]`);
+  if (tzRadio) tzRadio.checked = true;
+}
+
+// View Toggle (Grid vs List)
+function toggleShiftView() {
+  const prefs = getUserPrefs();
+  const isList = prefs.shiftView === 'list';
+  prefs.shiftView = isList ? 'grid' : 'list';
+  saveUserPrefs(prefs);
+  
+  document.querySelectorAll('.shifts-grid').forEach(g => {
+    g.classList.toggle('view-list', !isList);
+  });
+  
+  updateViewToggleIcon(!isList);
+  toast(!isList ? '📋 List view enabled' : '📊 Grid view enabled', 'info');
+}
+
+function updateViewToggleIcon(isList) {
+  const icon = document.getElementById('viewToggleIcon');
+  if (!icon) return;
+  
+  if (isList) {
+    // List icon
+    icon.innerHTML = '<path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill="currentColor"/>';
+  } else {
+    // Grid icon
+    icon.innerHTML = '<path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" fill="currentColor"/>';
+  }
+}
+
+// Timezone Functions
+function toggleTimezoneDropdown() {
+  const dropdown = document.getElementById('timezoneDropdown');
+  if (dropdown) {
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function setUserTimezone(tz) {
+  const prefs = getUserPrefs();
+  prefs.timezone = tz;
+  saveUserPrefs(prefs);
+  
+  toggleTimezoneDropdown();
+  toast(`🌐 Timezone set to ${tz}`, 'info');
+  
+  // Re-render to show new times
+  if (typeof renderScheduleView === 'function') {
+    renderScheduleView();
+  }
+}
+
+// Convert PST time to user's timezone
+function convertTimeToUserTz(pstHour) {
+  const prefs = getUserPrefs();
+  if (prefs.timezone === 'PST') return pstHour;
+  
+  // Timezone offsets from PST (positive = ahead)
+  const offsets = { 'PST': 0, 'MST': 1, 'CST': 2, 'EST': 3 };
+  const offset = offsets[prefs.timezone] || 0;
+  return pstHour + offset;
+}
+
+// Format time with both user TZ and PST reference
+function formatTimeWithTz(pstHour) {
+  const prefs = getUserPrefs();
+  const userHour = convertTimeToUserTz(pstHour);
+  
+  // Format as 12-hour time
+  const formatHour = (h) => {
+    const hr = h % 24;
+    const suffix = hr >= 12 ? 'PM' : 'AM';
+    const displayHr = hr % 12 || 12;
+    return `${displayHr}:00 ${suffix}`;
+  };
+  
+  if (prefs.timezone === 'PST') {
+    return formatHour(pstHour);
+  }
+  return `${formatHour(userHour)} (${formatHour(pstHour)} PST)`;
+}
+
+// Close timezone dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('timezoneDropdown');
+  const btn = document.getElementById('btnTimezone');
+  if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+
+// Google Calendar Export
+function exportToGoogleCalendar() {
+  const myName = window._myName || "";
+  if (!myName) {
+    toast("Please sign in to export your schedule", "error");
+    return;
+  }
+  
+  // Get current week's shifts for this agent
+  const shifts = (_filteredData || []).filter(s => 
+    s.person && s.person.toLowerCase().trim() === myName.toLowerCase().trim()
+  );
+  
+  if (shifts.length === 0) {
+    toast("No shifts found to export", "info");
+    return;
+  }
+  
+  Swal.fire({
+    title: '📅 Export to Google Calendar',
+    html: `
+      <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+        <p>Export <strong>${shifts.length} shift(s)</strong> to your Google Calendar?</p>
+        <p style="font-size: 12px; color: #64748b; margin-top: 8px;">Each shift will open in a new tab for you to add.</p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Export All',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#4285f4'
+  }).then(result => {
+    if (result.isConfirmed) {
+      exportShiftsToGCal(shifts);
+    }
+  });
+}
+
+function exportShiftsToGCal(shifts) {
+  const sorted = [...shifts].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  let exported = 0;
+  
+  sorted.forEach((shift, idx) => {
+    setTimeout(() => {
+      const title = encodeURIComponent(`${shift.team || 'Work'} Shift`);
+      const date = (shift.date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+      
+      // Parse shift times
+      let startHour = 9, endHour = 17;
+      if (shift.start) startHour = Math.floor(parseFloat(shift.start));
+      if (shift.end) endHour = Math.floor(parseFloat(shift.end));
+      
+      const startDT = `${date}T${String(startHour).padStart(2, '0')}0000`;
+      const endDT = `${date}T${String(endHour).padStart(2, '0')}0000`;
+      const details = encodeURIComponent(shift.notes || 'Scheduled shift');
+      
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDT}/${endDT}&details=${details}&ctz=America/Los_Angeles`;
+      
+      window.open(gcalUrl, '_blank');
+      exported++;
+      
+      if (exported === sorted.length) {
+        toast(`✅ Opened ${exported} shift(s) for calendar export`, 'success');
+      }
+    }, idx * 600); // Stagger to avoid popup blocker
+  });
+}
+
+// ============================================
+// MULTIPLE MAKE-UP DATES
+// ============================================
+let _selectedMakeUpDates = [];
+
+function addMakeUpDate() {
+  const dateInput = document.getElementById("agMakeUpDate");
+  const date = dateInput ? dateInput.value : "";
+  
+  if (!date) {
+    toast("Please select a date first", "error");
+    return;
+  }
+  
+  if (_selectedMakeUpDates.includes(date)) {
+    toast("This date is already added", "error");
+    return;
+  }
+  
+  _selectedMakeUpDates.push(date);
+  dateInput.value = ""; // Clear for next
+  renderMakeUpDatesList();
+  toast(`Added: ${new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`, 'success');
+}
+
+function removeMakeUpDate(date) {
+  _selectedMakeUpDates = _selectedMakeUpDates.filter(d => d !== date);
+  renderMakeUpDatesList();
+}
+
+function renderMakeUpDatesList() {
+  const container = document.getElementById("makeUpDatesList");
+  if (!container) return;
+  
+  if (_selectedMakeUpDates.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  container.innerHTML = _selectedMakeUpDates.map(date => {
+    const d = new Date(date + 'T12:00:00');
+    const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return `
+      <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); color: #1e40af; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #93c5fd;">
+        📅 ${formatted}
+        <button type="button" onclick="removeMakeUpDate('${date}')" style="background: none; border: none; color: #1e40af; cursor: pointer; font-size: 16px; line-height: 1; padding: 0; font-weight: bold;">×</button>
+      </span>
+    `;
+  }).join('');
+}
+
+function resetMakeUpDates() {
+  _selectedMakeUpDates = [];
+  renderMakeUpDatesList();
+}
+
+function getMakeUpDatesString() {
+  if (_selectedMakeUpDates.length === 0) {
+    const single = document.getElementById("agMakeUpDate");
+    return single ? single.value : "";
+  }
+  return _selectedMakeUpDates.join(', ');
+}
+
+// Initialize preferences on page load
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initUserPrefs);
+  } else {
+    setTimeout(initUserPrefs, 100);
   }
 }
   
@@ -6809,25 +7928,35 @@ function clearScheduleCache() {
   // ============================================
   // [SECTION 6] MANAGER PRESENCE TRACKING
   // ============================================
-  function sendManagerHeartbeat() {
-    if (!window._isManager || !window._myName) return;
-
-    // Determine current view and area
+  function getPresenceContext() {
     let view = "Daily Schedule";
     let area = "";
+    let isEditing = false;
+    let editingTarget = null;
 
     if (_view === "metrics") {
       view = "Metrics";
     } else if (_view === "schedule") {
       if (window._isMasterMode) {
-        view = "Master Template";
+        view = _masterEditEnabled ? "Editing Master Schedule" : "Master Schedule";
+        isEditing = _masterEditEnabled;
       } else {
-        view = "Daily Schedule";
+        view = _isEditingSchedule ? "Editing Daily Schedule" : "Daily Schedule";
         area = (typeof _activeTeam !== "undefined" && _activeTeam) ? _activeTeam : "";
+        isEditing = _isEditingSchedule;
+        editingTarget = _editing ? `${_editing.person || ''} - ${_editing.dateLabel || ''}` : null;
       }
     }
 
-    console.log(`[Presence] Sending heartbeat: ${window._myName} - ${view}`);
+    return { view, area, isEditing, editingTarget };
+  }
+
+  function sendManagerHeartbeat() {
+    if (!window._isManager || !window._myName) return;
+
+    const { view, area, isEditing, editingTarget } = getPresenceContext();
+
+    console.log(`[Presence] Sending heartbeat: ${window._myName} - ${view}${isEditing ? ' (editing)' : ''}`);
 
     fetch('./?action=manager/heartbeat', {
       method: 'POST',
@@ -6835,7 +7964,9 @@ function clearScheduleCache() {
       body: JSON.stringify({
         managerName: window._myName,
         view: view,
-        area: area
+        area: area,
+        isEditing: isEditing,
+        editingTarget: editingTarget
       })
     })
     .then(res => res.json())
@@ -6872,7 +8003,7 @@ function clearScheduleCache() {
     }
   }
 
-  // Display manager presence in UI - Modern Design
+  // Display manager presence in UI - Modern Design with Conflict Detection
   function displayManagerPresence(managers) {
     // Get or create presence indicator
     let presenceEl = document.getElementById('managerPresenceIndicator');
@@ -6894,10 +8025,23 @@ function clearScheduleCache() {
 
     // Filter out current user
     const otherManagers = (managers || []).filter(m => m.managerName !== window._myName);
+    
+    // Check for conflicts (same team being edited)
+    const myPresence = getPresenceContext();
+    const conflicts = otherManagers.filter(m => 
+      m.isEditing && myPresence.isEditing && m.area && myPresence.area && m.area === myPresence.area
+    );
+    
+    // Check who's editing
+    const editingManagers = otherManagers.filter(m => m.isEditing);
 
     const setPresenceVariant = () => {
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many");
-      if (otherManagers.length === 0) {
+      presenceEl.classList.remove("mp-solo","mp-one","mp-many","mp-conflict","mp-editing");
+      if (conflicts.length > 0) {
+        presenceEl.classList.add("mp-conflict");
+      } else if (editingManagers.length > 0) {
+        presenceEl.classList.add("mp-editing");
+      } else if (otherManagers.length === 0) {
         presenceEl.classList.add("mp-solo");
       } else if (otherManagers.length === 1) {
         presenceEl.classList.add("mp-one");
@@ -6906,41 +8050,55 @@ function clearScheduleCache() {
       }
     };
 
-    // Always show presence - even if you're the only one online
-    if (otherManagers.length === 0) {
+    // Show conflict warning if someone else is editing same area
+    if (conflicts.length > 0) {
+      const conflictNames = conflicts.map(m => m.managerName.split(' ')[0]).join(', ');
+      presenceEl.innerHTML = `
+        <span class="presence-dot conflict"></span>
+        <span class="presence-conflict-text">⚠️ ${conflictNames} editing same area</span>
+      `;
+      presenceEl.title = `Conflict: ${conflicts.map(m => `${m.managerName} is editing ${m.area}`).join('\n')}`;
+      setPresenceVariant();
+      
+    } else if (otherManagers.length === 0) {
       // Only you are online
       presenceEl.innerHTML = `
         <span class="presence-dot"></span>
         <span class="presence-name">Online</span>
       `;
-      presenceEl.title = "You are the only manager currently viewing the scheduler";
+      presenceEl.title = `You are viewing ${myPresence.view}${myPresence.area ? ` (${myPresence.area})` : ""}`;
       setPresenceVariant();
 
     } else if (otherManagers.length === 1) {
       const m = otherManagers[0];
+      const editingIndicator = m.isEditing ? '<span class="presence-editing-badge">✏️</span>' : '';
       presenceEl.innerHTML = `
-        <span class="presence-dot"></span>
+        <span class="presence-dot${m.isEditing ? ' editing' : ''}"></span>
         <span class="presence-name">${m.managerName.split(' ')[0]}</span>
+        ${editingIndicator}
         <span class="presence-view">${m.view}</span>
       `;
-      presenceEl.title = `${m.managerName} is viewing ${m.view}${m.area ? ` (${m.area})` : ''}`;
+      presenceEl.title = `${m.managerName} is ${m.isEditing ? 'editing' : 'viewing'} ${m.view}${m.area ? ` (${m.area})` : ''}`;
       setPresenceVariant();
 
     } else {
+      const editingCount = editingManagers.length;
       presenceEl.innerHTML = `
-        <span class="presence-dot"></span>
+        <span class="presence-dot${editingCount > 0 ? ' editing' : ''}"></span>
         <span class="presence-count">${otherManagers.length + 1} online</span>
+        ${editingCount > 0 ? `<span class="presence-editing-badge">${editingCount} editing</span>` : ''}
       `;
       presenceEl.title = otherManagers.map(m => 
-        `${m.managerName}: ${m.view}${m.area ? ` (${m.area})` : ''}`
+        `${m.managerName}: ${m.isEditing ? '✏️ ' : ''}${m.view}${m.area ? ` (${m.area})` : ''}`
       ).join('\n');
       setPresenceVariant();
-
     }
 
     // Add click handler for details popup
     presenceEl.onclick = function() {
       const now = new Date();
+      const myPresence = getPresenceContext();
+      const myViewLabel = `${myPresence.view}${myPresence.area ? ` • ${myPresence.area}` : ""}`;
       
       let html = `
         <div style="text-align: left; font-size: 14px; max-height: 300px; overflow-y: auto;">
@@ -6952,7 +8110,7 @@ function clearScheduleCache() {
             <div style="flex:1;">
               <div style="font-weight:700; color:#1e293b; font-size:14px;">${window._myName || 'You'} <span style="font-size:11px; color:#b37e78;">(You)</span></div>
               <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                📍 Currently viewing
+                📍 ${myViewLabel}
               </div>
             </div>
             <div style="font-size:11px; color:#b37e78; background:#f0e6e4; padding:4px 8px; border-radius:6px;">
@@ -6964,13 +8122,20 @@ function clearScheduleCache() {
       if (otherManagers.length > 0) {
         html += otherManagers.map(m => {
           const ago = getTimeAgo(m.lastHeartbeat);
+          const editingBadge = m.isEditing 
+            ? `<span style="font-size:10px; padding:2px 6px; background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); border-radius:4px; color:#b45309; font-weight:600; margin-left:6px;">✏️ Editing</span>` 
+            : '';
+          const borderColor = m.isEditing ? '#f59e0b' : '#8f7a77';
+          const bgColor = m.isEditing 
+            ? 'linear-gradient(135deg, #fefce8 0%, #fef3c7 100%)' 
+            : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
           return `
-            <div style="display:flex; align-items:center; gap:12px; padding:14px; margin-bottom:10px; background:linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius:12px; border-left:4px solid #8f7a77;">
-              <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #a08885 0%, #8f7a77 100%); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:16px;">
+            <div style="display:flex; align-items:center; gap:12px; padding:14px; margin-bottom:10px; background:${bgColor}; border-radius:12px; border-left:4px solid ${borderColor};">
+              <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, ${m.isEditing ? '#f59e0b' : '#a08885'} 0%, ${m.isEditing ? '#d97706' : '#8f7a77'} 100%); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:16px;">
                 ${m.managerName.charAt(0).toUpperCase()}
               </div>
               <div style="flex:1;">
-                <div style="font-weight:700; color:#1e293b; font-size:14px;">${m.managerName}</div>
+                <div style="font-weight:700; color:#1e293b; font-size:14px;">${m.managerName}${editingBadge}</div>
                 <div style="font-size:12px; color:#64748b; margin-top:2px;">
                   📍 ${m.view}${m.area ? ` • ${m.area}` : ''}
                 </div>
@@ -7647,6 +8812,13 @@ function updateCacheIndicator(fromCache) {
   
   // Render the new Single Day view
   renderScheduleView();
+  
+  // Update agent schedule banner (agents only)
+  if (!window._isManager) {
+    updateAgentScheduleBanner();
+    // Load assignments for dashboard banner
+    loadAgentDashboardAssignments();
+  }
   
   // Update the coverage banner (Managers only)
   if (window._isManager) {
@@ -8602,8 +9774,11 @@ async function regenerateSchedule() {
   const newStart = document.getElementById("modalStart").value;
   const newEnd = document.getElementById("modalEnd").value;
   const newTeam = getSelectedChannel(); // Use the helper function for custom channels
+  const newRole = document.getElementById("modalRole")?.value || "";
   const origStart = document.getElementById("modalOrigStart").value;
   const origEnd = document.getElementById("modalOrigEnd").value;
+  const origTeam = document.getElementById("modalOrigTeam")?.value || "";
+  const origRole = document.getElementById("modalOrigRole")?.value || "";
   const isAdding = origStart === "NEW";
 
   if (!newStart || !newEnd) {
@@ -8623,14 +9798,37 @@ async function regenerateSchedule() {
 
   const dayData = _masterRawData[day] || [];
   if (isAdding) {
-    dayData.push({ person, start: newStart, end: newEnd, team: newTeam });
+    const newShift = { person, start: newStart, end: newEnd, team: newTeam };
+    if (newRole) newShift.role = newRole;
+    dayData.push(newShift);
     _masterRawData[day] = dayData;
   } else {
-    const shiftToUpdate = dayData.find(s => s.person === person && s.start === origStart && s.end === origEnd);
-    if (shiftToUpdate) {
-      shiftToUpdate.start = newStart;
-      shiftToUpdate.end = newEnd;
-      shiftToUpdate.team = newTeam;
+    const sameValue = (a, b) => (a || "") === (b || "");
+    let shiftToUpdate = dayData.find(s =>
+      s.person === person &&
+      s.start === origStart &&
+      s.end === origEnd &&
+      sameValue(s.team, origTeam) &&
+      sameValue(s.role, origRole)
+    );
+    if (!shiftToUpdate) {
+      shiftToUpdate = dayData.find(s =>
+        s.person === person &&
+        s.start === origStart &&
+        s.end === origEnd
+      );
+    }
+    if (!shiftToUpdate) {
+      toast("Shift not found. Try re-opening the shift.", "error");
+      return;
+    }
+    shiftToUpdate.start = newStart;
+    shiftToUpdate.end = newEnd;
+    shiftToUpdate.team = newTeam;
+    if (newRole) {
+      shiftToUpdate.role = newRole;
+    } else {
+      delete shiftToUpdate.role;
     }
   }
 
@@ -8847,6 +10045,8 @@ function deleteShift() {
   const day = document.getElementById("modalDay").value;
   const origStart = document.getElementById("modalOrigStart").value;
   const origEnd = document.getElementById("modalOrigEnd").value;
+  const origTeam = document.getElementById("modalOrigTeam")?.value || "";
+  const origRole = document.getElementById("modalOrigRole")?.value || "";
 
   // ✅ MASTER MODE = draft-only delete (no backend)
   if (_isMasterMode) {
@@ -8856,9 +10056,25 @@ function deleteShift() {
     }
 
     const dayData = _masterRawData[day] || [];
-    _masterRawData[day] = dayData.filter(s =>
-      !(s.person === person && s.start === origStart && s.end === origEnd)
-    );
+    const sameValue = (a, b) => (a || "") === (b || "");
+    let removed = false;
+    _masterRawData[day] = dayData.filter(s => {
+      if (removed) return true;
+      const matches = s.person === person &&
+        s.start === origStart &&
+        s.end === origEnd &&
+        sameValue(s.team, origTeam) &&
+        sameValue(s.role, origRole);
+      if (matches) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    if (!removed) {
+      toast("Shift not found. Try re-opening the shift.", "error");
+      return;
+    }
 
     renderMasterView(_masterRawData);
     closeModal();
@@ -9404,6 +10620,694 @@ function showToast(message, type = 'info') {
 function closeStaffingModal() {
   $("staffingModal").style.display = "none";
 }
+
+// ============================================
+// MEETING ROTATION MODAL FUNCTIONS (Enhanced)
+// ============================================
+let _currentLcAgents = [];
+let _currentPtoAgents = [];
+let _lcEligibleAgents = []; // Agents with LC experience
+
+async function openMeetingRotationModal() {
+  const modal = $("meetingRotationModal");
+  modal.style.display = "flex";
+  
+  // Reset state
+  _currentLcAgents = [];
+  _currentPtoAgents = [];
+  _lcEligibleAgents = [];
+  
+  // Set default to next Thursday first (needed for eligible endpoint)
+  const today = new Date();
+  const daysUntilThursday = (4 - today.getDay() + 7) % 7;
+  const nextThursday = new Date(today);
+  nextThursday.setDate(today.getDate() + (daysUntilThursday === 0 ? 7 : daysUntilThursday));
+  const defaultDate = nextThursday.toISOString().split('T')[0];
+  $("rotationDate").value = defaultDate;
+  
+  // Populate agent dropdowns - use _peopleMeta or fetch from API
+  let people = [];
+  if (typeof _peopleMeta !== 'undefined' && Array.isArray(_peopleMeta) && _peopleMeta.length > 0) {
+    people = _peopleMeta;
+  } else if (window.__peopleCache && Array.isArray(window.__peopleCache) && window.__peopleCache.length > 0) {
+    people = window.__peopleCache;
+  } else {
+    // Fetch from API as fallback
+    try {
+      const res = await fetch("/people");
+      if (res.ok) {
+        const data = await res.json();
+        people = data.people || [];
+        window.__peopleCache = people;
+      }
+    } catch (e) {
+      console.error("Failed to fetch people for rotation modal:", e);
+    }
+  }
+  
+  // Fetch LC eligible agents (historical LC workers)
+  try {
+    const eligibleRes = await fetch(`/meeting-rotation/eligible?date=${defaultDate}&type=thursday`);
+    const eligibleData = await eligibleRes.json();
+    if (eligibleData.ok) {
+      _lcEligibleAgents = eligibleData.historicalLcAgents || [];
+    }
+  } catch (e) {
+    console.error("Failed to fetch LC eligible agents:", e);
+  }
+  
+  // Build dropdown options - prioritize LC agents
+  populateRotationDropdowns(people);
+  
+  // Set defaults
+  $("rotationMeetingType").value = "thursday";
+  $("rotationTimeEST").value = "3:00 PM - 4:15 PM";
+  convertMeetingTime();
+  onMeetingTypeChange();
+  
+  loadRotationForDate();
+  loadRotationHistory();
+  loadFairnessStats(); // Load fairness stats when modal opens
+  renderLcAgentsChips();
+  renderPtoAgentsChips();
+}
+
+// Populate rotation dropdowns with LC agents prioritized
+function populateRotationDropdowns(people) {
+  const activeAgents = people.filter(p => p.active !== false);
+  
+  // Separate LC agents and others
+  const lcAgents = activeAgents.filter(p => _lcEligibleAgents.includes(p.name));
+  const otherAgents = activeAgents.filter(p => !_lcEligibleAgents.includes(p.name));
+  
+  // Build options with LC agents first, then a separator, then others
+  let rotationOptions = '<option value="">-- Select --</option>';
+  
+  if (lcAgents.length > 0) {
+    rotationOptions += '<optgroup label="★ Live Chat Agents">';
+    rotationOptions += lcAgents.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    rotationOptions += '</optgroup>';
+  }
+  
+  if (otherAgents.length > 0) {
+    rotationOptions += '<optgroup label="Other Agents">';
+    rotationOptions += otherAgents.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    rotationOptions += '</optgroup>';
+  }
+  
+  // LC-specific dropdowns (Captain, Backup, LC Agents)
+  $("rotationCaptain").innerHTML = rotationOptions;
+  $("rotationBackup1").innerHTML = rotationOptions;
+  $("rotationBackup2").innerHTML = rotationOptions;
+  $("addLcAgentSelect").innerHTML = rotationOptions;
+  
+  // All agents for PTO (All Hands)
+  const allAgentOptions = '<option value="">-- Select --</option>' + 
+    activeAgents.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  $("addPtoAgentSelect").innerHTML = allAgentOptions;
+}
+
+function closeMeetingRotationModal() {
+  $("meetingRotationModal").style.display = "none";
+}
+
+function onMeetingTypeChange() {
+  const meetingType = $("rotationMeetingType").value;
+  const allHandsSection = $("allHandsPtoSection");
+  const timeSelect = $("rotationTimeEST");
+  
+  if (meetingType === "allhands") {
+    allHandsSection.style.display = "block";
+    timeSelect.value = "7:00 PM - 8:00 PM";
+  } else {
+    allHandsSection.style.display = "none";
+    timeSelect.value = "3:00 PM - 4:15 PM";
+  }
+  convertMeetingTime();
+}
+
+function convertMeetingTime() {
+  const estTime = $("rotationTimeEST").value;
+  const pstInput = $("rotationTimePST");
+  
+  // EST to PST (EST is 3 hours ahead)
+  const timeMap = {
+    "3:00 PM - 4:15 PM": "12:00 PM - 1:15 PM",
+    "3:45 PM - 5:00 PM": "12:45 PM - 2:00 PM",
+    "7:00 PM - 8:00 PM": "4:00 PM - 5:00 PM"
+  };
+  
+  pstInput.value = timeMap[estTime] || estTime;
+}
+
+function addLcAgent() {
+  const select = $("addLcAgentSelect");
+  const agent = select.value;
+  if (!agent) return;
+  if (_currentLcAgents.includes(agent)) {
+    toast("Agent already added", "error");
+    return;
+  }
+  _currentLcAgents.push(agent);
+  select.value = "";
+  renderLcAgentsChips();
+}
+
+function removeLcAgent(agent) {
+  _currentLcAgents = _currentLcAgents.filter(a => a !== agent);
+  renderLcAgentsChips();
+}
+
+function renderLcAgentsChips() {
+  const container = $("lcAgentsContainer");
+  if (_currentLcAgents.length === 0) {
+    container.innerHTML = '<span style="color: #64748b; font-size: 10px; font-style: italic;">None assigned</span>';
+    return;
+  }
+  container.innerHTML = _currentLcAgents.map(agent => `
+    <span style="display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; background: #1e40af; color: white; border-radius: 10px; font-size: 10px;">
+      ${agent}
+      <button type="button" onclick="removeLcAgent('${agent}')" style="background: none; border: none; color: white; cursor: pointer; font-size: 12px; padding: 0 2px; line-height: 1;">×</button>
+    </span>
+  `).join('');
+}
+
+function addPtoAgent() {
+  const select = $("addPtoAgentSelect");
+  const agent = select.value;
+  if (!agent) return;
+  if (_currentPtoAgents.includes(agent)) {
+    toast("Agent already added", "error");
+    return;
+  }
+  _currentPtoAgents.push(agent);
+  select.value = "";
+  renderPtoAgentsChips();
+}
+
+function removePtoAgent(agent) {
+  _currentPtoAgents = _currentPtoAgents.filter(a => a !== agent);
+  renderPtoAgentsChips();
+}
+
+function renderPtoAgentsChips() {
+  const container = $("allHandsPtoAgents");
+  if (_currentPtoAgents.length === 0) {
+    container.innerHTML = '<span style="color: #64748b; font-size: 10px; font-style: italic;">None</span>';
+    return;
+  }
+  container.innerHTML = _currentPtoAgents.map(agent => `
+    <span style="display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; background: #9d174d; color: white; border-radius: 10px; font-size: 10px;">
+      ${agent}
+      <button type="button" onclick="removePtoAgent('${agent}')" style="background: none; border: none; color: white; cursor: pointer; font-size: 12px; padding: 0 2px; line-height: 1;">×</button>
+    </span>
+  `).join('');
+}
+
+async function loadRotationForDate() {
+  const date = $("rotationDate").value;
+  if (!date) return;
+  
+  const meetingType = $("rotationMeetingType").value;
+  
+  // Refresh eligible agents for this date
+  try {
+    const eligibleRes = await fetch(`/meeting-rotation/eligible?date=${date}&type=${meetingType}`);
+    const eligibleData = await eligibleRes.json();
+    if (eligibleData.ok) {
+      _lcEligibleAgents = eligibleData.historicalLcAgents || [];
+      // Re-populate dropdowns with updated eligible agents
+      const people = window.__peopleCache || [];
+      if (people.length > 0) {
+        populateRotationDropdowns(people);
+      }
+    }
+  } catch (e) {
+    console.error("Failed to refresh LC eligible agents:", e);
+  }
+  
+  try {
+    const res = await fetch(`/meeting-rotation/list?start=${date}&end=${date}`);
+    const data = await res.json();
+    
+    if (data.rotations && data.rotations.length > 0) {
+      const r = data.rotations[0];
+      $("rotationMeetingType").value = r.meetingType || "thursday";
+      $("rotationTimeEST").value = r.meetingTimeEST || "3:00 PM - 4:15 PM";
+      $("rotationTimePST").value = r.meetingTimePST || "";
+      $("rotationCaptain").value = r.captain || "";
+      $("rotationBackup1").value = r.backup1 || "";
+      $("rotationBackup2").value = r.backup2 || "";
+      $("rotationNotes").value = r.notes || "";
+      _currentLcAgents = r.lcAgents || [];
+      _currentPtoAgents = r.allHandsPtoAgents || [];
+      onMeetingTypeChange();
+      convertMeetingTime();
+    } else {
+      // Clear for new date
+      $("rotationCaptain").value = "";
+      $("rotationBackup1").value = "";
+      $("rotationBackup2").value = "";
+      $("rotationNotes").value = "";
+      _currentLcAgents = [];
+      _currentPtoAgents = [];
+    }
+    renderLcAgentsChips();
+    renderPtoAgentsChips();
+  } catch (err) {
+    console.error("Error loading rotation:", err);
+  }
+}
+
+async function loadRotationHistory() {
+  try {
+    const res = await fetch('/meeting-rotation/list');
+    const data = await res.json();
+    
+    const historyEl = $("rotationHistory");
+    if (!data.rotations || data.rotations.length === 0) {
+      historyEl.innerHTML = '<div style="color: var(--text-secondary);">No rotations saved yet.</div>';
+      return;
+    }
+    
+    historyEl.innerHTML = data.rotations.slice(0, 12).map(r => {
+      const typeEmoji = r.meetingType === "allhands" ? "🎉" : r.meetingType === "wednesday" ? "📆" : "📅";
+      const lcCount = (r.lcAgents || []).length;
+      return `
+        <div style="padding: 6px 8px; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary); margin-bottom: 4px; border-radius: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; cursor: pointer;" onclick="loadRotationByDate('${r.date}')" title="Click to edit">${typeEmoji} ${r.date}</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text-secondary);">${r.meetingTimePST || ''}</span>
+              <button type="button" onclick="deleteRotation('${r.date}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 12px; padding: 2px;" title="Delete">🗑️</button>
+            </div>
+          </div>
+          <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">
+            Capt: <strong>${r.captain || '-'}</strong> | 
+            Backups: ${r.backup1 || '-'}, ${r.backup2 || '-'} | 
+            LC: ${lcCount}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error("Error loading rotation history:", err);
+  }
+}
+
+// Load a specific rotation by date
+function loadRotationByDate(date) {
+  $("rotationDate").value = date;
+  loadRotationForDate();
+}
+
+// Delete a rotation
+async function deleteRotation(date) {
+  const result = await Swal.fire({
+    title: 'Delete Rotation?',
+    text: `Remove meeting rotation for ${date}? This will also remove it from agent schedules.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Delete',
+    confirmButtonColor: '#dc2626'
+  });
+  
+  if (!result.isConfirmed) return;
+  
+  try {
+    const res = await fetch('/meeting-rotation/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date })
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      toast("✅ Rotation deleted", "success");
+      loadRotationHistory();
+      loadFairnessStats();
+      // Clear form if viewing this date
+      if ($("rotationDate").value === date) {
+        $("rotationCaptain").value = "";
+        $("rotationBackup1").value = "";
+        $("rotationBackup2").value = "";
+        $("rotationNotes").value = "";
+        _currentLcAgents = [];
+        _currentPtoAgents = [];
+        renderLcAgentsChips();
+        renderPtoAgentsChips();
+      }
+    } else {
+      toast(data.error || "Failed to delete", "error");
+    }
+  } catch (err) {
+    toast("Error deleting rotation", "error");
+    console.error(err);
+  }
+}
+
+async function loadFairnessStats() {
+  const statsEl = $("fairnessStats");
+  statsEl.innerHTML = '<div style="color: var(--text-secondary);">Loading fairness data...</div>';
+  
+  try {
+    const res = await fetch('/meeting-rotation/fairness?weeks=12');
+    const data = await res.json();
+    
+    if (!data.ok || !data.fairnessReport) {
+      statsEl.innerHTML = '<div style="color: var(--text-secondary);">Could not load fairness data.</div>';
+      return;
+    }
+    
+    // Filter to people with assignments
+    const report = data.fairnessReport.filter(p => p.meetingsMissed > 0 || p.asBackup > 0);
+    
+    if (report.length === 0) {
+      statsEl.innerHTML = '<div style="color: var(--text-secondary);">No rotation history yet. Save some rotations first!</div>';
+      return;
+    }
+    
+    statsEl.innerHTML = `
+      <div style="margin-bottom: 8px; font-size: 10px; color: var(--text-secondary);">
+        📊 Last ${data.lookbackWeeks} weeks (${data.totalMeetings} meetings tracked)
+      </div>
+      <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+        <tr style="background: var(--card-bg);">
+          <th style="padding: 6px; text-align: left; border-bottom: 2px solid var(--border-color);">Agent</th>
+          <th style="padding: 6px; text-align: center; border-bottom: 2px solid var(--border-color);" title="As Backup (attends meeting)">Backup</th>
+          <th style="padding: 6px; text-align: center; border-bottom: 2px solid var(--border-color);" title="As LC Agent (misses meeting)">LC Agent</th>
+          <th style="padding: 6px; text-align: center; border-bottom: 2px solid var(--border-color);" title="Total meetings missed">Missed</th>
+        </tr>
+        ${report.slice(0, 20).map(p => `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 5px;">${p.name}</td>
+            <td style="padding: 5px; text-align: center; color: #10b981;">${p.asBackup || '-'}</td>
+            <td style="padding: 5px; text-align: center; color: #3b82f6;">${p.asLcAgent || '-'}</td>
+            <td style="padding: 5px; text-align: center; font-weight: 700; color: ${p.meetingsMissed > 3 ? '#dc2626' : p.meetingsMissed > 1 ? '#f59e0b' : '#16a34a'};">
+              ${p.meetingsMissed}
+            </td>
+          </tr>
+        `).join('')}
+      </table>
+      <div style="margin-top: 8px; font-size: 9px; color: var(--text-secondary);">
+        💡 Tip: Assign people with <span style="color: #16a34a;">fewer</span> missed meetings as LC Agents for fairness.
+      </div>
+    `;
+  } catch (err) {
+    console.error("Error loading fairness stats:", err);
+    statsEl.innerHTML = '<div style="color: var(--text-secondary);">Error loading fairness data.</div>';
+  }
+}
+
+async function saveRotation() {
+  const date = $("rotationDate").value;
+  const meetingType = $("rotationMeetingType").value;
+  const meetingTimeEST = $("rotationTimeEST").value;
+  const meetingTimePST = $("rotationTimePST").value;
+  const captain = $("rotationCaptain").value;
+  const backup1 = $("rotationBackup1").value;
+  const backup2 = $("rotationBackup2").value;
+  const notes = $("rotationNotes").value;
+  
+  if (!date) return toast("Please select a date", "error");
+  if (!captain) return toast("Please select a Captain", "error");
+  
+  try {
+    const res = await fetch('/meeting-rotation/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        date, 
+        meetingType,
+        meetingTimeEST,
+        meetingTimePST,
+        captain, 
+        backup1, 
+        backup2,
+        lcAgents: _currentLcAgents,
+        notes,
+        allHandsPtoAgents: _currentPtoAgents,
+        manager: window._myName || "Admin"
+      })
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      let msg = "✅ Rotation saved!";
+      if (meetingType === "allhands" && _currentPtoAgents.length > 0) {
+        msg += ` +1h PTO credited to ${_currentPtoAgents.length} agent(s).`;
+      }
+      toast(msg, "success");
+      loadRotationHistory();
+      loadFairnessStats();
+    } else {
+      toast(data.error || "Failed to save", "error");
+    }
+  } catch (err) {
+    toast("Error saving rotation", "error");
+    console.error(err);
+  }
+}
+
+// ============================================
+// WEEKLY ASSIGNMENTS MODAL FUNCTIONS
+// ============================================
+async function openWeeklyAssignmentsModal() {
+  const modal = $("weeklyAssignmentsModal");
+  modal.style.display = "flex";
+  
+  // Populate agent dropdowns - use _peopleMeta or fetch from API
+  let people = [];
+  if (typeof _peopleMeta !== 'undefined' && Array.isArray(_peopleMeta) && _peopleMeta.length > 0) {
+    people = _peopleMeta;
+  } else if (window.__peopleCache && Array.isArray(window.__peopleCache) && window.__peopleCache.length > 0) {
+    people = window.__peopleCache;
+  } else {
+    // Fetch from API as fallback
+    try {
+      const res = await fetch("/people");
+      if (res.ok) {
+        const data = await res.json();
+        people = data.people || [];
+        window.__peopleCache = people;
+      }
+    } catch (e) {
+      console.error("Failed to fetch people for weekly assignments modal:", e);
+    }
+  }
+  
+  const agentOptions = '<option value="">-- Select --</option>' + 
+    people.filter(p => p.active !== false).map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  
+  $("weeklyTips1").innerHTML = agentOptions;
+  $("weeklyTips2").innerHTML = agentOptions;
+  $("weeklyMoments1").innerHTML = agentOptions;
+  $("weeklyMoments2").innerHTML = agentOptions;
+  $("weeklyWalkthroughs").innerHTML = agentOptions;
+  $("weeklyTeamBuilding").innerHTML = agentOptions;
+  $("weeklyVolunteer").innerHTML = agentOptions;
+  $("weeklyCsatWorkshop").innerHTML = agentOptions;
+  
+  // Set default to this Monday
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  $("weeklyAssignmentDate").value = monday.toISOString().split('T')[0];
+  
+  loadWeeklyAssignments();
+  loadWeeklyAssignmentHistory();
+}
+
+function closeWeeklyAssignmentsModal() {
+  $("weeklyAssignmentsModal").style.display = "none";
+}
+
+async function loadWeeklyAssignments() {
+  const weekOf = $("weeklyAssignmentDate").value;
+  if (!weekOf) return;
+  
+  try {
+    const res = await fetch(`/weekly-assignments/list?start=${weekOf}&end=${weekOf}`);
+    const data = await res.json();
+    
+    if (data.assignments && data.assignments.length > 0) {
+      const assignment = data.assignments[0];
+      const tips = assignment.teamMemberTips || [];
+      const moments = assignment.momentsThatMadeSmile || [];
+      
+      $("weeklyTips1").value = tips[0] || "";
+      $("weeklyTips2").value = tips[1] || "";
+      $("weeklyMoments1").value = moments[0] || "";
+      $("weeklyMoments2").value = moments[1] || "";
+      $("weeklyWalkthroughs").value = assignment.ticketWalkthroughs || "";
+      $("weeklyTeamBuilding").value = assignment.teamBuilding || "";
+      $("weeklyVolunteer").value = assignment.teamBuildingVolunteer || "";
+      $("weeklyCsatWorkshop").value = assignment.csatWorkshop || "";
+      $("weeklyEvents").value = (assignment.events || []).join(", ");
+    } else {
+      // Clear fields for new week
+      $("weeklyTips1").value = "";
+      $("weeklyTips2").value = "";
+      $("weeklyMoments1").value = "";
+      $("weeklyMoments2").value = "";
+      $("weeklyWalkthroughs").value = "";
+      $("weeklyTeamBuilding").value = "";
+      $("weeklyVolunteer").value = "";
+      $("weeklyCsatWorkshop").value = "";
+      $("weeklyEvents").value = "";
+    }
+  } catch (err) {
+    console.error("Error loading weekly assignments:", err);
+  }
+}
+
+async function loadWeeklyAssignmentHistory() {
+  try {
+    const res = await fetch('/weekly-assignments/list');
+    const data = await res.json();
+    
+    const historyEl = $("weeklyAssignmentHistory");
+    if (!data.assignments || data.assignments.length === 0) {
+      historyEl.innerHTML = '<div style="color: var(--text-secondary);">No assignments saved yet.</div>';
+      return;
+    }
+    
+    historyEl.innerHTML = data.assignments.slice(0, 8).map(a => {
+      const tips = (a.teamMemberTips || []).join(', ') || '-';
+      const moments = (a.momentsThatMadeSmile || []).join(', ') || '-';
+      return `
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; cursor: pointer;" onclick="loadWeeklyAssignmentByDate('${a.weekOf}')" title="Click to edit">${a.weekOf}</span>
+            <button type="button" onclick="deleteWeeklyAssignment('${a.weekOf}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 12px; padding: 2px;" title="Delete">🗑️</button>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 11px;">Tips: ${tips} | Moments: ${moments}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error("Error loading assignment history:", err);
+  }
+}
+
+// Load a specific weekly assignment by date
+function loadWeeklyAssignmentByDate(weekOf) {
+  $("weeklyAssignmentDate").value = weekOf;
+  loadWeeklyAssignmentForDate(weekOf);
+}
+
+// Load weekly assignment for a specific date
+async function loadWeeklyAssignmentForDate(weekOf) {
+  try {
+    const res = await fetch(`/weekly-assignments/list?start=${weekOf}&end=${weekOf}`);
+    const data = await res.json();
+    
+    if (data.assignments && data.assignments.length > 0) {
+      const a = data.assignments[0];
+      $("weeklyTips1").value = (a.teamMemberTips || [])[0] || "";
+      $("weeklyTips2").value = (a.teamMemberTips || [])[1] || "";
+      $("weeklyMoments1").value = (a.momentsThatMadeSmile || [])[0] || "";
+      $("weeklyMoments2").value = (a.momentsThatMadeSmile || [])[1] || "";
+      $("weeklyWalkthroughs").value = a.ticketWalkthroughs || "";
+      $("weeklyCsatWorkshop").value = a.csatWorkshop || "";
+      $("weeklyTeamBuilding").value = a.teamBuilding || "";
+      $("weeklyVolunteer").value = a.teamBuildingVolunteer || "";
+      $("weeklyEvents").value = (a.events || []).join(", ");
+    }
+  } catch (err) {
+    console.error("Error loading weekly assignment:", err);
+  }
+}
+
+// Delete a weekly assignment
+async function deleteWeeklyAssignment(weekOf) {
+  const result = await Swal.fire({
+    title: 'Delete Weekly Assignment?',
+    text: `Remove assignments for week of ${weekOf}?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Delete',
+    confirmButtonColor: '#dc2626'
+  });
+  
+  if (!result.isConfirmed) return;
+  
+  try {
+    const res = await fetch('/weekly-assignments/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekOf })
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      toast("✅ Weekly assignment deleted", "success");
+      loadWeeklyAssignmentHistory();
+      // Clear form if viewing this date
+      if ($("weeklyAssignmentDate").value === weekOf) {
+        $("weeklyTips1").value = "";
+        $("weeklyTips2").value = "";
+        $("weeklyMoments1").value = "";
+        $("weeklyMoments2").value = "";
+        $("weeklyWalkthroughs").value = "";
+        $("weeklyCsatWorkshop").value = "";
+        $("weeklyTeamBuilding").value = "";
+        $("weeklyVolunteer").value = "";
+        $("weeklyEvents").value = "";
+      }
+    } else {
+      toast(data.error || "Failed to delete", "error");
+    }
+  } catch (err) {
+    toast("Error deleting assignment", "error");
+    console.error(err);
+  }
+}
+
+async function saveWeeklyAssignments() {
+  const weekOf = $("weeklyAssignmentDate").value;
+  
+  if (!weekOf) return toast("Please select a week", "error");
+  
+  const teamMemberTips = [$("weeklyTips1").value, $("weeklyTips2").value].filter(Boolean);
+  const momentsThatMadeSmile = [$("weeklyMoments1").value, $("weeklyMoments2").value].filter(Boolean);
+  const ticketWalkthroughs = $("weeklyWalkthroughs").value;
+  const teamBuilding = $("weeklyTeamBuilding").value;
+  const teamBuildingVolunteer = $("weeklyVolunteer").value;
+  const csatWorkshop = $("weeklyCsatWorkshop").value;
+  const eventsStr = $("weeklyEvents").value;
+  const events = eventsStr ? eventsStr.split(',').map(e => e.trim()).filter(Boolean) : [];
+  
+  try {
+    const res = await fetch('/weekly-assignments/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        weekOf, 
+        teamMemberTips, 
+        momentsThatMadeSmile, 
+        ticketWalkthroughs,
+        teamBuilding,
+        teamBuildingVolunteer,
+        csatWorkshop,
+        events
+      })
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      toast("✅ Weekly assignments saved!", "success");
+      loadWeeklyAssignmentHistory();
+    } else {
+      toast(data.error || "Failed to save", "error");
+    }
+  } catch (err) {
+    toast("Error saving assignments", "error");
+    console.error(err);
+  }
+}
+
   // ============================================
   // [SECTION 11] TIME OFF & PTO
   // ============================================
@@ -9418,8 +11322,23 @@ function closeStaffingModal() {
     const teamName = _editing ? _editing.team : "";
     const radioSelected = document.querySelector('input[name="timeOffType"]:checked');
     const timeOffType = radioSelected ? radioSelected.value : "Make Up";
-    const makeUpDate = $("agMakeUpDate") ? $("agMakeUpDate").value : "";
-    if (timeOffType === "Make Up" && !makeUpDate) return toast("Please select a Make Up date", "error"); 
+    
+    // Handle multiple make-up dates
+    let makeUpDate = getMakeUpDatesString(); // Use new multi-date function
+    let makeUpDates = [..._selectedMakeUpDates];
+    
+    // Fallback to single input if no dates added via chips
+    if (makeUpDates.length === 0) {
+      const singleDate = $("agMakeUpDate") ? $("agMakeUpDate").value : "";
+      if (singleDate) {
+        makeUpDate = singleDate;
+        makeUpDates = [singleDate];
+      }
+    }
+    
+    if (timeOffType === "Make Up" && makeUpDates.length === 0) {
+      return toast("Please add at least one Make Up date", "error");
+    } 
     
     // NEW: Grab duration from radio
     const durationSelected = document.querySelector('input[name="timeOffDuration"]:checked');
@@ -9485,7 +11404,8 @@ function closeStaffingModal() {
         body: JSON.stringify({
           person: window._myName,
           type: timeOffType,
-          makeUpDate: makeUpDate,
+          makeUpDate: makeUpDate, // Comma-separated for compatibility
+          makeUpDates: makeUpDates, // Array of dates
           reason: reason,
           date: dateStr,
           shiftStart: sStart,
@@ -9499,16 +11419,23 @@ function closeStaffingModal() {
 
     if (data.ok) {
       closeAgentModal(); // This calls the function to close the window
+      resetMakeUpDates(); // Clear the selected dates
 
       // Show different messages for Make Up vs PTO
       if (timeOffType === "Make Up") {
+        // Format dates nicely
+        const formattedDates = makeUpDates.map(d => {
+          const date = new Date(d + 'T12:00:00');
+          return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }).join('<br>• ');
+        
         Swal.fire({
           title: 'Make-Up Request Sent!',
           html: `
             <div style="text-align: left; font-size: 14px; line-height: 1.6;">
               <p>Your manager has been notified.</p>
               <p style="margin-top: 12px; padding: 12px; background: #dbeafe; border-left: 3px solid #b37e78; border-radius: 4px;">
-                📌 <strong>Remember:</strong> You must work on <strong>${makeUpDate}</strong> to make up this time.
+                📌 <strong>Remember to make up time on:</strong><br>• ${formattedDates}
               </p>
             </div>
           `,
@@ -10480,6 +12407,117 @@ function updateAgentRangeLabel() {
     label.textContent = `Today → ${_agentScheduleDays} days`;
   }
 }
+
+function updateAgentScheduleBanner() {
+  const banner = $("agentScheduleBanner");
+  if (!banner) return;
+  if (window._isManager || !window._myName) {
+    banner.style.display = "none";
+    return;
+  }
+  if (!_allData || _allData.length === 0) {
+    banner.style.display = "none";
+    return;
+  }
+  banner.style.display = "grid";
+
+  const currentStatus = $("agentCurrentShiftStatus");
+  const currentTime = $("agentCurrentShiftTime");
+  const currentTeam = $("agentCurrentShiftTeam");
+  const currentRole = $("agentCurrentShiftRole");
+  const currentProgressWrap = $("agentCurrentShiftProgressWrap");
+  const currentProgress = $("agentCurrentShiftProgress");
+  const nextStatus = $("agentNextShiftStatus");
+  const nextTime = $("agentNextShiftTime");
+  const nextTeam = $("agentNextShiftTeam");
+  const nextRole = $("agentNextShiftRole");
+  const nextDate = $("agentNextShiftDate");
+
+  const setStatus = (el, text, type) => {
+    if (!el) return;
+    el.textContent = text;
+    el.className = `agent-schedule-pill${type ? ` ${type}` : ""}`;
+  };
+
+  const nowParts = pstParts(new Date());
+  if (!nowParts) return;
+  const todayKey = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
+  const nowDec = parseTimeDecimal(`${nowParts.hour}:${nowParts.minute}`);
+
+  const shifts = _allData
+    .filter(s => s.person === window._myName && !String(s.notes || "").toUpperCase().includes("[OFF]"))
+    .map(s => {
+      const dayKey = s.dayKey || s.dateISO || dayKeyPST(s.date);
+      const startDec = parseTimeDecimal(s.start);
+      const endDec = parseTimeDecimal(s.end);
+      return { ...s, dayKey, startDec, endDec };
+    })
+    .filter(s => s.dayKey && !isNaN(s.startDec) && !isNaN(s.endDec))
+    .sort((a, b) => {
+      if (a.dayKey !== b.dayKey) return a.dayKey.localeCompare(b.dayKey);
+      return a.startDec - b.startDec;
+    });
+
+  if (shifts.length === 0) {
+    setStatus(currentStatus, "Off", "off");
+    if (currentTime) currentTime.textContent = "No active shift";
+    if (currentTeam) currentTeam.textContent = "--";
+    if (currentRole) currentRole.textContent = "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "none";
+
+    setStatus(nextStatus, "None");
+    if (nextTime) nextTime.textContent = "No upcoming shift";
+    if (nextTeam) nextTeam.textContent = "--";
+    if (nextRole) nextRole.textContent = "";
+    if (nextDate) nextDate.textContent = "";
+    return;
+  }
+
+  const currentShift = shifts.find(s =>
+    s.dayKey === todayKey && s.startDec <= nowDec && s.endDec > nowDec
+  );
+
+  if (currentShift) {
+    setStatus(currentStatus, "On shift", "active");
+    if (currentTime) currentTime.textContent = `${toAmPm(currentShift.start)} - ${toAmPm(currentShift.end)}`;
+    if (currentTeam) currentTeam.textContent = currentShift.team || "General";
+    if (currentRole) currentRole.textContent = currentShift.role ? `• ${currentShift.role}` : "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "block";
+    if (currentProgress) {
+      const duration = Math.max(currentShift.endDec - currentShift.startDec, 0.01);
+      const elapsed = Math.min(Math.max(nowDec - currentShift.startDec, 0), duration);
+      const pct = Math.min(Math.max((elapsed / duration) * 100, 0), 100);
+      currentProgress.style.width = `${pct.toFixed(0)}%`;
+    }
+  } else {
+    setStatus(currentStatus, "Off", "off");
+    if (currentTime) currentTime.textContent = "No active shift";
+    if (currentTeam) currentTeam.textContent = "--";
+    if (currentRole) currentRole.textContent = "";
+    if (currentProgressWrap) currentProgressWrap.style.display = "none";
+    if (currentProgress) currentProgress.style.width = "0%";
+  }
+
+  const upcomingShift = shifts.find(s =>
+    s.dayKey > todayKey || (s.dayKey === todayKey && s.startDec > nowDec)
+  );
+
+  if (upcomingShift) {
+    setStatus(nextStatus, "Upcoming");
+    if (nextTime) nextTime.textContent = `${toAmPm(upcomingShift.start)} - ${toAmPm(upcomingShift.end)}`;
+    if (nextTeam) nextTeam.textContent = upcomingShift.team || "General";
+    if (nextRole) nextRole.textContent = upcomingShift.role ? `• ${upcomingShift.role}` : "";
+    if (nextDate) {
+      nextDate.textContent = upcomingShift.dayKey === todayKey ? "Today" : displayDayLabel(upcomingShift.dayKey);
+    }
+  } else {
+    setStatus(nextStatus, "None");
+    if (nextTime) nextTime.textContent = "No upcoming shift";
+    if (nextTeam) nextTeam.textContent = "--";
+    if (nextRole) nextRole.textContent = "";
+    if (nextDate) nextDate.textContent = "";
+  }
+}
   async function runUndo() { 
     if (!_lastUndo) return;
     try {
@@ -10576,6 +12614,33 @@ function updateAgentRangeLabel() {
        `;
      });
   }
+
+// Load agent dashboard assignments (meeting rotation and weekly assignments)
+async function loadAgentDashboardAssignments() {
+  if (!window._myName) return;
+  
+  try {
+    // Load both in parallel
+    await Promise.all([
+      loadAgentWeeklyAssignments(),
+      loadAgentRotationInfo()
+    ]);
+    
+    // Check if banner should be hidden (no assignments found)
+    const banner = $("agentAssignmentsBanner");
+    const meetingCard = $("agentMeetingRoleCard");
+    const assignCard = $("agentWeeklyAssignCard");
+    
+    if (banner) {
+      const hasMeetingRole = meetingCard && meetingCard.style.display !== "none";
+      const hasAssignments = assignCard && assignCard.style.display !== "none";
+      banner.style.display = (hasMeetingRole || hasAssignments) ? "block" : "none";
+    }
+  } catch (err) {
+    console.error("Error loading dashboard assignments:", err);
+  }
+}
+
   // Switch day by offset (-1 or +1)
 function changeDay(offset) {
     if (!_selectedDateISO) return;
@@ -10615,8 +12680,6 @@ function handleDateJump(val) {
      $("pName").innerText = data.name; 
      $("pEmail").innerText = data.email; 
      if($("pRole")) $("pRole").innerText = data.role || "--";
-     $("pSolved").innerText = data.solvedWeek ?? "--"; 
-     $("pCSAT").innerText = formatCsatDisplay(data.csatScore);
      
      const q = "type:ticket status<solved assignee:\"" + data.name + "\"";
      const url = "https://musely.zendesk.com/agent/search/1?query=" + encodeURIComponent(q);
@@ -10652,8 +12715,6 @@ function handleDateJump(val) {
      $("profContent").style.display = "block";
      $("pName").innerText = c.agentName; $("pEmail").innerText = c.email; 
      if($("pRole")) $("pRole").innerText = c.role || "--";
-     $("pSolved").innerText = c.solvedWeek ?? "--"; 
-     $("pCSAT").innerText = formatCsatDisplay(c.csatPct);
      
      $("pTickets").innerText = c.openTickets ?? "--";
      $("pLogin").innerText = "Cached";
@@ -10722,6 +12783,9 @@ function handleDateJump(val) {
   function renderMetricsProfileData(data) {
     const loader = document.getElementById("mProfLoader");
     const content = document.getElementById("mProfContent");
+    const ticketsListEl = document.getElementById("mTicketsList");
+    const ticketsEmptyEl = document.getElementById("mTicketsEmpty");
+    
     if (!data || data.error) {
         const errorMsg = data ? data.error : "Unknown error from server";
         loader.style.display = "block";
@@ -10737,9 +12801,32 @@ function handleDateJump(val) {
     if(document.getElementById("mEmail")) document.getElementById("mEmail").innerText = data.email || "--";
     if(document.getElementById("mRole")) document.getElementById("mRole").innerText = data.role || "--";
     
-    if(document.getElementById("mSolved")) document.getElementById("mSolved").innerText = data.solvedWeek ?? "--";
-    if(document.getElementById("mCSAT")) document.getElementById("mCSAT").innerText = formatCsatDisplay(data.csatScore);
     if(document.getElementById("mOpen")) document.getElementById("mOpen").innerText = data.openTickets ?? "--";
+    
+    // Render clickable ticket list for managers
+    if (ticketsListEl) {
+      if (data.openTicketsList && data.openTicketsList.length > 0) {
+        ticketsListEl.innerHTML = data.openTicketsList.map(ticket => {
+          const priorityClass = ticket.priority ? `ticket-priority ${ticket.priority}` : '';
+          const priorityBadge = ticket.priority ? 
+            `<span class="${priorityClass}">${ticket.priority}</span>` : '';
+          
+          return `
+            <a href="${ticket.url}" target="_blank" rel="noopener" class="ticket-list-item">
+              <span class="ticket-id-badge">#${ticket.id}</span>
+              <span class="ticket-subject" title="${(ticket.subject || '').replace(/"/g, '&quot;')}">${ticket.subject || '(No subject)'}</span>
+              ${priorityBadge}
+              <span class="ticket-arrow">→</span>
+            </a>
+          `;
+        }).join('');
+        ticketsListEl.style.display = "block";
+        if (ticketsEmptyEl) ticketsEmptyEl.style.display = "none";
+      } else {
+        ticketsListEl.style.display = "none";
+        if (ticketsEmptyEl) ticketsEmptyEl.style.display = "block";
+      }
+    }
     
     if(document.getElementById("mAvatar")) {
         document.getElementById("mAvatar").src = data.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
@@ -10753,149 +12840,21 @@ function handleDateJump(val) {
             document.getElementById("mLogin").innerText = "Never";
         }
     }
-    // Zendesk link buttons removed; activity panel handles quick insights
-    // Load hourly activity after profile renders
-    applyActivityDateRange();
-    refreshMetricsActivity();
-  }
-  function formatHourLabel(hour) {
-    const h = hour % 24;
-    const ampm = h >= 12 ? "pm" : "am";
-    const display = h % 12 || 12;
-    return `${display}${ampm}`;
-  }
-  function formatHourRangeLabel(hour) {
-    const next = (hour + 1) % 24;
-    return `${formatHourLabel(hour)}-${formatHourLabel(next)}`;
-  }
-  // Track current activity type
-  let _activityType = 'solved';
-  
-  function setActivityType(type) {
-    _activityType = type;
-    // Update button styles
-    const solvedBtn = document.getElementById('activityTypeSolved');
-    const updatesBtn = document.getElementById('activityTypeUpdates');
-    if (solvedBtn && updatesBtn) {
-      if (type === 'solved') {
-        solvedBtn.style.background = '#fff';
-        solvedBtn.style.color = '#0f172a';
-        solvedBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-        updatesBtn.style.background = 'transparent';
-        updatesBtn.style.color = '#64748b';
-        updatesBtn.style.boxShadow = 'none';
-      } else {
-        updatesBtn.style.background = '#fff';
-        updatesBtn.style.color = '#0f172a';
-        updatesBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-        solvedBtn.style.background = 'transparent';
-        solvedBtn.style.color = '#64748b';
-        solvedBtn.style.boxShadow = 'none';
-      }
-    }
-    refreshMetricsActivity();
   }
   
-  function applyActivityDateRange() {
-    const input = document.getElementById("mActivityDate");
-    if (!input) return;
-    const max = pstISODate();
-    const min = pstISODateOffset(-6);
-    input.max = max;
-    input.min = min;
-    if (!input.value || input.value < min || input.value > max) {
-      input.value = max;
-    }
-  }
-  async function refreshMetricsActivity() {
-    const name = (_activeMetricsRequest || document.getElementById("mName")?.innerText || "").trim();
-    const email = (_activeMetricsEmail || "").trim();
-    const dateInput = document.getElementById("mActivityDate");
-    const summaryEl = document.getElementById("mActivitySummary");
-    const listEl = document.getElementById("mActivityList");
-    const emptyEl = document.getElementById("mActivityEmpty");
+  // Browser-side helper: fetch people from the server (uses server-side getCachedMetadata)
+async function fetchPeopleCached() {
+  // optional: cache in memory so we don't refetch repeatedly
+  if (window.__peopleCache && Array.isArray(window.__peopleCache)) return window.__peopleCache;
 
-    if (!name || !summaryEl || !listEl || !emptyEl || !dateInput) return;
+  const res = await fetch("/people");
+  if (!res.ok) throw new Error("Failed to load people metadata");
+  const data = await res.json();
 
-    applyActivityDateRange();
-    const date = dateInput.value || pstISODate();
-    if (!dateInput.value) dateInput.value = date;
-
-    summaryEl.textContent = "Loading activity...";
-    listEl.innerHTML = "";
-    emptyEl.textContent = "";
-
-    try {
-      const emailParam = email ? `&email=${encodeURIComponent(email)}` : "";
-      
-      if (_activityType === 'solved') {
-        // Fetch solved tickets
-        const url = `./?action=zendesk/activity&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&startHour=8&endHour=20${emailParam}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (!data.ok) {
-          summaryEl.textContent = "";
-          emptyEl.textContent = data.error || "Unable to load activity.";
-          return;
-        }
-
-        const partialNote = data.incomplete ? " (partial)" : "";
-        summaryEl.textContent = `Solved tickets on ${data.date} (PST): ${data.total}${partialNote}`;
-        emptyEl.textContent = data.incomplete ? "Partial results due to Zendesk export limits." : "";
-        if (!Array.isArray(data.buckets) || data.buckets.length === 0) {
-          emptyEl.textContent = "No solved tickets found for this date.";
-          return;
-        }
-
-        listEl.innerHTML = data.buckets.map(b => `
-          <div style="background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius:8px; padding:8px; text-align:center;">
-            <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">${formatHourRangeLabel(b.hour)}</div>
-            <div style="font-size:16px; font-weight:800; color:${b.count > 0 ? '#16a34a' : 'var(--text-primary)'}; margin-top:4px;">${b.count}</div>
-          </div>
-        `).join("");
-      } else {
-        // Fetch ticket updates/comments
-        const url = `./?action=zendesk/agent-updates&name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}${emailParam}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (!data.ok) {
-          summaryEl.textContent = "";
-          emptyEl.textContent = data.error || "Unable to load activity.";
-          return;
-        }
-
-        const partialNote = data.incomplete ? " (partial)" : "";
-        summaryEl.textContent = `Ticket updates on ${data.date} (PST): ${data.totalUpdates}${partialNote}`;
-        
-        // Show work hours (8am - 8pm) breakdown
-        const workHours = (data.hourlyBreakdown || []).filter(h => h.hour >= 8 && h.hour <= 20);
-        
-        if (workHours.length === 0 || data.totalUpdates === 0) {
-          emptyEl.textContent = "No ticket updates found for this date.";
-          return;
-        }
-
-        listEl.innerHTML = workHours.map(b => `
-          <div style="background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius:8px; padding:8px; text-align:center;">
-            <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">${formatHourRangeLabel(b.hour)}</div>
-            <div style="font-size:16px; font-weight:800; color:${b.count > 0 ? '#0284c7' : 'var(--text-primary)'}; margin-top:4px;">${b.count}</div>
-          </div>
-        `).join("");
-        
-        // Show most active hours
-        if (data.activeHours && data.activeHours.length > 0) {
-          const topHours = data.activeHours.slice(0, 3).map(h => formatHourLabel(h.hour)).join(", ");
-          emptyEl.textContent = `Most active: ${topHours}`;
-        }
-      }
-    } catch (err) {
-      summaryEl.textContent = "";
-      emptyEl.textContent = "Failed to load activity.";
-      console.error("Metrics activity error:", err);
-    }
-  }
+  window.__peopleCache = data.people || [];
+  return window.__peopleCache;
+}
+  
   // Force refresh - clears DATA cache only, preserves auth session
 function forceRefresh() {
   console.log("🔄 Force refresh triggered");
@@ -11128,7 +13087,7 @@ function groupShifts(data) {
     s.innerHTML=""; 
     if(bl)s.appendChild(new Option("- Select -","")); 
     // ✅ Special handling for role selects - show formatted display name
-    const isRoleSelect = id === "mstRole";
+    const isRoleSelect = id === "mstRole" || id === "modalRole";
     list.forEach(x => {
       const displayName = isRoleSelect ? formatRoleDisplay(x) : x;
       s.appendChild(new Option(displayName, x));
@@ -11761,23 +13720,47 @@ if (!style) {
     // ✅ Helper function to calculate weekly hours for a person
     function calculateWeeklyHours(personRoster) {
       let totalHours = 0;
+      const shouldSkipTeam = (teamName) => {
+        const team = String(teamName || "").toLowerCase();
+        return team.includes("lunch") || team.includes("break") || team.includes("1:1");
+      };
+
       days.forEach(day => {
         const shifts = personRoster[day] || [];
+        const intervals = [];
+
         shifts.forEach(shift => {
-          if (shift.start && shift.end) {
-            // Skip lunch/break entries for hour calculation
-            const team = String(shift.team || "").toLowerCase();
-            if (team.includes("lunch") || team.includes("break") || team.includes("1:1")) {
-              return; // Don't count lunch/breaks in weekly hours
-            }
-            const startH = parseTimeDecimal(shift.start);
-            const endH = parseTimeDecimal(shift.end);
-            if (!isNaN(startH) && !isNaN(endH) && endH > startH) {
-              totalHours += (endH - startH);
-            }
+          if (!shift.start || !shift.end) return;
+          if (shouldSkipTeam(shift.team)) return;
+
+          const startH = parseTimeDecimal(shift.start);
+          const endH = parseTimeDecimal(shift.end);
+          if (!isNaN(startH) && !isNaN(endH) && endH > startH) {
+            intervals.push([startH, endH]);
           }
         });
+
+        if (!intervals.length) return;
+
+        intervals.sort((a, b) => a[0] - b[0]);
+        let [currentStart, currentEnd] = intervals[0];
+        let dayHours = 0;
+
+        for (let i = 1; i < intervals.length; i++) {
+          const [start, end] = intervals[i];
+          if (start <= currentEnd) {
+            currentEnd = Math.max(currentEnd, end);
+          } else {
+            dayHours += (currentEnd - currentStart);
+            currentStart = start;
+            currentEnd = end;
+          }
+        }
+
+        dayHours += (currentEnd - currentStart);
+        totalHours += dayHours;
       });
+
       return totalHours;
     }
     
@@ -11873,86 +13856,11 @@ if (!style) {
     });
 }
 // Triggered when clicking an existing blue chip
-function handleShiftEdit(person, day, start, end, team, docId, assignmentId) {
-    // ✅ Mark as editing to prevent auto-refresh disruption
-    setEditingMode(true);
-    
-    if (_isMasterMode && !_masterEditEnabled) {
-  toast("Click Edit to start making draft changes.", "info");
-  setEditingMode(false);
-  return;
-}
-const docEl = document.getElementById("modalDocId");
-const asgEl = document.getElementById("modalAssignmentId");
-
-if (_isMasterMode) {
-  if (docEl) docEl.value = "";
-  if (asgEl) asgEl.value = "";
-} else {
-  if (docEl) docEl.value = docId || "";
-  if (asgEl) asgEl.value = assignmentId || "";
-}
-    // Populate the inputs
-    document.getElementById("modalEmployee").value = person;
-    document.getElementById("modalDay").value = day;
-    
-    // Ensure format HH:MM for the time inputs
-    document.getElementById("modalStart").value = start.substring(0,5);
-    document.getElementById("modalEnd").value = end.substring(0,5);
-    // Store original times so we know which shift to update later
-    document.getElementById("modalOrigStart").value = start;
-    document.getElementById("modalOrigEnd").value = end;
-    // Populate Channel dropdown with Custom option and select the current channel
-    fillSelect("modalTeam", _teams, false, true); // includeCustom = true
-    if (team) {
-        // Check if team is in the list, if not it's a custom one
-        const teamInList = _teams.includes(team);
-        if (teamInList) {
-          document.getElementById("modalTeam").value = team;
-          document.getElementById("customChannelWrapper").style.display = "none";
-        } else {
-          document.getElementById("modalTeam").value = "__custom__";
-          document.getElementById("modalCustomChannel").value = team;
-          document.getElementById("customChannelWrapper").style.display = "block";
-        }
-    }
-    // Update modal title for editing
-    const modalTitle = document.querySelector("#editShiftModal h3");
-    if (modalTitle) modalTitle.innerText = "Edit Shift";
-    // Show the modal
-    document.getElementById("editShiftModal").style.display = "flex";
+function handleShiftEdit(person, day, start, end, team, docId, assignmentId, role) {
+  openMasterModal(person, day, start, end, team, role);
 }
 function handleCellClick(person, day) {
-    // ✅ Mark as editing to prevent auto-refresh disruption
-    setEditingMode(true);
-    
-    if (_isMasterMode && !_masterEditEnabled) {
-  toast("Click Edit to start making draft changes.", "info");
-  setEditingMode(false);
-  return;
-}
-if (document.getElementById("modalDocId")) document.getElementById("modalDocId").value = "";
-if (document.getElementById("modalAssignmentId")) document.getElementById("modalAssignmentId").value = "";
-
-    // 1. Prepare the Modal for a New Entry
-    document.getElementById("modalEmployee").value = person;
-    document.getElementById("modalDay").value = day;
-    
-    // Default times for a new shift
-    document.getElementById("modalStart").value = "08:00";
-    document.getElementById("modalEnd").value = "17:00";
-    // Clear original times (since this shift doesn't exist yet)
-    document.getElementById("modalOrigStart").value = "NEW";
-    document.getElementById("modalOrigEnd").value = "NEW";
-    // Populate Channel dropdown with Custom option
-    fillSelect("modalTeam", _teams, true, true); // includeCustom = true
-    document.getElementById("customChannelWrapper").style.display = "none";
-    document.getElementById("modalCustomChannel").value = "";
-    
-    // Change UI header to indicate "Adding"
-    document.querySelector("#editShiftModal h3").innerText = "Add New Shift";
-    const modal = document.getElementById("editShiftModal");
-    modal.style.display = "flex";
+  openMasterModal(person, day);
 }
   function toggleMasterPerson(key, dayName) {
     if (_masterSelected.has(key)) {
@@ -11964,25 +13872,90 @@ if (document.getElementById("modalAssignmentId")) document.getElementById("modal
     updateMasterSelectionBar(); 
   }
   function openMasterModal(p,d,s,e,t,r) { 
+    // ✅ Mark as editing to prevent auto-refresh disruption
+    setEditingMode(true);
+    
     // ✅ Check if editing is enabled in master mode
     if (_isMasterMode && !_masterEditEnabled) {
       toast("Click Edit to start making draft changes.", "info");
+      setEditingMode(false);
       return;
     }
     
-    fillSelect("mstTeam", _teams); 
-    fillSelect("mstRole", _roles); 
+    const isAdding = !s || !e;
+    const docEl = document.getElementById("modalDocId");
+    const asgEl = document.getElementById("modalAssignmentId");
+    if (docEl) docEl.value = "";
+    if (asgEl) asgEl.value = "";
     
-    $("mstSub").innerText = s ? `Editing ${p} on ${d}` : `Adding Shift for ${p} on ${d}`;
-    $("mstPerson").value = p; 
-    $("mstDay").value = d; 
+    // Populate the inputs
+    document.getElementById("modalEmployee").value = p;
+    document.getElementById("modalDay").value = d;
     
-    $("mstStart").value = s || ""; 
-    $("mstEnd").value = e || ""; 
-    $("mstTeam").value = t || ""; 
-    $("mstRole").value = r || ""; 
+    const startInput = document.getElementById("modalStart");
+    const endInput = document.getElementById("modalEnd");
     
-    $("masterOverlay").style.display = "flex"; 
+    if (isAdding) {
+      startInput.value = "08:00";
+      endInput.value = "17:00";
+      document.getElementById("modalOrigStart").value = "NEW";
+      document.getElementById("modalOrigEnd").value = "NEW";
+      document.getElementById("modalOrigTeam").value = "NEW";
+      document.getElementById("modalOrigRole").value = "NEW";
+    } else {
+      startInput.value = formatTimeHHMM(s) || "";
+      endInput.value = formatTimeHHMM(e) || "";
+      document.getElementById("modalOrigStart").value = s || "";
+      document.getElementById("modalOrigEnd").value = e || "";
+      document.getElementById("modalOrigTeam").value = t || "";
+      document.getElementById("modalOrigRole").value = r || "";
+    }
+    
+    // Populate Channel + Role dropdowns
+    fillSelect("modalTeam", _teams, isAdding, true);
+    fillSelect("modalRole", _roles, true);
+    
+    const teamSelect = document.getElementById("modalTeam");
+    const customWrapper = document.getElementById("customChannelWrapper");
+    const customInput = document.getElementById("modalCustomChannel");
+    
+    if (!isAdding && t) {
+      const teamInList = _teams.includes(t);
+      if (teamInList) {
+        teamSelect.value = t;
+        if (customWrapper) customWrapper.style.display = "none";
+        if (customInput) customInput.value = "";
+      } else {
+        teamSelect.value = "__custom__";
+        if (customWrapper) customWrapper.style.display = "block";
+        if (customInput) customInput.value = t;
+      }
+    } else {
+      if (teamSelect) teamSelect.value = "";
+      if (customWrapper) customWrapper.style.display = "none";
+      if (customInput) customInput.value = "";
+    }
+    
+    const roleSelect = document.getElementById("modalRole");
+    if (roleSelect) {
+      if (r && !_roles.includes(r)) {
+        roleSelect.appendChild(new Option(formatRoleDisplay(r), r));
+      }
+      roleSelect.value = r || "";
+    }
+    
+    const deleteBtn = document.getElementById("modalDeleteBtn");
+    if (deleteBtn) {
+      deleteBtn.style.visibility = isAdding ? "hidden" : "visible";
+      deleteBtn.style.pointerEvents = isAdding ? "none" : "auto";
+    }
+    
+    // Update modal title
+    const modalTitle = document.querySelector("#editShiftModal h3");
+    if (modalTitle) modalTitle.innerText = isAdding ? "Add New Shift" : "Edit Shift";
+    
+    // Show the modal
+    document.getElementById("editShiftModal").style.display = "flex";
   }
   
   function updateMasterSelectionBar() {
@@ -13659,6 +15632,7 @@ async function clearAgentNotifications() {
     
     if (data.ok) {
       _agentNotifications = [];
+      _agentNotifUnreadCount = 0; // ✅ FIX: Reset unread count to clear badge
       renderAgentNotifications();
       updateAgentNotifBadge();
       toast("✅ Notifications cleared");
@@ -14056,6 +16030,12 @@ function openBalanceModal() {
     
     // Fetch Zendesk stats for agent
     fetchAgentZendeskStats();
+    
+    // Load agent's weekly assignments
+    loadAgentWeeklyAssignments();
+    
+    // Load rotation info (if they're covering Thursday)
+    loadAgentRotationInfo();
   }
   
   $("balanceModal").style.display = "flex";
@@ -14064,16 +16044,20 @@ function openBalanceModal() {
 // Fetch Zendesk stats for agent profile
 async function fetchAgentZendeskStats() {
   const opensEl = $("agentZendeskOpens");
-  const solvedEl = $("agentZendeskSolved");
+  const ticketsListEl = $("agentTicketsList");
+  const ticketsLoadingEl = $("agentTicketsLoading");
+  const ticketsEmptyEl = $("agentTicketsEmpty");
   
-  if (!opensEl || !solvedEl) return;
+  if (!opensEl) return;
   
   // Set loading state
   opensEl.textContent = "...";
-  solvedEl.textContent = "...";
+  if (ticketsLoadingEl) ticketsLoadingEl.style.display = "block";
+  if (ticketsListEl) ticketsListEl.style.display = "none";
+  if (ticketsEmptyEl) ticketsEmptyEl.style.display = "none";
   
   try {
-    // Fetch from agent-profile API (same as metrics view)
+    // Fetch from agent-profile API
     const res = await fetch('./?action=agent-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -14084,21 +16068,257 @@ async function fetchAgentZendeskStats() {
     console.log("[Profile] Zendesk data:", data);
     
     if (data && !data.error && data.found) {
-      // Backend returns openTickets and solvedWeek
-      opensEl.textContent = data.openTickets || 0;
-      solvedEl.textContent = data.solvedWeek || 0;
+      // Display open tickets count
+      const openCount = data.openTickets || 0;
+      opensEl.textContent = openCount;
+      
+      // Hide loading
+      if (ticketsLoadingEl) ticketsLoadingEl.style.display = "none";
+      
+      // Render clickable ticket list
+      if (ticketsListEl) {
+        if (data.openTicketsList && data.openTicketsList.length > 0) {
+          ticketsListEl.innerHTML = data.openTicketsList.map(ticket => {
+            const priorityClass = ticket.priority ? `ticket-priority ${ticket.priority}` : '';
+            const priorityBadge = ticket.priority ? 
+              `<span class="${priorityClass}">${ticket.priority}</span>` : '';
+            
+            return `
+              <a href="${ticket.url}" target="_blank" rel="noopener" class="ticket-list-item">
+                <span class="ticket-id-badge">#${ticket.id}</span>
+                <span class="ticket-subject" title="${(ticket.subject || '').replace(/"/g, '&quot;')}">${ticket.subject || '(No subject)'}</span>
+                ${priorityBadge}
+                <span class="ticket-arrow">→</span>
+              </a>
+            `;
+          }).join('');
+          ticketsListEl.style.display = "block";
+        } else {
+          // No open tickets
+          if (ticketsEmptyEl) ticketsEmptyEl.style.display = "block";
+        }
+      }
     } else {
       // If API fails, show N/A
       console.error("[Profile] Zendesk error:", data?.error);
       opensEl.textContent = "N/A";
-      solvedEl.textContent = "N/A";
+      if (ticketsLoadingEl) ticketsLoadingEl.style.display = "none";
     }
   } catch (err) {
     console.error("[Profile] Error fetching Zendesk stats:", err);
     opensEl.textContent = "N/A";
-    solvedEl.textContent = "N/A";
+    if (ticketsLoadingEl) ticketsLoadingEl.style.display = "none";
   }
 }
+
+// Load agent's weekly assignments for their profile
+async function loadAgentWeeklyAssignments() {
+  const sectionEl = $("agentWeeklyAssignmentsSection");
+  const containerEl = $("agentWeeklyAssignments");
+  
+  // Also update dashboard banner
+  const dashboardCard = $("agentWeeklyAssignCard");
+  const dashboardList = $("agentWeeklyAssignList");
+  const dashboardWeek = $("agentWeeklyAssignWeek");
+  const dashboardBanner = $("agentAssignmentsBanner");
+  
+  try {
+    const res = await fetch(`/weekly-assignments/my?name=${encodeURIComponent(window._myName)}`);
+    const data = await res.json();
+    
+    if (data.ok && data.assignments && data.assignments.length > 0) {
+      // Update profile modal section (if exists)
+      if (sectionEl && containerEl) {
+        sectionEl.style.display = "block";
+        containerEl.innerHTML = data.assignments.map(a => {
+          const rolesList = a.roles.join(', ');
+          const eventsNote = a.events && a.events.length > 0 ? 
+            `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">📆 ${a.events.join(', ')}</div>` : '';
+          
+          return `
+            <div style="padding: 10px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #3b82f6;">
+              <div style="font-weight: 600; color: #1e40af;">Week of ${a.weekOf}</div>
+              <div style="color: #1e3a8a; margin-top: 4px;">🎯 ${rolesList}</div>
+              ${eventsNote}
+            </div>
+          `;
+        }).join('');
+      }
+      
+      // Update dashboard banner
+      if (dashboardCard && dashboardList && dashboardBanner) {
+        dashboardBanner.style.display = "block";
+        dashboardCard.style.display = "block";
+        
+        const firstAssign = data.assignments[0];
+        dashboardWeek.textContent = `Week of ${firstAssign.weekOf}`;
+        
+        // Create assignment chips
+        const allRoles = data.assignments.flatMap(a => a.roles);
+        dashboardList.innerHTML = allRoles.map(role => `
+          <span style="display: inline-flex; align-items: center; padding: 4px 10px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border-radius: 12px; font-size: 11px; font-weight: 500;">
+            ${role}
+          </span>
+        `).join('');
+      }
+    } else {
+      if (sectionEl) sectionEl.style.display = "none";
+      if (dashboardCard) dashboardCard.style.display = "none";
+    }
+  } catch (err) {
+    console.error("Error loading agent weekly assignments:", err);
+    if (sectionEl) sectionEl.style.display = "none";
+    if (dashboardCard) dashboardCard.style.display = "none";
+  }
+}
+
+// Load rotation info if agent has a role in upcoming meeting
+async function loadAgentRotationInfo() {
+  const sectionEl = $("agentRotationSection");
+  const containerEl = $("agentRotationInfo");
+  
+  // Dashboard banner elements
+  const dashboardCard = $("agentMeetingRoleCard");
+  const dashboardIcon = $("agentMeetingRoleIcon");
+  const dashboardLabel = $("agentMeetingRoleLabel");
+  const dashboardDate = $("agentMeetingRoleDate");
+  const dashboardDesc = $("agentMeetingRoleDesc");
+  const dashboardBanner = $("agentAssignmentsBanner");
+  
+  try {
+    // Get upcoming meetings (next 7 days)
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const todayStr = today.toISOString().split('T')[0];
+    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+    
+    const res = await fetch(`/meeting-rotation/list?start=${todayStr}&end=${nextWeekStr}`);
+    const data = await res.json();
+    
+    if (data.ok && data.rotations && data.rotations.length > 0) {
+      const agentNameLower = window._myName.toLowerCase().trim();
+      
+      // Find first meeting where this agent has a role
+      let foundRole = null;
+      let foundRotation = null;
+      
+      for (const rotation of data.rotations) {
+        // Check Captain
+        if ((rotation.captain || "").toLowerCase().trim() === agentNameLower) {
+          foundRole = {
+            type: "captain",
+            label: "Captain (Primary)",
+            color: "#92400e",
+            bg: "#fef3c7",
+            description: "You're the primary LC coordinator - you ATTEND the meeting and coordinate coverage.",
+            icon: "👤"
+          };
+          foundRotation = rotation;
+          break;
+        }
+        
+        // Check Backups
+        if ((rotation.backup1 || "").toLowerCase().trim() === agentNameLower) {
+          foundRole = {
+            type: "backup",
+            label: "Backup #1",
+            color: "#065f46",
+            bg: "#d1fae5",
+            description: "You ATTEND the meeting but set as 'Away' in Zendesk. Jump in if queue busy.",
+            icon: "🔄"
+          };
+          foundRotation = rotation;
+          break;
+        }
+        if ((rotation.backup2 || "").toLowerCase().trim() === agentNameLower) {
+          foundRole = {
+            type: "backup",
+            label: "Backup #2",
+            color: "#065f46",
+            bg: "#d1fae5",
+            description: "You ATTEND the meeting but set as 'Away' in Zendesk. Jump in if queue busy.",
+            icon: "🔄"
+          };
+          foundRotation = rotation;
+          break;
+        }
+        
+        // Check LC Agents
+        const lcAgents = (rotation.lcAgents || []).map(a => a.toLowerCase().trim());
+        if (lcAgents.includes(agentNameLower)) {
+          foundRole = {
+            type: "lcagent",
+            label: "Live Chat Agent",
+            color: "#1e40af",
+            bg: "#dbeafe",
+            description: "You cover Live Chat during the meeting - you will MISS the meeting this week.",
+            icon: "💬"
+          };
+          foundRotation = rotation;
+          break;
+        }
+      }
+      
+      if (foundRole && foundRotation) {
+        const meetingTypeLabel = foundRotation.meetingType === "allhands" ? "All Hands" : 
+                                  foundRotation.meetingType === "wednesday" ? "Wednesday Meeting" : "Thursday Meeting";
+        
+        // Update profile modal section (if exists)
+        if (sectionEl && containerEl) {
+          sectionEl.style.display = "block";
+          containerEl.style.background = `linear-gradient(135deg, ${foundRole.bg} 0%, ${foundRole.bg} 100%)`;
+          containerEl.style.color = foundRole.color;
+          containerEl.innerHTML = `
+            <div style="font-weight: 700; font-size: 15px;">${foundRole.icon} You're assigned: ${foundRole.label}</div>
+            <div style="margin-top: 8px;">
+              <strong>Meeting:</strong> ${meetingTypeLabel}<br>
+              <strong>Date:</strong> ${foundRotation.date}<br>
+              <strong>Time:</strong> ${foundRotation.meetingTimePST || foundRotation.meetingTimeEST || 'TBD'} PST
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px;">
+              ${foundRole.description}
+            </div>
+            ${foundRotation.notes ? `<div style="margin-top: 8px; font-size: 12px;">📝 ${foundRotation.notes}</div>` : ''}
+          `;
+        }
+        
+        // Update dashboard banner
+        if (dashboardCard && dashboardBanner) {
+          dashboardBanner.style.display = "block";
+          dashboardCard.style.display = "block";
+          dashboardCard.style.borderLeft = `3px solid ${foundRole.color}`;
+          dashboardCard.style.background = foundRole.bg;
+          
+          if (dashboardIcon) dashboardIcon.textContent = foundRole.icon;
+          if (dashboardLabel) {
+            dashboardLabel.textContent = foundRole.label;
+            dashboardLabel.style.color = foundRole.color;
+          }
+          if (dashboardDate) {
+            dashboardDate.textContent = `${meetingTypeLabel} • ${foundRotation.date}`;
+            dashboardDate.style.color = foundRole.color;
+          }
+          if (dashboardDesc) {
+            dashboardDesc.textContent = foundRole.description;
+            dashboardDesc.style.color = foundRole.color;
+          }
+        }
+      } else {
+        if (sectionEl) sectionEl.style.display = "none";
+        if (dashboardCard) dashboardCard.style.display = "none";
+      }
+    } else {
+      if (sectionEl) sectionEl.style.display = "none";
+      if (dashboardCard) dashboardCard.style.display = "none";
+    }
+  } catch (err) {
+    console.error("Error loading agent rotation info:", err);
+    if (sectionEl) sectionEl.style.display = "none";
+    if (dashboardCard) dashboardCard.style.display = "none";
+  }
+}
+
 function closeBalanceModal() {
   $("balanceModal").style.display = "none";
 }
@@ -14427,6 +16647,121 @@ function rgbaFromHex(hex, alpha) {
     renderMetricsList();
   }
 }
+
+// Cache for meeting rotations
+let _meetingRotationsCache = {};
+let _meetingRotationsCacheTime = 0;
+
+// Check and display meeting banner for a specific date
+async function checkAndDisplayMeetingBanner(dateKey, container) {
+  // Check cache (refresh every 5 minutes)
+  const now = Date.now();
+  if (now - _meetingRotationsCacheTime > 300000) {
+    try {
+      const res = await fetch('/meeting-rotation/list');
+      const data = await res.json();
+      if (data.rotations) {
+        _meetingRotationsCache = {};
+        data.rotations.forEach(r => {
+          _meetingRotationsCache[r.date] = r;
+        });
+        _meetingRotationsCacheTime = now;
+      }
+    } catch (e) {
+      console.error("Failed to fetch meeting rotations:", e);
+    }
+  }
+  
+  const meeting = _meetingRotationsCache[dateKey];
+  if (!meeting) return;
+  
+  const myName = window._myName || "";
+  const myNameLower = myName.toLowerCase().trim();
+  
+  // Determine user's role in this meeting
+  let myRole = null;
+  let roleColor = "#6366f1"; // default blue
+  let roleEmoji = "📅";
+  
+  if ((meeting.captain || "").toLowerCase().trim() === myNameLower) {
+    myRole = "Captain (Attends Meeting - Last Resort)";
+    roleColor = "#f59e0b";
+    roleEmoji = "👤";
+  } else if ((meeting.backup1 || "").toLowerCase().trim() === myNameLower) {
+    myRole = "Backup #1 (Attends Meeting - Away in Zendesk)";
+    roleColor = "#10b981";
+    roleEmoji = "🔄";
+  } else if ((meeting.backup2 || "").toLowerCase().trim() === myNameLower) {
+    myRole = "Backup #2 (Attends Meeting - Away in Zendesk)";
+    roleColor = "#10b981";
+    roleEmoji = "🔄";
+  } else if ((meeting.lcAgents || []).map(a => a.toLowerCase().trim()).includes(myNameLower)) {
+    myRole = "LC Agent (Misses Meeting - LC Coverage)";
+    roleColor = "#3b82f6";
+    roleEmoji = "💬";
+  }
+  
+  const meetingTypeLabel = meeting.meetingType === "allhands" ? "All Hands" : 
+                           meeting.meetingType === "wednesday" ? "Wednesday Meeting" : "Thursday Meeting";
+  const meetingEmoji = meeting.meetingType === "allhands" ? "🎉" : "📅";
+  
+  // Create meeting banner
+  const banner = document.createElement("div");
+  banner.className = "meeting-day-banner";
+  banner.style.cssText = `
+    background: linear-gradient(135deg, ${roleColor}15 0%, ${roleColor}08 100%);
+    border: 1px solid ${roleColor}40;
+    border-left: 4px solid ${roleColor};
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+  `;
+  
+  // Build banner content
+  let bannerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 24px;">${meetingEmoji}</span>
+        <div>
+          <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">${meetingTypeLabel}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${meeting.meetingTimePST || "12:00 PM - 1:15 PM"} PST</div>
+        </div>
+      </div>`;
+  
+  // Show user's role if they have one
+  if (myRole) {
+    bannerHTML += `
+      <div style="background: ${roleColor}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+        ${roleEmoji} ${myRole.split('(')[0].trim()}
+      </div>`;
+  }
+  
+  bannerHTML += `</div>`;
+  
+  // Show coverage team (for managers or if user wants details)
+  if (window._isManager) {
+    const lcCount = (meeting.lcAgents || []).length;
+    bannerHTML += `
+      <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed ${roleColor}40; font-size: 11px; color: var(--text-secondary);">
+        <strong>Coverage:</strong> 
+        Captain: <span style="color: #f59e0b; font-weight: 600;">${meeting.captain || '-'}</span> | 
+        Backups: <span style="color: #10b981; font-weight: 600;">${meeting.backup1 || '-'}, ${meeting.backup2 || '-'}</span> | 
+        LC Agents: <span style="color: #3b82f6; font-weight: 600;">${lcCount}</span>
+        ${meeting.notes ? ` | 📝 ${meeting.notes}` : ''}
+      </div>`;
+  } else if (myRole) {
+    // For agents with a role, show brief coverage info
+    bannerHTML += `
+      <div style="margin-top: 8px; font-size: 10px; color: var(--text-tertiary);">
+        Coverage team: ${meeting.captain || '-'}, ${meeting.backup1 || '-'}, ${meeting.backup2 || '-'}${(meeting.lcAgents || []).length > 0 ? ` + ${meeting.lcAgents.length} LC agents` : ''}
+      </div>`;
+  }
+  
+  banner.innerHTML = bannerHTML;
+  container.insertBefore(banner, container.firstChild);
+}
+
 let _selectedDateISO = null;
 function renderScheduleView() {
   // Hide loading placeholder since we're rendering
@@ -14517,6 +16852,10 @@ function renderDayDetail(dateKey, shifts) {
   document.getElementById("viewDayStats").textContent = `${shifts.length} shifts scheduled`;
   const container = document.getElementById("dayContentBody");
   container.innerHTML = "";
+  
+  // Check for meeting on this day and add banner
+  checkAndDisplayMeetingBanner(dateKey, container);
+  
   // 2. Group by Channel (normalize team names to group variations together)
   const byTeam = {};
   const teamDisplayNames = {};
@@ -14594,12 +16933,17 @@ const accentBg = rgbaFromHex(accent, document.body.classList.contains("dark-mode
     teamShifts.sort((a, b) => (a.start || "").localeCompare(b.start || ""));
     const section = document.createElement("div");
     section.className = "channel-section";
+    
+    // Apply view preference
+    const prefs = typeof getUserPrefs === 'function' ? getUserPrefs() : { shiftView: 'grid' };
+    const viewClass = prefs.shiftView === 'list' ? 'shifts-grid view-list' : 'shifts-grid';
+    
     section.innerHTML = `
   <div class="channel-header" style="--ch-accent:${accent}; --ch-accent-bg:${accentBg};">
     <span class="channel-title">${team}</span>
     ${countBadge}
   </div>
-  <div class="shifts-grid"></div>
+  <div class="${viewClass}"></div>
 `;
     const grid = section.querySelector(".shifts-grid");
     
@@ -15214,6 +17558,366 @@ body.dark-mode .agent-notif-item.unread {
   padding: 14px;
   margin-bottom: 10px;
   transition: all 0.2s;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
+/* Mobile breakpoints */
+@media (max-width: 768px) {
+  /* Header adjustments */
+  .header {
+    padding: 0 12px;
+    height: 56px;
+    flex: 0 0 56px;
+  }
+  .hTitle {
+    font-size: 14px;
+  }
+  .hLeft img {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .metaGroup {
+    display: none; /* Hide pills on mobile */
+  }
+  .seg {
+    display: none; /* Hide Schedule/Metrics toggle on mobile */
+  }
+  .iconBtn {
+    width: 34px;
+    height: 34px;
+  }
+  .action-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+  #btnMasterMode {
+    display: none; /* Hide master mode on mobile */
+  }
+  
+  /* Navigation */
+  .navGroup {
+    margin-right: 8px;
+    padding-right: 8px;
+  }
+  .navBtn {
+    width: 28px;
+    height: 28px;
+  }
+  
+  /* Load controls */
+  #loadMoreControls {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+  }
+  #loadMoreControls button {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+  
+  /* Calendar grid - stack vertically on mobile */
+  .calGrid {
+    flex-direction: column;
+    gap: 12px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 4px 8px 4px;
+  }
+  .dayCol {
+    min-width: 100%;
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+  .dayHead {
+    padding: 12px;
+    font-size: 14px;
+  }
+  .dayBody {
+    padding: 8px;
+    gap: 8px;
+  }
+  
+  /* Shift cards */
+  .shift {
+    min-width: 100%;
+    padding: 10px 12px;
+  }
+  .shift-card-b {
+    padding: 12px;
+  }
+  .sc-name {
+    font-size: 14px;
+  }
+  .sc-time {
+    font-size: 11px;
+  }
+  .sc-role {
+    font-size: 10px;
+  }
+  
+  /* Schedule view (day tabs + content) */
+  .schedule-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .day-tabs {
+    flex-direction: row;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+    gap: 6px;
+  }
+  .day-tab {
+    min-width: 80px;
+    padding: 10px 8px;
+    flex-shrink: 0;
+  }
+  .day-tab .day-name {
+    font-size: 12px;
+  }
+  .day-tab .day-date {
+    font-size: 9px;
+  }
+  .day-content-header {
+    padding: 14px 16px;
+  }
+  .day-content-body {
+    padding: 12px;
+  }
+  
+  /* Shifts grid */
+  .shifts-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  /* Channel sections */
+  .channel-section {
+    margin-bottom: 20px;
+  }
+  .channel-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .channel-title {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  
+  /* Coverage dashboard */
+  .cov-panel {
+    border-radius: 12px;
+  }
+  .cov-header {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cov-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .cov-title {
+    font-size: 14px;
+  }
+  .cov-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .cov-stat {
+    padding: 10px 8px;
+  }
+  .cov-stat-num {
+    font-size: 20px;
+  }
+  .cov-stat-label {
+    font-size: 9px;
+  }
+  
+  /* Drawer */
+  .drawer {
+    width: 100%;
+    right: -100%;
+  }
+  
+  /* Modals */
+  .modal {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 10px;
+    max-height: 90vh;
+  }
+  .mHead, .mHeader {
+    padding: 14px 16px !important;
+  }
+  .mTitle {
+    font-size: 15px !important;
+  }
+  .mBody {
+    padding: 16px !important;
+  }
+  
+  /* Agent toolbar */
+  .agent-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+  }
+  .agent-toolbar-btn {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  .agent-toolbar-item {
+    padding: 8px 10px;
+  }
+  
+  /* Agent schedule banner */
+  .agent-schedule-banner {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .agent-schedule-card {
+    flex: none;
+    width: 100%;
+  }
+  
+  /* Filter card */
+  .filter-card {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  
+  /* Coverage banner */
+  .coverage-banner {
+    padding: 10px 14px;
+  }
+  .coverage-chips {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .coverage-chip {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  /* Tool grid in admin */
+  .tool-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  /* Profile sections */
+  .profile-section {
+    padding: 14px;
+  }
+  .agent-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .agent-stat-card {
+    padding: 12px;
+  }
+  
+  /* PTO ring sizing */
+  .pto-ring {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  .pto-value {
+    font-size: 20px !important;
+  }
+  
+  /* Notification panels */
+  #notifPanel {
+    width: 95% !important;
+    right: 2.5% !important;
+    max-height: 80vh;
+  }
+  #agentNotifPanel {
+    width: 95% !important;
+    right: 2.5% !important;
+    max-height: 80vh;
+  }
+  
+  /* Balance list items */
+  .balance-agent-row {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch !important;
+  }
+  .balance-agent-row input {
+    width: 100% !important;
+  }
+  
+  /* Hide certain elements on mobile */
+  .manager-presence-pill {
+    display: none;
+  }
+}
+
+/* Small mobile (< 480px) */
+@media (max-width: 480px) {
+  .header {
+    padding: 0 8px;
+  }
+  .hTitle {
+    font-size: 12px;
+  }
+  .hRight {
+    gap: 8px;
+  }
+  .iconBtn {
+    width: 32px;
+    height: 32px;
+  }
+  .iconBtn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Even tighter on very small screens */
+  .dayHead {
+    padding: 10px;
+    font-size: 13px;
+  }
+  .shift-card-b {
+    padding: 10px;
+  }
+  .modal {
+    margin: 5px;
+    max-height: 95vh;
+  }
+  .cov-stats {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  
+  /* Simplify day tabs */
+  .day-tab {
+    min-width: 60px;
+    padding: 8px 6px;
+  }
+  .day-tab .day-name {
+    font-size: 11px;
+  }
+}
+
+/* Tablet (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .calGrid .dayCol {
+    min-width: 280px;
+    max-width: 280px;
+  }
+  .shifts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .drawer {
+    width: 300px;
+    right: -300px;
+  }
 }
 .open-shift-card:hover {
   border-color: var(--accent-primary);
