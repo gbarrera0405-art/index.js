@@ -1849,10 +1849,9 @@ if (path === "/audit/logs" && req.method === "GET") {
             let query = db.collection(collectionName);
             
             // Apply date filter if provided
-            // Try common timestamp fields
             if (cutoffDate) {
-              // All collections use 'createdAt' as the timestamp field
-              const timestampField = "createdAt";
+              // Most collections use 'createdAt', but audit_log uses 'timestamp'
+              const timestampField = collectionName === "audit_log" ? "timestamp" : "createdAt";
               
               query = query.where(timestampField, "<", cutoffDate);
             }
