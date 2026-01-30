@@ -1119,7 +1119,14 @@ if (action) path = "/" + action;
       "/weekly-assignments/my",
       "/weekly-assignments/delete",
       "/agent/team-history",
-      "/makeup/auto-assign"
+      "/makeup/auto-assign",
+      "/agent/heartbeat",
+      "/agent/presence",
+      "/goals/get",
+      "/goals/save",
+      "/goals/list",
+      "/attendance/summary",
+      "/attendance/all"
     ].includes(path);
 
     if (!isApi) {
@@ -2963,44 +2970,89 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
 
     // GET or POST /manager/presence - Get active manager presence
     if (path === "/manager/presence" && (req.method === "GET" || req.method === "POST")) {
-  const guard = requireManager(req);
-  if (!guard.ok) return res.status(guard.status).json(guard.body);
-  try {
-    // Consider managers active if heartbeat within last 10 minutes
-    const cutoffIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const guard = requireManager(req);
+      if (!guard.ok) return res.status(guard.status).json(guard.body);
+      try {
+        // Consider managers active if heartbeat within last 10 minutes
+        const cutoffIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-    // Query only active managers
-    const snap = await db.collection("manager_presence")
-      .where("lastHeartbeat", ">=", cutoffIso)
-      .get();
+        // Query only active managers
+        const snap = await db.collection("manager_presence")
+          .where("lastHeartbeat", ">=", cutoffIso)
+          .get();
 
-    const activeManagers = [];
-    snap.forEach(doc => {
-      const data = doc.data();
-      activeManagers.push({
-        managerName: data.managerName,
-        view: data.view,
-        area: data.area,
-        isEditing: data.isEditing || false,
-        editingTarget: data.editingTarget || null,
-        lastHeartbeat: data.lastHeartbeat
-      });
-    });
+        const activeManagers = [];
+        snap.forEach(doc => {
+          const data = doc.data();
+          activeManagers.push({
+            managerName: data.managerName,
+            view: data.view,
+            area: data.area,
+            isEditing: data.isEditing || false,
+            editingTarget: data.editingTarget || null,
+            lastHeartbeat: data.lastHeartbeat
+          });
+        });
 
-    logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
-      total: activeManagers.length,
-      managers: activeManagers.map(m => m.managerName)
-    });
+        logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
+          total: activeManagers.length,
+          managers: activeManagers.map(m => m.managerName)
+        });
 
-    return res.status(200).json({ ok: true, activeManagers });
+        return res.status(200).json({ ok: true, activeManagers });
 
-  } catch (err) {
-    logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
-      error: err.message
-    });
-    return res.status(500).json({ error: err.message });
-  }
-}
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
+          error: err.message
+        });
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // POST /agent/heartbeat - Record agent activity
+    if (path === "/agent/heartbeat" && req.method === "POST") {
+      try {
+        const { agentName, view } = body;
+        if (!agentName) {
+          return res.status(400).json({ error: "agentName required" });
+        }
+        
+        const presenceDocId = agentName.replace(/\s+/g, '_').toLowerCase();
+        
+        await db.collection("agent_presence").doc(presenceDocId).set({
+          agentName,
+          view: view || 'schedule',
+          lastHeartbeat: new Date().toISOString()
+        }, { merge: true });
+        
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("Agent heartbeat error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // GET /agent/presence - Get active agents (for managers to see)
+    if (path === "/agent/presence" && req.method === "GET") {
+      try {
+        // Consider agents active if heartbeat within last 5 minutes
+        const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        
+        const snap = await db.collection("agent_presence")
+          .where("lastHeartbeat", ">=", cutoff)
+          .get();
+        
+        const activeAgents = [];
+        snap.forEach(doc => {
+          activeAgents.push(doc.data());
+        });
+        
+        return res.status(200).json({ ok: true, activeAgents });
+      } catch (err) {
+        console.error("Agent presence error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
 
     
     // ============================================
@@ -5187,6 +5239,352 @@ if (path === "/holiday/bank" && req.method === "POST") {
         
       } catch (err) {
         console.error("Make-up auto-assign error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // ============================================
+    // AGENT GOALS API ENDPOINTS
+    // ============================================
+    
+    // Get goals for an agent
+    if (path === "/goals/get" && req.method === "POST") {
+      try {
+        const { agentName } = body;
+        if (!agentName) {
+          return res.status(400).json({ error: "agentName required" });
+        }
+        
+        const goalsRef = db.collection("agent_goals").doc(agentName.toLowerCase().replace(/\s+/g, '_'));
+        const doc = await goalsRef.get();
+        
+        if (!doc.exists) {
+          // Return empty template
+          return res.status(200).json({
+            ok: true,
+            goals: {
+              agentName,
+              smartGoals: [
+                { specific: '', measurable: '', attainable: '', relevant: '', timeBound: '' },
+                { specific: '', measurable: '', attainable: '', relevant: '', timeBound: '' }
+              ],
+              tasks: [],
+              performanceMetrics: [],
+              qaTickets: [],
+              topicsDiscussed: [],
+              oneOnOneNotes: [],
+              updatedAt: null,
+              updatedBy: null
+            }
+          });
+        }
+        
+        return res.status(200).json({ ok: true, goals: doc.data() });
+      } catch (err) {
+        console.error("Goals get error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // Save goals for an agent
+    if (path === "/goals/save" && req.method === "POST") {
+      try {
+        const { agentName, goals, updatedBy } = body;
+        if (!agentName || !goals) {
+          return res.status(400).json({ error: "agentName and goals required" });
+        }
+        
+        const goalsRef = db.collection("agent_goals").doc(agentName.toLowerCase().replace(/\s+/g, '_'));
+        
+        await goalsRef.set({
+          agentName,
+          ...goals,
+          updatedAt: new Date().toISOString(),
+          updatedBy: updatedBy || 'system'
+        }, { merge: true });
+        
+        // Log to audit
+        await db.collection("audit_log").add({
+          action: "goals_updated",
+          agentName,
+          updatedBy: updatedBy || 'system',
+          timestamp: new Date().toISOString()
+        });
+        
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("Goals save error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // Get list of all agents with goals (for manager overview)
+    if (path === "/goals/list" && req.method === "GET") {
+      try {
+        const snap = await db.collection("agent_goals")
+          .orderBy("updatedAt", "desc")
+          .get();
+        
+        const goalsList = [];
+        snap.forEach(doc => {
+          const data = doc.data();
+          goalsList.push({
+            id: doc.id,
+            agentName: data.agentName,
+            updatedAt: data.updatedAt,
+            updatedBy: data.updatedBy,
+            hasSmartGoals: data.smartGoals && data.smartGoals.some(g => g.specific),
+            taskCount: (data.tasks || []).length,
+            metricsCount: (data.performanceMetrics || []).length
+          });
+        });
+        
+        return res.status(200).json({ ok: true, goals: goalsList });
+      } catch (err) {
+        console.error("Goals list error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // ============================================
+    // ATTENDANCE TRACKING API ENDPOINTS
+    // ============================================
+    
+    // Get attendance summary for an agent (pulls from existing data)
+    if (path === "/attendance/summary" && req.method === "POST") {
+      try {
+        const { agentName, days = 90 } = body;
+        if (!agentName) {
+          return res.status(400).json({ error: "agentName required" });
+        }
+        
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const cutoffISO = cutoffDate.toISOString();
+        
+        // Get time-off requests for this person (simpler query, filter in code)
+        let timeoffSnap;
+        try {
+          timeoffSnap = await db.collection("timeoff_requests")
+            .where("person", "==", agentName)
+            .get();
+        } catch (e) {
+          console.warn("timeoff_requests query failed:", e.message);
+          timeoffSnap = { docs: [], forEach: () => {} };
+        }
+        
+        // Get swap requests (both initiated and received)
+        let swapsInitiatedSnap, swapsReceivedSnap;
+        try {
+          swapsInitiatedSnap = await db.collection("swap_requests")
+            .where("fromPerson", "==", agentName)
+            .get();
+        } catch (e) {
+          console.warn("swap_requests fromPerson query failed:", e.message);
+          swapsInitiatedSnap = { docs: [], forEach: () => {} };
+        }
+        
+        try {
+          swapsReceivedSnap = await db.collection("swap_requests")
+            .where("toPerson", "==", agentName)
+            .get();
+        } catch (e) {
+          console.warn("swap_requests toPerson query failed:", e.message);
+          swapsReceivedSnap = { docs: [], forEach: () => {} };
+        }
+        
+        // Process time-off requests
+        const timeoffEvents = [];
+        let callOutCount = 0;
+        let ptoCount = 0;
+        let totalPtoDays = 0;
+        
+        timeoffSnap.forEach(doc => {
+          const data = doc.data();
+          // Filter by date in code
+          if (data.createdAt && data.createdAt < cutoffISO) return;
+          
+          timeoffEvents.push({
+            type: 'timeoff',
+            date: data.date,
+            reason: data.reason || 'PTO',
+            status: data.status || 'pending',
+            hoursRequested: data.hoursRequested || 8,
+            createdAt: data.createdAt,
+            isCallOut: data.isCallOut || (data.reason && (data.reason.toLowerCase().includes('sick') || data.reason.toLowerCase().includes('emergency')))
+          });
+          
+          if (data.status === 'approved') {
+            if (data.isCallOut || (data.reason && (data.reason.toLowerCase().includes('sick') || data.reason.toLowerCase().includes('emergency')))) {
+              callOutCount++;
+            } else {
+              ptoCount++;
+            }
+            totalPtoDays++;
+          }
+        });
+        
+        // Process swaps
+        const swapEvents = [];
+        let swapsInitiated = 0;
+        let swapsReceived = 0;
+        
+        swapsInitiatedSnap.forEach(doc => {
+          const data = doc.data();
+          if (data.createdAt && data.createdAt < cutoffISO) return;
+          
+          swapEvents.push({
+            type: 'swap_initiated',
+            date: data.shiftDate,
+            withPerson: data.toPerson,
+            status: data.status || 'pending',
+            createdAt: data.createdAt
+          });
+          if (data.status === 'accepted') swapsInitiated++;
+        });
+        
+        swapsReceivedSnap.forEach(doc => {
+          const data = doc.data();
+          if (data.createdAt && data.createdAt < cutoffISO) return;
+          
+          swapEvents.push({
+            type: 'swap_received',
+            date: data.shiftDate,
+            withPerson: data.fromPerson,
+            status: data.status || 'pending',
+            createdAt: data.createdAt
+          });
+          if (data.status === 'accepted') swapsReceived++;
+        });
+        
+        // Process replacements from audit log (skip if no data needed)
+        const replacementEvents = [];
+        let replacedCount = 0;
+        let replacedByCount = 0;
+        
+        // Skip audit log query for now as it requires complex indexing
+        // This can be added later with proper Firestore indexes
+        
+        // Calculate Bradford Factor
+        // B = S² × D (S = number of absence instances, D = total days absent)
+        const absenceInstances = callOutCount + ptoCount;
+        const bradfordFactor = (absenceInstances * absenceInstances) * totalPtoDays;
+        
+        // Determine concern level
+        let concernLevel = 'good';
+        if (bradfordFactor >= 500) concernLevel = 'critical';
+        else if (bradfordFactor >= 200) concernLevel = 'serious';
+        else if (bradfordFactor >= 100) concernLevel = 'concern';
+        else if (bradfordFactor >= 50) concernLevel = 'watch';
+        
+        return res.status(200).json({
+          ok: true,
+          summary: {
+            agentName,
+            periodDays: days,
+            bradfordFactor,
+            concernLevel,
+            stats: {
+              callOuts: callOutCount,
+              ptoRequests: ptoCount,
+              totalAbsenceDays: totalPtoDays,
+              swapsInitiated,
+              swapsReceived,
+              timesReplaced: replacedCount,
+              coveredForOthers: replacedByCount
+            },
+            events: [
+              ...timeoffEvents,
+              ...swapEvents,
+              ...replacementEvents
+            ].sort((a, b) => new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp))
+          }
+        });
+      } catch (err) {
+        console.error("Attendance summary error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
+    // Get attendance for all agents (manager overview)
+    if (path === "/attendance/all" && req.method === "GET") {
+      try {
+        const days = parseInt(req.query.days) || 90;
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const cutoffISO = cutoffDate.toISOString();
+        
+        // Get all people
+        const { people } = await getCachedMetadata();
+        
+        // Get all time-off requests (simple query, filter in code)
+        let timeoffSnap;
+        try {
+          timeoffSnap = await db.collection("timeoff_requests").get();
+        } catch (e) {
+          console.warn("timeoff_requests query failed:", e.message);
+          timeoffSnap = { docs: [], forEach: () => {} };
+        }
+        
+        // Aggregate by person
+        const attendanceByPerson = new Map();
+        
+        // Initialize all people
+        people.forEach(p => {
+          const name = p.name || p.id;
+          if (name) {
+            attendanceByPerson.set(name, {
+              agentName: name,
+              callOuts: 0,
+              ptoRequests: 0,
+              totalAbsenceDays: 0,
+              absenceInstances: 0
+            });
+          }
+        });
+        
+        // Process time-off
+        timeoffSnap.forEach(doc => {
+          const data = doc.data();
+          // Filter by date in code
+          if (data.createdAt && data.createdAt < cutoffISO) return;
+          
+          const person = data.person;
+          if (person && attendanceByPerson.has(person) && data.status === 'approved') {
+            const entry = attendanceByPerson.get(person);
+            if (data.isCallOut || (data.reason && (data.reason.toLowerCase().includes('sick') || data.reason.toLowerCase().includes('emergency')))) {
+              entry.callOuts++;
+            } else {
+              entry.ptoRequests++;
+            }
+            entry.totalAbsenceDays++;
+            entry.absenceInstances++;
+          }
+        });
+        
+        // Calculate Bradford Factor for each
+        const results = [];
+        attendanceByPerson.forEach((data, name) => {
+          const bradfordFactor = (data.absenceInstances * data.absenceInstances) * data.totalAbsenceDays;
+          let concernLevel = 'good';
+          if (bradfordFactor >= 500) concernLevel = 'critical';
+          else if (bradfordFactor >= 200) concernLevel = 'serious';
+          else if (bradfordFactor >= 100) concernLevel = 'concern';
+          else if (bradfordFactor >= 50) concernLevel = 'watch';
+          
+          results.push({
+            ...data,
+            bradfordFactor,
+            concernLevel
+          });
+        });
+        
+        // Sort by Bradford Factor descending
+        results.sort((a, b) => b.bradfordFactor - a.bradfordFactor);
+        
+        return res.status(200).json({ ok: true, attendance: results });
+      } catch (err) {
+        console.error("Attendance all error:", err);
         return res.status(500).json({ error: err.message });
       }
     }
