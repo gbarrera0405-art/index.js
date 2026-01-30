@@ -1851,16 +1851,8 @@ if (path === "/audit/logs" && req.method === "GET") {
             // Apply date filter if provided
             // Try common timestamp fields
             if (cutoffDate) {
-              // Different collections may have different timestamp field names
-              // We'll try timestamp, createdAt, requestedAt based on collection
-              let timestampField = "timestamp";
-              if (collectionName === "time_off_requests") {
-                timestampField = "requestedAt";
-              } else if (collectionName === "agent_notifications" || collectionName === "manager_notifications") {
-                timestampField = "createdAt";
-              } else if (collectionName === "holiday_transactions") {
-                timestampField = "transactionDate";
-              }
+              // All collections use 'createdAt' as the timestamp field
+              const timestampField = "createdAt";
               
               query = query.where(timestampField, "<", cutoffDate);
             }
