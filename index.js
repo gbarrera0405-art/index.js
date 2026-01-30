@@ -70,7 +70,7 @@ async function sendShiftNotification(agentEmail, shiftData) {
 async function getAgentEmailByName(name) {
   if (!name) return null;
 
-  const { people } = await getCachedMetadata();
+  const { people = [] } = await getCachedMetadata();
   const target = String(name).toLowerCase().trim();
 
   for (const p of people) {
@@ -1232,7 +1232,7 @@ if (action) path = "/" + action;
     }
     // Lookups - Now using cached metadata
     if (path === "/people" && req.method === "GET") {
-      const { people } = await getCachedMetadata();
+      const { people = [] } = await getCachedMetadata();
       return res.status(200).json({ count: people.length, people });
     }
     if (path === "/admin/wipe-future" && req.method === "POST") {
@@ -1610,7 +1610,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
         const body = readJsonBody(req);
         const isManager = body.isManager !== false; // Default to true for backward compat
         
-        const { people, teams } = await getCachedMetadata();
+        const { people = [], teams = [] } = await getCachedMetadata();
         
         // For agents, we can return a minimal people list (just names)
         // Managers get full details
@@ -1630,7 +1630,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
       }
     }
     if (path === "/teams" && req.method === "GET") {
-      const { teams } = await getCachedMetadata();
+      const { teams = [] } = await getCachedMetadata();
       return res.status(200).json({ count: teams.length, teams });
     }
     if (path === "/timeoff/request" && req.method === "POST") {
@@ -4565,7 +4565,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         if (!name && !email) return res.status(400).json({ error: "No name or email provided" });
         
         // 1. Find the agent's email from Firestore (just to get email if only name provided)
-        const { people } = await getCachedMetadata();
+        const { people = [] } = await getCachedMetadata();
         let agentEmail = "";
 
         if (email) {
@@ -4831,7 +4831,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         });
         
         // Build fairness report
-        const { people } = await getCachedMetadata();
+        const { people = [] } = await getCachedMetadata();
         const fairnessReport = people
           .filter(p => p.active !== false)
           .map(person => {
@@ -5631,7 +5631,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const cutoffISO = cutoffDate.toISOString();
         
         // Get all people
-        const { people } = await getCachedMetadata();
+        const { people = [] } = await getCachedMetadata();
         
         // Get all time-off requests (simple query, filter in code)
         let timeoffSnap;
