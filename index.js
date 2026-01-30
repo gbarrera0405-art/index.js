@@ -1806,7 +1806,8 @@ if (path === "/audit/logs" && req.method === "GET") {
           "agent_notifications", 
           "manager_notifications",
           "audit_log",
-          "holiday_transactions"
+          "holiday_transactions",
+          "swap_requests"
         ];
         
         // Use provided collections or defaults, but only allow from the allowlist
@@ -2486,7 +2487,7 @@ if (notifyMode === "silent") notifyStatus = "None";
     }
    
     if (path === "/schedule/extended" && req.method === "POST") {
-      const body = req.body || {};
+      const body = readJsonBody(req);
       const { daysBack = 30, daysForward = 60, targetEmail } = body;
       
       // Clamp values for safety
@@ -2534,7 +2535,7 @@ if (notifyMode === "silent") notifyStatus = "None";
     // LOAD PAST SCHEDULE ONLY
     // ============================================
     if (path === "/schedule/past" && req.method === "POST") {
-      const body = req.body || {};
+      const body = readJsonBody(req);
       const { daysBack = 30, agentName, isManager = true } = body;
       
       const pastDays = Math.min(Math.max(parseInt(daysBack, 10) || 30, 1), 30);
@@ -2589,7 +2590,7 @@ if (notifyMode === "silent") notifyStatus = "None";
     // LOAD EXTENDED FUTURE SCHEDULE (with auto-generation)
     // ============================================
     if (path === "/schedule/future" && req.method === "POST") {
-      const body = req.body || {};
+      const body = readJsonBody(req);
       const { daysForward = 60, startFrom, agentName, isManager = true } = body;
       
       const futureDays = Math.min(Math.max(parseInt(daysForward, 10) || 60, 1), 60);
@@ -3123,6 +3124,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
     // POST /agent/heartbeat - Record agent activity
     if (path === "/agent/heartbeat" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, view } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5466,6 +5468,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Get attendance summary for an agent (pulls from existing data)
     if (path === "/attendance/summary" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, days = 90 } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5478,11 +5481,11 @@ if (path === "/holiday/bank" && req.method === "POST") {
         // Get time-off requests for this person (simpler query, filter in code)
         let timeoffSnap;
         try {
-          timeoffSnap = await db.collection("timeoff_requests")
+          timeoffSnap = await db.collection("time_off_requests")
             .where("person", "==", agentName)
             .get();
         } catch (e) {
-          console.warn("timeoff_requests query failed:", e.message);
+          console.warn("time_off_requests query failed:", e.message);
           timeoffSnap = { docs: [], forEach: () => {} };
         }
         
@@ -5633,9 +5636,9 @@ if (path === "/holiday/bank" && req.method === "POST") {
         // Get all time-off requests (simple query, filter in code)
         let timeoffSnap;
         try {
-          timeoffSnap = await db.collection("timeoff_requests").get();
+          timeoffSnap = await db.collection("time_off_requests").get();
         } catch (e) {
-          console.warn("timeoff_requests query failed:", e.message);
+          console.warn("time_off_requests query failed:", e.message);
           timeoffSnap = { docs: [], forEach: () => {} };
         }
         
