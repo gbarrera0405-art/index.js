@@ -1076,6 +1076,7 @@ if (action) path = "/" + action;
       "/balances/update",
       "/audit/logs",
       "/audit/clear",
+      "/admin/clear-events",
       "/timeoff/request",
       "/audit/log",
       "/timeoff/list",
@@ -1784,6 +1785,125 @@ if (path === "/audit/logs" && req.method === "GET") {
         return res.status(500).json({ error: err.message });
       }
     }
+    
+    // Clear event history (admin-only endpoint for test data cleanup)
+    if (path === "/admin/clear-events" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { confirm, beforeDate, collections } = body;
+        
+        // Safety check: require explicit confirmation
+        if (confirm !== true) {
+          return res.status(400).json({ 
+            error: "Safety check failed", 
+            message: "You must pass confirm: true to clear event history" 
+          });
+        }
+        
+        // Default collections to target
+        const defaultCollections = [
+          "time_off_requests",
+          "agent_notifications", 
+          "manager_notifications",
+          "audit_log",
+          "holiday_transactions"
+        ];
+        
+        // Use provided collections or defaults, but only allow from the allowlist
+        const allowedCollections = defaultCollections;
+        const targetCollections = collections && Array.isArray(collections) 
+          ? collections.filter(c => allowedCollections.includes(c))
+          : defaultCollections;
+          
+        if (targetCollections.length === 0) {
+          return res.status(400).json({ 
+            error: "No valid collections specified",
+            allowedCollections
+          });
+        }
+        
+        // Parse beforeDate if provided (YYYY-MM-DD format)
+        let cutoffDate = null;
+        if (beforeDate) {
+          cutoffDate = new Date(beforeDate);
+          if (isNaN(cutoffDate.getTime())) {
+            return res.status(400).json({ 
+              error: "Invalid beforeDate format. Use YYYY-MM-DD" 
+            });
+          }
+          cutoffDate = cutoffDate.toISOString();
+        }
+        
+        console.log(`🗑️ Starting event history cleanup...`);
+        console.log(`   Collections: ${targetCollections.join(", ")}`);
+        console.log(`   Before date: ${cutoffDate || "all"}`);
+        
+        const deleteCounts = {};
+        
+        // Process each collection
+        for (const collectionName of targetCollections) {
+          let totalDeleted = 0;
+          let hasMore = true;
+          
+          while (hasMore) {
+            let query = db.collection(collectionName);
+            
+            // Apply date filter if provided
+            // Try common timestamp fields
+            if (cutoffDate) {
+              // Different collections may have different timestamp field names
+              // We'll try timestamp, createdAt, requestedAt based on collection
+              let timestampField = "timestamp";
+              if (collectionName === "time_off_requests") {
+                timestampField = "requestedAt";
+              } else if (collectionName === "agent_notifications" || collectionName === "manager_notifications") {
+                timestampField = "createdAt";
+              } else if (collectionName === "holiday_transactions") {
+                timestampField = "transactionDate";
+              }
+              
+              query = query.where(timestampField, "<", cutoffDate);
+            }
+            
+            const snap = await query.limit(400).get();
+            
+            if (snap.empty) {
+              hasMore = false;
+              break;
+            }
+            
+            const batch = db.batch();
+            snap.docs.forEach(doc => {
+              batch.delete(doc.ref);
+            });
+            
+            await batch.commit();
+            totalDeleted += snap.size;
+            
+            // If we got less than 400, we're done
+            if (snap.size < 400) {
+              hasMore = false;
+            }
+          }
+          
+          deleteCounts[collectionName] = totalDeleted;
+          console.log(`   ✓ ${collectionName}: ${totalDeleted} deleted`);
+        }
+        
+        const totalAcrossAll = Object.values(deleteCounts).reduce((sum, count) => sum + count, 0);
+        console.log(`🗑️ Event history cleanup complete: ${totalAcrossAll} total entries deleted`);
+        
+        return res.status(200).json({ 
+          ok: true, 
+          deletedByCollection: deleteCounts,
+          totalDeleted: totalAcrossAll
+        });
+      } catch (err) {
+        console.error("Event history clear error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+    
     if (path === "/config" || action === "config") {
         if (req.method === "POST") {
             try {
@@ -5250,6 +5370,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Get goals for an agent
     if (path === "/goals/get" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5289,6 +5410,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Save goals for an agent
     if (path === "/goals/save" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, goals, updatedBy } = body;
         if (!agentName || !goals) {
           return res.status(400).json({ error: "agentName and goals required" });
