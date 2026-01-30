@@ -5353,6 +5353,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Get attendance summary for an agent (pulls from existing data)
     if (path === "/attendance/summary" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, days = 90 } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5365,11 +5366,11 @@ if (path === "/holiday/bank" && req.method === "POST") {
         // Get time-off requests for this person (simpler query, filter in code)
         let timeoffSnap;
         try {
-          timeoffSnap = await db.collection("timeoff_requests")
+          timeoffSnap = await db.collection("time_off_requests")
             .where("person", "==", agentName)
             .get();
         } catch (e) {
-          console.warn("timeoff_requests query failed:", e.message);
+          console.warn("time_off_requests query failed:", e.message);
           timeoffSnap = { docs: [], forEach: () => {} };
         }
         
@@ -5520,9 +5521,9 @@ if (path === "/holiday/bank" && req.method === "POST") {
         // Get all time-off requests (simple query, filter in code)
         let timeoffSnap;
         try {
-          timeoffSnap = await db.collection("timeoff_requests").get();
+          timeoffSnap = await db.collection("time_off_requests").get();
         } catch (e) {
-          console.warn("timeoff_requests query failed:", e.message);
+          console.warn("time_off_requests query failed:", e.message);
           timeoffSnap = { docs: [], forEach: () => {} };
         }
         
