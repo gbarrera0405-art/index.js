@@ -133,22 +133,59 @@
   --presence-dot: #34d399;
   }
   
-  body { margin: 0; padding: 0; background: var(--bg-primary); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.2s, color 0.2s; }
+  body { 
+    margin: 0; 
+    padding: 0; 
+    background: radial-gradient(circle at 20% 20%, rgba(179,126,120,0.12), transparent 35%), 
+                radial-gradient(circle at 80% 0%, rgba(236,208,176,0.15), transparent 32%), 
+                var(--bg-primary);
+    color: var(--text-primary); 
+    height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+    overflow: hidden; 
+    transition: background-color 0.2s, color 0.2s; 
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 120px 120px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body.dark-mode { 
+    background: radial-gradient(circle at 20% 20%, rgba(164,89,83,0.18), transparent 38%), 
+                radial-gradient(circle at 80% 0%, rgba(88,70,64,0.26), transparent 34%), 
+                var(--bg-primary);
+  }
+  body.dark-mode::before {
+    opacity: 0.06;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+  }
   
   /* --- HEADER --- */
-  .header { 
-    height: 64px; 
-    background: var(--header-bg);
-    border-bottom: 1px solid var(--border-color);
+.header { 
+    height: 68px; 
+    background: linear-gradient(135deg, var(--header-bg) 0%, color-mix(in srgb, var(--header-bg) 75%, #fff 10%));
+    border-bottom: 1px solid color-mix(in srgb, var(--header-bg) 60%, #000 15%);
     display: flex; 
     align-items: center; 
     justify-content: space-between; 
-    padding: 0 24px; 
-    flex: 0 0 64px; 
-    box-shadow: none; 
+    padding: 0 28px; 
+    flex: 0 0 68px; 
+    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.45); 
     z-index: 600; 
     position: relative;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    backdrop-filter: blur(6px);
   }
   .hLeft { display: flex; align-items: center; gap: 16px; }
   .hTitle { 
@@ -599,7 +636,16 @@ body.dark-mode .chip.active{
   .skel-head { height: 30px; width: 60%; margin-bottom: 10px; }
   .skel-card { height: 80px; width: 100%; }
   .main { flex: 1; display: flex; overflow: hidden; position: relative; }
-  .content { flex: 1; overflow: hidden; padding: 20px; position: relative; display: flex; flex-direction: column; }
+.content { 
+    flex: 1; 
+    overflow: hidden; 
+    padding: 24px; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 16px;
+    min-height: 0; /* Critical for nested flex scrolling */
+  }
   /* === CALENDAR WRAPPER === */
   #calViewWrapper {
     flex: 1;
@@ -688,35 +734,55 @@ body.dark-mode .dayCol.today{
   .dayBody::-webkit-scrollbar { display: none; }
   /* --- NEW SCHEDULE VIEW STYLES --- */
 .schedule-container {
-  display: flex;
+  display: grid;
+  grid-template-columns: 180px 1fr;
   gap: 20px;
   height: 100%;
+  min-height: 0; /* Critical for flexbox children to scroll properly */
   overflow: hidden; /* inner parts scroll */
 }
 /* LEFT SIDEBAR (Day Tabs) */
-.day-tabs {
+  .day-tabs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 160px;
+  gap: 10px;
+  width: 180px;
   flex-shrink: 0;
   overflow-y: auto;
-  padding-right: 4px; /* room for scrollbar */
+  padding: 8px 4px 8px 0;
+  max-height: 100%;
+  padding-right: 8px;
 }
 .day-tab {
   padding: 14px;
   background: var(--day-tab-bg);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s, color 0.2s;
   color: #fff;
   border-color: color-mix(in srgb, var(--day-tab-bg) 70%, #000 30%);
+  box-shadow: 0 10px 24px -18px rgba(0,0,0,0.35);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  backdrop-filter: blur(4px);
 }
-.day-tab:hover {
+  .day-tab .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background: rgba(255,255,255,0.85);
+    display:inline-block;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.12);
+  }
+  .day-tab:hover {
   background: var(--day-tab-hover-bg);
   border-color: var(--accent-header);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px -22px rgba(0,0,0,0.55);
 }
 .day-tab:hover,
 body.dark-mode .shift-chip:hover,
@@ -724,11 +790,12 @@ body.dark-mode #loadMoreControls button:hover{
   border-color: var(--accent-primary) !important;
   color: var(--accent-primary) !important;
 }
-.day-tab.active{
+  .day-tab.active{
   background: var(--accent-selected);
   border-color: var(--accent-selected);
   color: #1a0e0d;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 16px 32px -18px rgba(0,0,0,0.35);
+  transform: translateY(-1px);
 }
 body.dark-mode .day-tab.active{
   background: var(--accent-selected);
@@ -740,23 +807,39 @@ body.dark-mode .day-tab.active{
 /* MAIN CONTENT (Right Side) */
 .day-content {
   flex: 1;
-  background: var(--day-content-bg);
-  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.9), var(--day-content-bg));
+  border-radius: 20px;
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px var(--shadow-sm);
-  transition: background-color 0.2s, border-color 0.2s;
+  min-height: 0; /* Critical for scroll to work */
+  max-height: 100%; /* Constrain to container height */
+  box-shadow: 0 12px 34px -18px rgba(0,0,0,0.25);
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.day-content::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: radial-gradient(circle at 80% 20%, rgba(236,208,176,0.16), transparent 35%);
 }
 .day-content-header {
-  padding: 20px 24px;
+  padding: 20px 24px 14px 24px;
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #334155;
   border-bottom-color: color-mix(in srgb, var(--accent-header) 60%, #000 40%);
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.94), var(--day-content-bg));
+  color: var(--text-primary);
+  backdrop-filter: blur(6px);
+  z-index: 2;
 }
 .day-content-body {
   flex: 1;
@@ -825,10 +908,10 @@ body.dark-mode .countBadge.warn{ color:#fca5a5; }
 }
 body.dark-mode .countBadge.ok{ color:#86efac; }
 /* SHIFT GRID */
-.shifts-grid {
+  .shifts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 /* List (vertical) view mode */
 .shifts-grid.view-list {
@@ -904,16 +987,18 @@ body.dark-mode .manager-presence-pill.mp-conflict { background: linear-gradient(
 .shift-card-b {
   background: var(--shift-card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 14px;
-  transition: all 0.2s;
+  border-radius: 16px;
+  padding: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s, background-color 0.2s;
   border-left: 4px solid #cbd5e1; /* Default Color */
   position: relative;
   cursor: pointer;
+  box-shadow: 0 10px 30px -22px rgba(0,0,0,0.45);
+  backdrop-filter: blur(2px);
 }
 .shift-card-b:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px var(--shadow-md);
+  box-shadow: 0 18px 32px -18px rgba(0,0,0,0.35);
   border-color: var(--text-tertiary); /* Hover border */
 }
 .sc-time { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display:flex; justify-content:space-between;}
@@ -2358,7 +2443,8 @@ body.agent-mode #btnAdmin,
 body.agent-mode #btnMasterMode,
 body.agent-mode #drawerToggle,
 body.agent-mode #teamChips,
-body.agent-mode #btnNotif {
+body.agent-mode #btnNotif,
+body.agent-mode #btnTimezone {
   display: none !important;
 }
 /* Hide load history/future buttons for agents - show simpler version */
@@ -5216,6 +5302,7 @@ body.dark-mode .bulkModal .mBody {
     <div class="hRight">
       <div class="seg">
         <button class="segBtn active" id="btnSchedule" onclick="setView('schedule')">Schedule</button>
+        <button class="segBtn" id="btnGoals" onclick="setView('goals')" style="display:none;">Goals</button>
         <button class="segBtn" id="btnMetrics" onclick="setView('metrics')">Metrics</button>
       </div>
 <div class="header-divider"></div>
@@ -5309,7 +5396,52 @@ body.dark-mode .bulkModal .mBody {
     Load Future →
   </button>
 </div>
-<!-- Agent Quick Actions (shown only for agents) -->
+
+<!-- AGENT COMPACT SUMMARY BAR -->
+<div id="agentCompactBar">
+  <div class="compact-summary">
+    <div class="summary-card now">
+      <div class="summary-icon">🟢</div>
+      <div class="summary-content">
+        <div class="summary-label">CURRENT STATUS</div>
+        <div class="summary-value" id="summaryNowValue">Off Shift</div>
+        <div class="summary-sub" id="summaryNowTeam"></div>
+      </div>
+    </div>
+    <div class="summary-card next">
+      <div class="summary-icon">⏰</div>
+      <div class="summary-content">
+        <div class="summary-label">NEXT SHIFT</div>
+        <div class="summary-value" id="summaryNextValue">--</div>
+        <div class="summary-sub" id="summaryNextDate"></div>
+      </div>
+    </div>
+    <div class="summary-card role" id="summaryRoleCard" style="display:none;">
+      <div class="summary-icon">🎯</div>
+      <div class="summary-content">
+        <div class="summary-label">YOUR ROLE</div>
+        <div class="summary-value" id="summaryRoleValue">--</div>
+        <div class="summary-sub" id="summaryRoleDate"></div>
+      </div>
+    </div>
+  </div>
+  <div class="compact-actions">
+    <div class="compact-tz-wrapper">
+      <label class="compact-tz-label">Display Times In:</label>
+      <select id="compactTzSelect" class="compact-tz-select" onchange="setUserTimezone(this.value)">
+        <option value="PST">Pacific (PST)</option>
+        <option value="MST">Mountain (MST)</option>
+        <option value="CST">Central (CST)</option>
+        <option value="EST">Eastern (EST)</option>
+      </select>
+    </div>
+    <button class="compact-btn secondary" onclick="openMyGoalsModal()">📋 My Goals</button>
+    <button class="compact-btn secondary" onclick="agentLoadMoreSchedule()">📆 Load 30 Days</button>
+    <button class="compact-btn primary" onclick="openFutureTimeOffModal()">🏖️ Request Time Off</button>
+  </div>
+</div>
+
+<!-- Agent Quick Actions (hidden, replaced by compact bar) -->
 <div id="agentQuickActions" class="agent-toolbar">
   <!-- Schedule Range Info -->
   <div class="agent-toolbar-item range-info">
@@ -5431,14 +5563,45 @@ body.dark-mode .bulkModal .mBody {
       </div>
     </div>
     <div id="dayContentBody" class="day-content-body">
-      <div id="loadingPlaceholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#94a3b8;">
-        <div style="width:40px; height:40px; border:3px solid #e2e8f0; border-top-color:#b37e78; border-radius:50%; animation:spin 1s linear infinite;"></div>
-        <div style="margin-top:16px; font-size:14px;">Loading schedule...</div>
+      <div id="loadingPlaceholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary);">
+        <div class="schedule-loader">
+          <div class="loader-spinner"></div>
+          <div class="loader-text">Loading your schedule...</div>
+          <div class="loader-subtext">Fetching shifts and assignments</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 <style>
+.schedule-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.loader-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s ease-in-out infinite;
+}
+.loader-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.loader-subtext {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  animation: pulse-text 1.5s ease-in-out infinite;
+}
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -5488,6 +5651,880 @@ body.dark-mode .open-shift {
 }
 </style>
 <div id="masterView" style="display:none; height:100%; overflow-y:auto;"></div>
+
+<!-- ============================================ -->
+<!-- GOALS & ATTENDANCE VIEW                      -->
+<!-- ============================================ -->
+<div id="goalsView" style="display:none; height:100%; flex:1; min-height:0; overflow:hidden;">
+  <div class="goals-container">
+    <!-- Left Panel: Agent List -->
+    <div class="goals-sidebar">
+      <div class="goals-sidebar-header">
+        <div class="goals-sidebar-title">Team Members</div>
+        <input type="text" id="goalsAgentSearch" class="goals-search" placeholder="Search agent..." oninput="filterGoalsAgentList()">
+      </div>
+      <div id="goalsAgentList" class="goals-agent-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+    
+    <!-- Right Panel: Goals Detail -->
+    <div class="goals-main">
+      <div id="goalsPlaceholder" class="goals-placeholder">
+        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+        <div style="font-size: 18px; font-weight: 600; color: var(--text-primary);">Select an Agent</div>
+        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">Choose a team member from the list to view and edit their goals, attendance, and performance tracking.</div>
+      </div>
+      
+      <div id="goalsContent" class="goals-content" style="display:none;">
+        <!-- Agent Header -->
+        <div class="goals-agent-header">
+          <div class="goals-agent-info">
+            <div class="goals-agent-name" id="goalsAgentName">Agent Name</div>
+            <div class="goals-agent-meta" id="goalsAgentMeta">Last updated: Never</div>
+          </div>
+          <div class="goals-agent-actions">
+            <button class="btn primary" onclick="saveAgentGoals()">💾 Save Changes</button>
+          </div>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="goals-tabs">
+          <button class="goals-tab active" data-tab="smart" onclick="switchGoalsTab('smart')">📎 S.M.A.R.T. Goals</button>
+          <button class="goals-tab" data-tab="attendance" onclick="switchGoalsTab('attendance')">📅 Attendance</button>
+          <button class="goals-tab" data-tab="metrics" onclick="switchGoalsTab('metrics')">📊 Performance</button>
+          <button class="goals-tab" data-tab="qa" onclick="switchGoalsTab('qa')">✅ QA Tickets</button>
+          <button class="goals-tab" data-tab="topics" onclick="switchGoalsTab('topics')">💬 Topics</button>
+          <button class="goals-tab" data-tab="notes" onclick="switchGoalsTab('notes')">📝 1:1 Notes</button>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="goals-tab-content">
+          <!-- S.M.A.R.T. Goals Tab -->
+          <div id="tabSmart" class="goals-tab-pane active">
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>🎯 S.M.A.R.T. Goals</span>
+                <span class="goals-section-hint">Specific, Measurable, Attainable, Relevant, Time-bound</span>
+              </div>
+              <div id="smartGoalsContainer" class="smart-goals-grid">
+                <!-- Goal 1 -->
+                <div class="smart-goal-card" data-goal-index="0">
+                  <div class="smart-goal-header">Goal #1</div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">S</span>pecific</label>
+                    <textarea class="smart-input" data-field="specific" placeholder="Clearly define what success looks like and who's involved."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">M</span>easurable</label>
+                    <textarea class="smart-input" data-field="measurable" placeholder="Determine how progress will be tracked or proven."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">A</span>ttainable</label>
+                    <textarea class="smart-input" data-field="attainable" placeholder="Ensure the goal is realistic given time, workload and tools."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">R</span>elevant</label>
+                    <textarea class="smart-input" data-field="relevant" placeholder="Aligns with your current role, responsibilities, and priorities."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">T</span>ime Bound</label>
+                    <textarea class="smart-input" data-field="timeBound" placeholder="Give the goal a realistic but motivating deadline."></textarea>
+                  </div>
+                </div>
+                <!-- Goal 2 -->
+                <div class="smart-goal-card" data-goal-index="1">
+                  <div class="smart-goal-header">Goal #2</div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">S</span>pecific</label>
+                    <textarea class="smart-input" data-field="specific" placeholder="Clearly define what success looks like and who's involved."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">M</span>easurable</label>
+                    <textarea class="smart-input" data-field="measurable" placeholder="Determine how progress will be tracked or proven."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">A</span>ttainable</label>
+                    <textarea class="smart-input" data-field="attainable" placeholder="Ensure the goal is realistic given time, workload and tools."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">R</span>elevant</label>
+                    <textarea class="smart-input" data-field="relevant" placeholder="Aligns with your current role, responsibilities, and priorities."></textarea>
+                  </div>
+                  <div class="smart-goal-row">
+                    <label><span class="smart-label">T</span>ime Bound</label>
+                    <textarea class="smart-input" data-field="timeBound" placeholder="Give the goal a realistic but motivating deadline."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tasks & Projects -->
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>📋 Tasks & Projects</span>
+                <button class="btn ghost small" onclick="addTaskRow()">+ Add Task</button>
+              </div>
+              <div class="goals-table-wrap">
+                <table class="goals-table" id="tasksTable">
+                  <thead>
+                    <tr>
+                      <th style="width:25%">Task</th>
+                      <th style="width:12%">Priority</th>
+                      <th style="width:15%">Due Date</th>
+                      <th style="width:12%">Status</th>
+                      <th style="width:30%">Notes</th>
+                      <th style="width:6%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="tasksTableBody">
+                    <!-- Rows added by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Attendance Tab -->
+          <div id="tabAttendance" class="goals-tab-pane">
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>📅 Attendance Summary</span>
+                <select id="attendancePeriod" onchange="loadAgentAttendance()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 12px;">
+                  <option value="30">Last 30 Days</option>
+                  <option value="90" selected>Last 90 Days</option>
+                  <option value="180">Last 180 Days</option>
+                  <option value="365">Last Year</option>
+                </select>
+              </div>
+              
+              <!-- Bradford Factor Card -->
+              <div class="attendance-summary-cards">
+                <div class="attendance-card bradford">
+                  <div class="attendance-card-label">Bradford Factor</div>
+                  <div class="attendance-card-value" id="attBradford">--</div>
+                  <div class="attendance-card-status" id="attBradfordStatus">Calculating...</div>
+                </div>
+                <div class="attendance-card">
+                  <div class="attendance-card-label">Call Outs</div>
+                  <div class="attendance-card-value" id="attCallOuts">--</div>
+                </div>
+                <div class="attendance-card">
+                  <div class="attendance-card-label">PTO Requests</div>
+                  <div class="attendance-card-value" id="attPTO">--</div>
+                </div>
+                <div class="attendance-card">
+                  <div class="attendance-card-label">Swaps Initiated</div>
+                  <div class="attendance-card-value" id="attSwapsInit">--</div>
+                </div>
+                <div class="attendance-card">
+                  <div class="attendance-card-label">Times Replaced</div>
+                  <div class="attendance-card-value" id="attReplaced">--</div>
+                </div>
+                <div class="attendance-card">
+                  <div class="attendance-card-label">Covered Others</div>
+                  <div class="attendance-card-value" id="attCovered">--</div>
+                </div>
+              </div>
+              
+              <!-- Attendance Event Log -->
+              <div class="goals-section-header" style="margin-top: 24px;">
+                <span>📜 Event History</span>
+              </div>
+              <div class="attendance-events" id="attendanceEvents">
+                <div class="attendance-loading">Loading attendance data...</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Performance Metrics Tab -->
+          <div id="tabMetrics" class="goals-tab-pane">
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>📊 Weekly Performance Metrics</span>
+                <button class="btn ghost small" onclick="addMetricsRow()">+ Add Week</button>
+              </div>
+              <div class="goals-table-wrap">
+                <table class="goals-table" id="metricsTable">
+                  <thead>
+                    <tr>
+                      <th style="width:14%">Week Starting</th>
+                      <th style="width:10%">Tickets Solved</th>
+                      <th style="width:10%">CSAT %</th>
+                      <th style="width:20%">Wins / Challenges</th>
+                      <th style="width:10%">Call Outs</th>
+                      <th style="width:12%">Make Up Hours</th>
+                      <th style="width:18%">Notes</th>
+                      <th style="width:6%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="metricsTableBody">
+                    <!-- Rows added by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- QA Tickets Tab -->
+          <div id="tabQa" class="goals-tab-pane">
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>✅ QA'd Tickets</span>
+                <button class="btn ghost small" onclick="addQaRow()">+ Add QA Review</button>
+              </div>
+              <div class="goals-table-wrap">
+                <table class="goals-table" id="qaTable">
+                  <thead>
+                    <tr>
+                      <th style="width:12%">Date</th>
+                      <th style="width:12%">Channel</th>
+                      <th style="width:12%">Ticket #</th>
+                      <th style="width:25%">Notes</th>
+                      <th style="width:10%">Gone Over?</th>
+                      <th style="width:23%">Follow-up Notes</th>
+                      <th style="width:6%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="qaTableBody">
+                    <!-- Rows added by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Topics Discussed Tab -->
+          <div id="tabTopics" class="goals-tab-pane">
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>💬 Topics Discussed</span>
+                <button class="btn ghost small" onclick="addTopicRow()">+ Add Topic</button>
+              </div>
+              <div class="goals-table-wrap">
+                <table class="goals-table" id="topicsTable">
+                  <thead>
+                    <tr>
+                      <th style="width:12%">Date</th>
+                      <th style="width:22%">Topic Discussed</th>
+                      <th style="width:22%">Their Thoughts</th>
+                      <th style="width:12%">Follow-up?</th>
+                      <th style="width:26%">Notes</th>
+                      <th style="width:6%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="topicsTableBody">
+                    <!-- Rows added by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 1:1 Notes Tab -->
+          <div id="tabNotes" class="goals-tab-pane">
+            <div class="goals-section">
+              <div class="goals-section-header">
+                <span>📝 1:1 Notes + Questions Monthly</span>
+                <button class="btn ghost small" onclick="addNoteRow()">+ Add Entry</button>
+              </div>
+              <div class="goals-table-wrap">
+                <table class="goals-table" id="notesTable">
+                  <thead>
+                    <tr>
+                      <th style="width:12%">Date</th>
+                      <th style="width:22%">Question Asked</th>
+                      <th style="width:22%">Their Answer</th>
+                      <th style="width:12%">Follow-up?</th>
+                      <th style="width:26%">Notes</th>
+                      <th style="width:6%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="notesTableBody">
+                    <!-- Rows added by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Goals View (Read-only for agents) -->
+<!-- Agent Goals Modal -->
+<div id="agentGoalsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentGoalsModal()">
+  <div class="modal" style="width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
+      <span class="mTitle" style="color: white;">📋 My Goals & Progress</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeAgentGoalsModal()">✕</button>
+    </div>
+    <div class="mBody" style="flex: 1; overflow-y: auto; max-height: calc(90vh - 60px); padding: 20px;">
+      <div class="agent-goals-meta" id="agentGoalsMeta" style="font-size: 12px; color: var(--text-tertiary); margin-bottom: 16px;">Last updated: Never</div>
+      <div id="agentGoalsContent">
+        <div class="attendance-loading">Loading your goals...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="agentGoalsView" style="display:none; height:100%; flex:1; min-height:0; overflow:auto; padding: 24px;">
+  <div class="agent-goals-container">
+    <div class="agent-goals-header">
+      <h2>📋 My Goals & Progress</h2>
+      <div class="agent-goals-meta" id="agentGoalsMetaAlt">Last updated: Never</div>
+    </div>
+    <div id="agentGoalsContentAlt">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</div>
+
+<style>
+/* ============================================ */
+/* GOALS VIEW STYLES                            */
+/* ============================================ */
+.goals-container {
+  display: flex;
+  height: 100%;
+  gap: 0;
+  background: var(--bg-primary);
+}
+
+.goals-sidebar {
+  width: 280px;
+  min-width: 280px;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+}
+
+.goals-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.goals-sidebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.goals-search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.goals-agent-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.goals-agent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 4px;
+}
+
+.goals-agent-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.goals-agent-item.active {
+  background: var(--accent-selected);
+  border: 1px solid var(--accent-primary);
+}
+
+.goals-agent-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+}
+
+.goals-agent-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.goals-agent-item-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.goals-agent-item-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.goals-agent-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.goals-agent-badge.watch { background: #fef3c7; color: #92400e; }
+.goals-agent-badge.concern { background: #fed7aa; color: #c2410c; }
+.goals-agent-badge.serious { background: #fecaca; color: #b91c1c; }
+.goals-agent-badge.critical { background: #ef4444; color: white; }
+
+.goals-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.goals-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 40px;
+}
+
+.goals-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.goals-agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.goals-agent-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.goals-agent-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.goals-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+.goals-tab {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.goals-tab:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.goals-tab.active {
+  background: var(--accent-selected);
+  color: var(--text-primary);
+}
+
+.goals-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.goals-tab-pane {
+  display: none;
+}
+
+.goals-tab-pane.active {
+  display: block;
+}
+
+.goals-section {
+  margin-bottom: 32px;
+}
+
+.goals-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.goals-section-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+/* S.M.A.R.T. Goals Grid */
+.smart-goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.smart-goal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.smart-goal-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent-selected);
+}
+
+.smart-goal-row {
+  margin-bottom: 12px;
+}
+
+.smart-goal-row label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.smart-label {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background: var(--accent-primary);
+  color: white;
+  border-radius: 4px;
+  text-align: center;
+  line-height: 18px;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.smart-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.smart-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(179, 126, 120, 0.15);
+}
+
+/* Goals Tables */
+.goals-table-wrap {
+  overflow-x: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.goals-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.goals-table th {
+  background: var(--bg-tertiary);
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.goals-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+
+.goals-table tr:last-child td {
+  border-bottom: none;
+}
+
+.goals-table input,
+.goals-table select,
+.goals-table textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.goals-table textarea {
+  min-height: 50px;
+  resize: vertical;
+}
+
+.goals-table .btn-delete {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.goals-table .btn-delete:hover {
+  background: #fef2f2;
+}
+
+/* Attendance Styles */
+.attendance-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.attendance-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.attendance-card.bradford {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border: none;
+}
+
+.attendance-card.bradford .attendance-card-label,
+.attendance-card.bradford .attendance-card-status {
+  color: rgba(255,255,255,0.85);
+}
+
+.attendance-card.bradford .attendance-card-value {
+  color: white;
+}
+
+.attendance-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.attendance-card-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 8px 0 4px;
+}
+
+.attendance-card-status {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.attendance-card-status.good { color: #16a34a; }
+.attendance-card-status.watch { color: #ca8a04; }
+.attendance-card-status.concern { color: #ea580c; }
+.attendance-card-status.serious { color: #dc2626; }
+.attendance-card-status.critical { color: #991b1b; }
+
+.attendance-events {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.attendance-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.attendance-event:last-child {
+  border-bottom: none;
+}
+
+.attendance-event-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.attendance-event-icon.timeoff { background: #dbeafe; }
+.attendance-event-icon.swap { background: #fef3c7; }
+.attendance-event-icon.replaced { background: #fecaca; }
+.attendance-event-icon.covered { background: #d1fae5; }
+
+.attendance-event-info {
+  flex: 1;
+}
+
+.attendance-event-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.attendance-event-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.attendance-event-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.attendance-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+/* Agent Goals View (Read-only) */
+.agent-goals-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.agent-goals-header {
+  margin-bottom: 24px;
+}
+
+.agent-goals-header h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.agent-goals-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.agent-goals-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.agent-goal-item {
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.agent-goal-item:last-child {
+  margin-bottom: 0;
+}
+
+.agent-goal-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.agent-goal-value {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.btn.small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+</style>
+
       <div id="metricsView" style="display:none; height:100%; flex:1; min-height:0; overflow:hidden;">
         <div class="metricsWrap" style="height:100%;">
           <div class="metricsLeft">
@@ -6349,13 +7386,13 @@ body.dark-mode .open-shift {
   <div id="loader" class="hidden"></div>
   <!-- My Profile / Balance Modal -->
 <div id="balanceModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeBalanceModal()">
-  <div class="modal" style="width: 550px;">
-    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none;">
+  <div class="modal" style="width: 550px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
       <span id="balanceModalTitle" class="mTitle" style="color: white;">👤 My Profile</span>
       <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeBalanceModal()">✕</button>
     </div>
     
-    <div class="mBody">
+    <div class="mBody" style="flex: 1; overflow-y: auto; max-height: calc(90vh - 60px);">
       <!-- Agent View - My Profile Dashboard -->
       <div id="agentBalanceView" style="display:none;">
         <!-- PTO Balance Card -->
@@ -7195,9 +8232,16 @@ function initUserPrefs() {
     updateViewToggleIcon(true);
   }
   
-  // Apply timezone preference
-  const tzRadio = document.querySelector(`input[name="timezone"][value="${prefs.timezone}"]`);
+  // Apply timezone preference to both selectors
+  const tz = prefs.timezone || 'PST';
+  
+  // Update header radio buttons
+  const tzRadio = document.querySelector(`input[name="timezone"][value="${tz}"]`);
   if (tzRadio) tzRadio.checked = true;
+  
+  // Update compact bar select dropdown
+  const tzSelect = document.getElementById('compactTzSelect');
+  if (tzSelect) tzSelect.value = tz;
 }
 
 // View Toggle (Grid vs List)
@@ -7241,12 +8285,44 @@ function setUserTimezone(tz) {
   prefs.timezone = tz;
   saveUserPrefs(prefs);
   
-  toggleTimezoneDropdown();
-  toast(`🌐 Timezone set to ${tz}`, 'info');
+  // Close the radio button dropdown if it's open (only in manager mode)
+  const dropdown = document.getElementById('timezoneDropdown');
+  if (dropdown && dropdown.style.display !== 'none') {
+    dropdown.style.display = 'none';
+  }
   
-  // Re-render to show new times
-  if (typeof renderScheduleView === 'function') {
-    renderScheduleView();
+  toast(`Timezone: ${tz}`, 'info');
+  
+  // CRITICAL: Regenerate all time labels with new timezone
+  const regenerateLabels = (arr) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(item => {
+      if (item.start) item.startLabel = toAmPm(item.start);
+      if (item.end) item.endLabel = toAmPm(item.end);
+    });
+  };
+  
+  // Use window-scoped variables for cross-scope access
+  if (window._allData) regenerateLabels(window._allData);
+  if (window._filteredData) regenerateLabels(window._filteredData);
+  
+  // Sync both timezone selectors
+  // Update compact bar select dropdown
+  const tzSelect = document.getElementById('compactTzSelect');
+  if (tzSelect) tzSelect.value = tz;
+  
+  // Update header radio buttons
+  const tzRadio = document.querySelector(`input[name="timezone"][value="${tz}"]`);
+  if (tzRadio) tzRadio.checked = true;
+  
+  // Force re-render the schedule view
+  if (typeof renderView === 'function') {
+    renderView();
+  }
+  
+  // Update compact bar display if in agent mode
+  if (typeof updateCompactBar === 'function') {
+    updateCompactBar();
   }
 }
 
@@ -7710,7 +8786,18 @@ runGenerate: async function() {
     host.innerHTML = `<div style="padding:20px; color:red; font-weight:bold;">${title}<br><span style="font-weight:normal; font-size:12px; color:#333;">${detail}</span></div>`;
   }
   // --- 2. GLOBAL VARIABLES ---
-  let _allData=[], _filteredData=[], _people=[], _teams=[], _roles=[], _timeOff=new Set();
+  // Expose key data arrays globally for timezone conversion and other cross-scope access
+  window._allData = window._allData || [];
+  window._filteredData = window._filteredData || [];
+  let _allData = window._allData, _filteredData = window._filteredData;
+  
+  // Sync function to keep window and local vars in sync
+  function syncDataArrays() {
+    window._allData = _allData;
+    window._filteredData = _filteredData;
+  }
+  
+  let _people=[], _teams=[], _roles=[], _timeOff=new Set();
   let _view="schedule", _mode="quick", _activeTeam="", _selectedPeople=new Set(), _teamSelected=new Set();
   let _editing=null, _dragPerson=null, _drawerOpen=false, _lastUndo=null, _notifQueue=[];
   let _zendeskMetricsList = [], _zendeskMetricsByName = new Map(), _zendeskSnapshotLoaded = false;
@@ -8161,6 +9248,39 @@ function clearScheduleCache() {
         </div>
       `;
       
+      // Fetch agents if manager
+      if (window._isManager) {
+        fetch('/agent/presence')
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok && data.activeAgents && data.activeAgents.length > 0) {
+              let agentHtml = `
+                <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                  <div style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    👤 Agents Online (${data.activeAgents.length})
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              `;
+              data.activeAgents.forEach(agent => {
+                agentHtml += `
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; border: 1px solid #86efac;">
+                    <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></span>
+                    <span style="font-size: 13px; font-weight: 500; color: #166534;">${agent.agentName}</span>
+                  </div>
+                `;
+              });
+              agentHtml += `</div></div>`;
+              
+              // Update the Swal content
+              const contentEl = Swal.getHtmlContainer();
+              if (contentEl) {
+                contentEl.innerHTML += agentHtml;
+              }
+            }
+          })
+          .catch(err => console.warn('Failed to fetch agent presence:', err));
+      }
+      
       Swal.fire({
         title: '<span style="font-size:20px;">👥 Team Online</span>',
         html: html,
@@ -8187,6 +9307,28 @@ function clearScheduleCache() {
     if (diff < 300) return `${Math.floor(diff / 60)} mins ago`;
     return 'Active';
   }
+  
+  // Start agent heartbeat for non-managers
+  function startAgentHeartbeat() {
+    if (window._isManager) return;
+    if (!window._myName) return;
+    
+    const sendHeartbeat = () => {
+      fetch('/agent/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: window._myName,
+          view: 'schedule'
+        })
+      }).catch(err => console.warn('Agent heartbeat failed:', err));
+    };
+    
+    // Send immediately and then every 2 minutes
+    sendHeartbeat();
+    setInterval(sendHeartbeat, 2 * 60 * 1000);
+  }
+  
   // ---- Manager Presence: start once (ONLY after auth is known) ----
 let _presenceStarted = false;
 let _presenceHeartbeatTimer = null;
@@ -8409,8 +9551,9 @@ function setEditingMode(isEditing) {
     if ($("drawerToggle")) $("drawerToggle").style.display = "";
     if ($("btnAgentToggle")) $("btnAgentToggle").style.display = "none";
     
-    // ✅ MANAGER: Ensure Metrics button is VISIBLE
+    // ✅ MANAGER: Ensure Metrics and Goals buttons are VISIBLE
     if ($("btnMetrics")) $("btnMetrics").style.display = ""; 
+    if ($("btnGoals")) $("btnGoals").style.display = "";
     
     // Update header title
     const headerTitle = document.querySelector(".hTitle");
@@ -8421,14 +9564,19 @@ function setEditingMode(isEditing) {
     document.body.classList.add("agent-mode");
     document.body.classList.remove("manager-mode");
     
+    // Start agent heartbeat for presence tracking
+    if (typeof startAgentHeartbeat === "function") startAgentHeartbeat();
+    
     // Hide manager-only elements
     if ($("btnAdmin")) $("btnAdmin").style.display = "none";
     if ($("btnMasterMode")) $("btnMasterMode").style.display = "none";
     if ($("drawerToggle")) $("drawerToggle").style.display = "none";
     if ($("btnAgentToggle")) $("btnAgentToggle").style.display = "none";
     
-    // ✅ AGENT: FORCE HIDE METRICS BUTTON
-    if ($("btnMetrics")) $("btnMetrics").style.display = "none"; 
+    // ✅ AGENT: FORCE HIDE METRICS BUTTON and Goals button (uses compact bar button instead)
+    if ($("btnMetrics")) $("btnMetrics").style.display = "none";
+    if ($("btnGoals")) $("btnGoals").style.display = "none";
+    
     // Update header title
     const headerTitle = document.querySelector(".hTitle");
     if (headerTitle) headerTitle.textContent = "My Schedule";
@@ -8580,6 +9728,12 @@ window.formatTimePST = formatTimePST;
       _teams = cachedSchedule.teams || [];
       _allData = cachedSchedule.allData || [];
       
+      // Regenerate time labels with current timezone preference
+      _allData.forEach(item => {
+        if (item.start) item.startLabel = toAmPm(item.start);
+        if (item.end) item.endLabel = toAmPm(item.end);
+      });
+      
       // Update UI with cached data
       renderTeamChips();
       fillSelect("tpPerson", _people);
@@ -8688,8 +9842,8 @@ window.formatTimePST = formatTimePST;
               dayKey,
               dateLabel: dayKey,
               team: teamName,
-              startLabel: a.startLabel,
-              endLabel: a.endLabel,
+              startLabel: toAmPm(a.start),
+              endLabel: toAmPm(a.end),
             });
           });
         }
@@ -10178,18 +11332,35 @@ function checkTimeMatch(targetTime, compareTime) {
   };
   return normalize(targetTime) === normalize(compareTime);
 }
+  // Timezone-aware time formatting
   function toAmPm(timeString) {
     if (!timeString) return "";
-    // Handle "07:00:00" or "07:00"
-    const parts = timeString.split(":");
+    
+    // Parse time
+    const parts = String(timeString).split(":");
     let hours = parseInt(parts[0], 10);
-    const minutes = parts[1];
+    const minutes = parts[1] || "00";
     
-    const suffix = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12; // Convert "0" or "12" to 12
+    if (isNaN(hours)) return "";
     
-    return `${hours}:${minutes} ${suffix}`;
-}
+    // Get user timezone and apply offset
+    const tzOffsets = { 'PST': 0, 'MST': 1, 'CST': 2, 'EST': 3 };
+    let userTz = 'PST';
+    try {
+      const prefs = getUserPrefs();
+      userTz = prefs.timezone || 'PST';
+    } catch(e) {}
+    
+    const offset = tzOffsets[userTz] || 0;
+    const adjustedHours = hours + offset;
+    
+    // Format with overflow handling (e.g., 25 -> 1 AM)
+    const hr = ((adjustedHours % 24) + 24) % 24;
+    const suffix = hr >= 12 ? 'PM' : 'AM';
+    const displayHr = hr % 12 || 12;
+    
+    return `${displayHr}:${minutes} ${suffix}`;
+  }
 // ============================================
 // [SECTION 14] METRICS & REPORTING
 // ============================================
@@ -13557,7 +14728,7 @@ window.toast = toast;
   // ============================================
   // [SECTION 17] FILTERS
   // ============================================
-  function applyLocalFilters() { _filteredData = _allData.filter(x => (!_activeTeam || x.team===_activeTeam) && (!_selectedPeople.size || _selectedPeople.has(x.person))); renderView(); }
+  function applyLocalFilters() { _filteredData = _allData.filter(x => (!_activeTeam || x.team===_activeTeam) && (!_selectedPeople.size || _selectedPeople.has(x.person))); window._allData = _allData; window._filteredData = _filteredData; renderView(); }
   function renderTeamChips() { const c=$("teamChips"); if(c) { c.innerHTML=""; _teams.forEach(t=>{ const d=mkDiv("chip"); d.innerText=t; d.onclick=()=>filterTeam(t); c.appendChild(d); }); } }
   function filterTeam(t) { _activeTeam=t; applyLocalFilters(); }
   function showActiveFilterIndicator(channelName) {
@@ -16264,6 +17435,17 @@ async function loadAgentRotationInfo() {
         const meetingTypeLabel = foundRotation.meetingType === "allhands" ? "All Hands" : 
                                   foundRotation.meetingType === "wednesday" ? "Wednesday Meeting" : "Thursday Meeting";
         
+        // Format date as American style (MM/DD/YYYY)
+        const formatDateUS = (dateStr) => {
+          if (!dateStr) return '';
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+            return `${parts[1]}/${parts[2]}/${parts[0]}`;
+          }
+          return dateStr;
+        };
+        const formattedDate = formatDateUS(foundRotation.date);
+        
         // Update profile modal section (if exists)
         if (sectionEl && containerEl) {
           sectionEl.style.display = "block";
@@ -16273,7 +17455,7 @@ async function loadAgentRotationInfo() {
             <div style="font-weight: 700; font-size: 15px;">${foundRole.icon} You're assigned: ${foundRole.label}</div>
             <div style="margin-top: 8px;">
               <strong>Meeting:</strong> ${meetingTypeLabel}<br>
-              <strong>Date:</strong> ${foundRotation.date}<br>
+              <strong>Date:</strong> ${formattedDate}<br>
               <strong>Time:</strong> ${foundRotation.meetingTimePST || foundRotation.meetingTimeEST || 'TBD'} PST
             </div>
             <div style="margin-top: 10px; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px;">
@@ -16296,7 +17478,7 @@ async function loadAgentRotationInfo() {
             dashboardLabel.style.color = foundRole.color;
           }
           if (dashboardDate) {
-            dashboardDate.textContent = `${meetingTypeLabel} • ${foundRotation.date}`;
+            dashboardDate.textContent = `${meetingTypeLabel} • ${formattedDate}`;
             dashboardDate.style.color = foundRole.color;
           }
           if (dashboardDesc) {
@@ -16629,22 +17811,35 @@ function rgbaFromHex(hex, alpha) {
   
   // Toggle Buttons
   const btnSched = document.getElementById("btnSchedule");
+  const btnGoals = document.getElementById("btnGoals");
   const btnMet = document.getElementById("btnMetrics");
   if(btnSched) btnSched.className = v === "schedule" ? "segBtn active" : "segBtn";
+  if(btnGoals) btnGoals.className = v === "goals" ? "segBtn active" : "segBtn";
   if(btnMet) btnMet.className = v === "metrics" ? "segBtn active" : "segBtn";
+  
   // Toggle Views
   const schedView = document.getElementById("scheduleView");
+  const goalsView = document.getElementById("goalsView");
   const metView = document.getElementById("metricsView");
   const masterView = document.getElementById("masterView");
+  const agentGoalsView = document.getElementById("agentGoalsView");
+  
   if(schedView) schedView.style.display = v === "schedule" ? "flex" : "none";
+  if(goalsView) goalsView.style.display = v === "goals" ? "flex" : "none";
   if(metView) metView.style.display = v === "metrics" ? "block" : "none";
+  if(agentGoalsView) agentGoalsView.style.display = v === "mygoals" ? "block" : "none";
   
   // Ensure Master View is hidden
   if(masterView) masterView.style.display = "none";
+  
   if (v === "schedule") {
     renderScheduleView();
   } else if (v === "metrics") {
     renderMetricsList();
+  } else if (v === "goals") {
+    renderGoalsAgentList();
+  } else if (v === "mygoals") {
+    loadMyGoals();
   }
 }
 
@@ -17216,6 +18411,655 @@ document.addEventListener("DOMContentLoaded", function() {
   }, true);
 
 });
+
+// ============================================
+// GOALS & ATTENDANCE MANAGEMENT SYSTEM
+// ============================================
+
+let _currentGoalsAgent = null;
+let _currentGoalsData = null;
+let _goalsUnsavedChanges = false;
+
+// Render the agent list in the goals sidebar
+async function renderGoalsAgentList() {
+  const container = document.getElementById('goalsAgentList');
+  if (!container) return;
+  
+  container.innerHTML = '<div class="attendance-loading">Loading agents...</div>';
+  
+  try {
+    // Get attendance data for badges
+    const attRes = await fetch('/attendance/all?days=90');
+    const attData = await attRes.json();
+    const attendanceMap = new Map();
+    if (attData.ok && attData.attendance) {
+      attData.attendance.forEach(a => attendanceMap.set(a.agentName, a));
+    }
+    
+    // Get all people
+    const people = _people || [];
+    
+    let html = '';
+    people.forEach(name => {
+      const attendance = attendanceMap.get(name) || {};
+      const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      
+      let badge = '';
+      if (attendance.concernLevel === 'critical') {
+        badge = '<span class="goals-agent-badge critical">Critical</span>';
+      } else if (attendance.concernLevel === 'serious') {
+        badge = '<span class="goals-agent-badge serious">Serious</span>';
+      } else if (attendance.concernLevel === 'concern') {
+        badge = '<span class="goals-agent-badge concern">Concern</span>';
+      } else if (attendance.concernLevel === 'watch') {
+        badge = '<span class="goals-agent-badge watch">Watch</span>';
+      }
+      
+      html += `
+        <div class="goals-agent-item" data-agent="${escapeHtml(name)}" onclick="selectGoalsAgent('${escapeHtml(name)}')">
+          <div class="goals-agent-avatar">${initials}</div>
+          <div class="goals-agent-item-info">
+            <div class="goals-agent-item-name">${escapeHtml(name)}</div>
+            <div class="goals-agent-item-meta">Bradford: ${attendance.bradfordFactor || 0}</div>
+          </div>
+          ${badge}
+        </div>
+      `;
+    });
+    
+    container.innerHTML = html || '<div class="attendance-loading">No agents found</div>';
+  } catch (err) {
+    console.error('Error loading goals agent list:', err);
+    container.innerHTML = '<div class="attendance-loading">Error loading agents</div>';
+  }
+}
+
+// Filter goals agent list
+function filterGoalsAgentList() {
+  const search = document.getElementById('goalsAgentSearch')?.value?.toLowerCase() || '';
+  const items = document.querySelectorAll('.goals-agent-item');
+  
+  items.forEach(item => {
+    const name = item.dataset.agent?.toLowerCase() || '';
+    item.style.display = name.includes(search) ? 'flex' : 'none';
+  });
+}
+
+// Select an agent to view/edit goals
+async function selectGoalsAgent(agentName) {
+  // Check for unsaved changes
+  if (_goalsUnsavedChanges) {
+    const result = await Swal.fire({
+      title: 'Unsaved Changes',
+      text: 'You have unsaved changes. Do you want to save them before switching?',
+      icon: 'warning',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'Save',
+      denyButtonText: "Don't Save",
+      cancelButtonText: 'Cancel'
+    });
+    
+    if (result.isConfirmed) {
+      await saveAgentGoals();
+    } else if (result.isDismissed) {
+      return;
+    }
+  }
+  
+  _currentGoalsAgent = agentName;
+  _goalsUnsavedChanges = false;
+  
+  // Update active state in list
+  document.querySelectorAll('.goals-agent-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.agent === agentName);
+  });
+  
+  // Show content, hide placeholder
+  document.getElementById('goalsPlaceholder').style.display = 'none';
+  document.getElementById('goalsContent').style.display = 'flex';
+  
+  // Update header
+  document.getElementById('goalsAgentName').textContent = agentName;
+  
+  // Load goals data
+  await loadAgentGoals(agentName);
+  
+  // Load attendance data
+  await loadAgentAttendance();
+}
+
+// Load goals for an agent
+async function loadAgentGoals(agentName) {
+  try {
+    const res = await fetch('/goals/get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentName })
+    });
+    
+    const data = await res.json();
+    if (data.ok) {
+      _currentGoalsData = data.goals;
+      
+      // Update last updated meta
+      if (data.goals.updatedAt) {
+        const date = new Date(data.goals.updatedAt);
+        document.getElementById('goalsAgentMeta').textContent = 
+          `Last updated: ${date.toLocaleDateString()} by ${data.goals.updatedBy || 'Unknown'}`;
+      } else {
+        document.getElementById('goalsAgentMeta').textContent = 'Last updated: Never';
+      }
+      
+      // Populate S.M.A.R.T. goals
+      populateSmartGoals(data.goals.smartGoals || [{}, {}]);
+      
+      // Populate tables
+      populateTable('tasksTableBody', data.goals.tasks || [], createTaskRow);
+      populateTable('metricsTableBody', data.goals.performanceMetrics || [], createMetricsRow);
+      populateTable('qaTableBody', data.goals.qaTickets || [], createQaRow);
+      populateTable('topicsTableBody', data.goals.topicsDiscussed || [], createTopicRow);
+      populateTable('notesTableBody', data.goals.oneOnOneNotes || [], createNoteRow);
+    }
+  } catch (err) {
+    console.error('Error loading goals:', err);
+    toast('Failed to load goals', 'error');
+  }
+}
+
+// Populate S.M.A.R.T. goals fields
+function populateSmartGoals(goals) {
+  const cards = document.querySelectorAll('.smart-goal-card');
+  cards.forEach((card, index) => {
+    const goal = goals[index] || {};
+    card.querySelectorAll('.smart-input').forEach(input => {
+      const field = input.dataset.field;
+      input.value = goal[field] || '';
+      input.oninput = () => { _goalsUnsavedChanges = true; };
+    });
+  });
+}
+
+// Generic table populator
+function populateTable(tableBodyId, data, createRowFn) {
+  const tbody = document.getElementById(tableBodyId);
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  data.forEach((item, index) => {
+    tbody.appendChild(createRowFn(item, index));
+  });
+  
+  if (data.length === 0) {
+    const row = createRowFn({}, 0);
+    tbody.appendChild(row);
+  }
+}
+
+// Create task row
+function createTaskRow(data = {}, index) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" value="${escapeHtml(data.task || '')}" data-field="task" onchange="_goalsUnsavedChanges=true"></td>
+    <td>
+      <select data-field="priority" onchange="_goalsUnsavedChanges=true">
+        <option value="">Select</option>
+        <option value="high" ${data.priority === 'high' ? 'selected' : ''}>🔴 High</option>
+        <option value="medium" ${data.priority === 'medium' ? 'selected' : ''}>🟡 Medium</option>
+        <option value="low" ${data.priority === 'low' ? 'selected' : ''}>🟢 Low</option>
+      </select>
+    </td>
+    <td><input type="date" value="${data.dueDate || ''}" data-field="dueDate" onchange="_goalsUnsavedChanges=true"></td>
+    <td>
+      <select data-field="status" onchange="_goalsUnsavedChanges=true">
+        <option value="">Select</option>
+        <option value="not_started" ${data.status === 'not_started' ? 'selected' : ''}>Not Started</option>
+        <option value="in_progress" ${data.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+        <option value="completed" ${data.status === 'completed' ? 'selected' : ''}>Completed</option>
+        <option value="blocked" ${data.status === 'blocked' ? 'selected' : ''}>Blocked</option>
+      </select>
+    </td>
+    <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+  `;
+  return tr;
+}
+
+// Create metrics row
+function createMetricsRow(data = {}, index) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="date" value="${data.weekStarting || ''}" data-field="weekStarting" onchange="_goalsUnsavedChanges=true"></td>
+    <td><input type="number" value="${data.ticketsSolved || ''}" data-field="ticketsSolved" placeholder="0" onchange="_goalsUnsavedChanges=true"></td>
+    <td><input type="text" value="${escapeHtml(data.csat || '')}" data-field="csat" placeholder="%" onchange="_goalsUnsavedChanges=true"></td>
+    <td><textarea data-field="winsChallenges" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.winsChallenges || '')}</textarea></td>
+    <td><input type="number" value="${data.callOuts || ''}" data-field="callOuts" placeholder="0" onchange="_goalsUnsavedChanges=true"></td>
+    <td><input type="text" value="${escapeHtml(data.makeUpHours || '')}" data-field="makeUpHours" placeholder="0" onchange="_goalsUnsavedChanges=true"></td>
+    <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+  `;
+  return tr;
+}
+
+// Create QA row
+function createQaRow(data = {}, index) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="date" value="${data.date || ''}" data-field="date" onchange="_goalsUnsavedChanges=true"></td>
+    <td>
+      <select data-field="channel" onchange="_goalsUnsavedChanges=true">
+        <option value="">Select</option>
+        <option value="Live Chat" ${data.channel === 'Live Chat' ? 'selected' : ''}>Live Chat</option>
+        <option value="Phone" ${data.channel === 'Phone' ? 'selected' : ''}>Phone</option>
+        <option value="Email" ${data.channel === 'Email' ? 'selected' : ''}>Email</option>
+        <option value="Socials" ${data.channel === 'Socials' ? 'selected' : ''}>Socials</option>
+      </select>
+    </td>
+    <td><input type="text" value="${escapeHtml(data.ticketNumber || '')}" data-field="ticketNumber" placeholder="#" onchange="_goalsUnsavedChanges=true"></td>
+    <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
+    <td>
+      <select data-field="goneOver" onchange="_goalsUnsavedChanges=true">
+        <option value="">Select</option>
+        <option value="yes" ${data.goneOver === 'yes' ? 'selected' : ''}>Yes</option>
+        <option value="no" ${data.goneOver === 'no' ? 'selected' : ''}>No</option>
+        <option value="pending" ${data.goneOver === 'pending' ? 'selected' : ''}>Pending</option>
+      </select>
+    </td>
+    <td><textarea data-field="followUpNotes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.followUpNotes || '')}</textarea></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+  `;
+  return tr;
+}
+
+// Create topic row
+function createTopicRow(data = {}, index) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="date" value="${data.date || ''}" data-field="date" onchange="_goalsUnsavedChanges=true"></td>
+    <td><textarea data-field="topic" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.topic || '')}</textarea></td>
+    <td><textarea data-field="theirThoughts" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.theirThoughts || '')}</textarea></td>
+    <td>
+      <select data-field="followUpNeeded" onchange="_goalsUnsavedChanges=true">
+        <option value="">Select</option>
+        <option value="yes" ${data.followUpNeeded === 'yes' ? 'selected' : ''}>Yes</option>
+        <option value="no" ${data.followUpNeeded === 'no' ? 'selected' : ''}>No</option>
+      </select>
+    </td>
+    <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+  `;
+  return tr;
+}
+
+// Create note row
+function createNoteRow(data = {}, index) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="date" value="${data.date || ''}" data-field="date" onchange="_goalsUnsavedChanges=true"></td>
+    <td><textarea data-field="question" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.question || '')}</textarea></td>
+    <td><textarea data-field="answer" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.answer || '')}</textarea></td>
+    <td>
+      <select data-field="followUpNeeded" onchange="_goalsUnsavedChanges=true">
+        <option value="">Select</option>
+        <option value="yes" ${data.followUpNeeded === 'yes' ? 'selected' : ''}>Yes</option>
+        <option value="no" ${data.followUpNeeded === 'no' ? 'selected' : ''}>No</option>
+      </select>
+    </td>
+    <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+  `;
+  return tr;
+}
+
+// Add row functions
+function addTaskRow() {
+  document.getElementById('tasksTableBody').appendChild(createTaskRow({}, 0));
+  _goalsUnsavedChanges = true;
+}
+
+function addMetricsRow() {
+  document.getElementById('metricsTableBody').appendChild(createMetricsRow({}, 0));
+  _goalsUnsavedChanges = true;
+}
+
+function addQaRow() {
+  document.getElementById('qaTableBody').appendChild(createQaRow({}, 0));
+  _goalsUnsavedChanges = true;
+}
+
+function addTopicRow() {
+  document.getElementById('topicsTableBody').appendChild(createTopicRow({}, 0));
+  _goalsUnsavedChanges = true;
+}
+
+function addNoteRow() {
+  document.getElementById('notesTableBody').appendChild(createNoteRow({}, 0));
+  _goalsUnsavedChanges = true;
+}
+
+// Switch goals tabs
+function switchGoalsTab(tabId) {
+  document.querySelectorAll('.goals-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.goals-tab-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === 'tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+  });
+  
+  if (tabId === 'attendance') {
+    loadAgentAttendance();
+  }
+}
+
+// Load attendance data for current agent
+async function loadAgentAttendance() {
+  if (!_currentGoalsAgent) return;
+  
+  const days = document.getElementById('attendancePeriod')?.value || 90;
+  const eventsContainer = document.getElementById('attendanceEvents');
+  
+  eventsContainer.innerHTML = '<div class="attendance-loading">Loading attendance data...</div>';
+  
+  try {
+    const res = await fetch('/attendance/summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentName: _currentGoalsAgent, days: parseInt(days) })
+    });
+    
+    const data = await res.json();
+    if (data.ok && data.summary) {
+      const s = data.summary;
+      
+      // Update cards
+      document.getElementById('attBradford').textContent = s.bradfordFactor;
+      const statusEl = document.getElementById('attBradfordStatus');
+      statusEl.textContent = s.concernLevel.charAt(0).toUpperCase() + s.concernLevel.slice(1);
+      statusEl.className = 'attendance-card-status ' + s.concernLevel;
+      
+      document.getElementById('attCallOuts').textContent = s.stats.callOuts;
+      document.getElementById('attPTO').textContent = s.stats.ptoRequests;
+      document.getElementById('attSwapsInit').textContent = s.stats.swapsInitiated;
+      document.getElementById('attReplaced').textContent = s.stats.timesReplaced;
+      document.getElementById('attCovered').textContent = s.stats.coveredForOthers;
+      
+      // Render events
+      if (s.events && s.events.length > 0) {
+        let eventsHtml = '';
+        s.events.forEach(e => {
+          let icon = '📅';
+          let iconClass = 'timeoff';
+          let title = '';
+          
+          if (e.type === 'timeoff') {
+            icon = e.isCallOut ? '🤒' : '🏖️';
+            title = e.isCallOut ? 'Call Out / Sick Day' : 'PTO Request';
+          } else if (e.type === 'swap_initiated') {
+            icon = '🔄';
+            iconClass = 'swap';
+            title = `Swap requested with ${e.withPerson}`;
+          } else if (e.type === 'swap_received') {
+            icon = '🔄';
+            iconClass = 'swap';
+            title = `Swap received from ${e.withPerson}`;
+          } else if (e.type === 'replaced') {
+            icon = '🔁';
+            iconClass = 'replaced';
+            title = `Replaced by ${e.newPerson}`;
+          } else if (e.type === 'replacement_took') {
+            icon = '✋';
+            iconClass = 'covered';
+            title = `Covered for ${e.originalPerson}`;
+          }
+          
+          const eventDate = e.date || e.createdAt?.split('T')[0] || '';
+          const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString() : '';
+          
+          eventsHtml += `
+            <div class="attendance-event">
+              <div class="attendance-event-icon ${iconClass}">${icon}</div>
+              <div class="attendance-event-info">
+                <div class="attendance-event-title">${title}</div>
+                <div class="attendance-event-meta">${e.reason || e.status || ''}</div>
+              </div>
+              <div class="attendance-event-date">${formattedDate}</div>
+            </div>
+          `;
+        });
+        eventsContainer.innerHTML = eventsHtml;
+      } else {
+        eventsContainer.innerHTML = '<div class="attendance-loading">No attendance events found</div>';
+      }
+    }
+  } catch (err) {
+    console.error('Error loading attendance:', err);
+    eventsContainer.innerHTML = '<div class="attendance-loading">Error loading attendance data</div>';
+  }
+}
+
+// Save agent goals
+async function saveAgentGoals() {
+  if (!_currentGoalsAgent) {
+    toast('No agent selected', 'error');
+    return;
+  }
+  
+  try {
+    // Collect S.M.A.R.T. goals
+    const smartGoals = [];
+    document.querySelectorAll('.smart-goal-card').forEach(card => {
+      const goal = {};
+      card.querySelectorAll('.smart-input').forEach(input => {
+        goal[input.dataset.field] = input.value;
+      });
+      smartGoals.push(goal);
+    });
+    
+    // Collect table data
+    const collectTableData = (tableBodyId) => {
+      const rows = [];
+      document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
+        const row = {};
+        tr.querySelectorAll('input, select, textarea').forEach(el => {
+          if (el.dataset.field) {
+            row[el.dataset.field] = el.value;
+          }
+        });
+        // Only add if there's some data
+        if (Object.values(row).some(v => v)) {
+          rows.push(row);
+        }
+      });
+      return rows;
+    };
+    
+    const goals = {
+      smartGoals,
+      tasks: collectTableData('tasksTableBody'),
+      performanceMetrics: collectTableData('metricsTableBody'),
+      qaTickets: collectTableData('qaTableBody'),
+      topicsDiscussed: collectTableData('topicsTableBody'),
+      oneOnOneNotes: collectTableData('notesTableBody')
+    };
+    
+    const res = await fetch('/goals/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentName: _currentGoalsAgent,
+        goals,
+        updatedBy: window._myName || 'Manager'
+      })
+    });
+    
+    const data = await res.json();
+    if (data.ok) {
+      _goalsUnsavedChanges = false;
+      toast('Goals saved successfully!', 'success');
+      
+      // Update meta
+      document.getElementById('goalsAgentMeta').textContent = 
+        `Last updated: ${new Date().toLocaleDateString()} by ${window._myName || 'Manager'}`;
+    } else {
+      toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    console.error('Error saving goals:', err);
+    toast('Failed to save goals', 'error');
+  }
+}
+
+// Load my goals (for agent view)
+async function loadMyGoals() {
+  const container = document.getElementById('agentGoalsContent');
+  if (!container) {
+    console.error('agentGoalsContent container not found');
+    return;
+  }
+  
+  if (!window._myName) {
+    container.innerHTML = '<div class="attendance-loading">Please log in to view your goals</div>';
+    return;
+  }
+  
+  container.innerHTML = '<div class="attendance-loading">Loading your goals...</div>';
+  
+  try {
+    const res = await fetch('/goals/get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentName: window._myName })
+    });
+    
+    if (!res.ok) {
+      console.error('Goals API error:', res.status);
+      container.innerHTML = '<div class="attendance-loading" style="color: #f87171;">Unable to load goals. Please try again later.</div>';
+      return;
+    }
+    
+    const data = await res.json();
+    
+    if (!data.ok) {
+      console.error('Goals API returned error:', data.error);
+      container.innerHTML = '<div class="attendance-loading" style="color: #f87171;">Unable to load goals. Please try again later.</div>';
+      return;
+    }
+    
+    const g = data.goals;
+    
+    // Update meta
+    const metaEl = document.getElementById('agentGoalsMeta');
+    if (metaEl) {
+      if (g.updatedAt) {
+        metaEl.textContent = `Last updated: ${new Date(g.updatedAt).toLocaleDateString()} by ${g.updatedBy || 'Manager'}`;
+      } else {
+        metaEl.textContent = 'Last updated: Never';
+      }
+    }
+    
+    let html = '';
+    let hasContent = false;
+    
+    // S.M.A.R.T. Goals section
+    if (g.smartGoals && g.smartGoals.some(goal => goal.specific)) {
+      hasContent = true;
+      html += '<div class="agent-goals-section"><div class="agent-goals-section-title">🎯 My S.M.A.R.T. Goals</div>';
+      g.smartGoals.forEach((goal, i) => {
+        if (goal.specific) {
+          html += `<div class="agent-goal-item">
+            <div class="agent-goal-label" style="font-weight: 700; color: var(--accent-primary); margin-bottom: 8px;">Goal #${i + 1}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px;">
+              <div><span class="agent-goal-label">Specific:</span><div class="agent-goal-value">${escapeHtml(goal.specific || '')}</div></div>
+              <div><span class="agent-goal-label">Measurable:</span><div class="agent-goal-value">${escapeHtml(goal.measurable || '')}</div></div>
+              <div><span class="agent-goal-label">Attainable:</span><div class="agent-goal-value">${escapeHtml(goal.attainable || '')}</div></div>
+              <div><span class="agent-goal-label">Relevant:</span><div class="agent-goal-value">${escapeHtml(goal.relevant || '')}</div></div>
+              <div><span class="agent-goal-label">Time Bound:</span><div class="agent-goal-value">${escapeHtml(goal.timeBound || '')}</div></div>
+            </div>
+          </div>`;
+        }
+      });
+      html += '</div>';
+    }
+    
+    // Tasks section
+    if (g.tasks && g.tasks.length > 0 && g.tasks.some(t => t.task)) {
+      hasContent = true;
+      html += '<div class="agent-goals-section"><div class="agent-goals-section-title">📋 My Tasks</div>';
+      g.tasks.forEach(task => {
+        if (task.task) {
+          const statusBadge = task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : task.status === 'blocked' ? '🚫' : '⏳';
+          const statusLabel = task.status ? task.status.replace('_', ' ') : 'Not Started';
+          html += `<div class="agent-goal-item">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong>${escapeHtml(task.task)}</strong>
+              <span>${statusBadge} ${statusLabel}</span>
+            </div>
+            ${task.dueDate ? `<div style="font-size: 11px; color: var(--text-tertiary);">Due: ${task.dueDate}</div>` : ''}
+            ${task.notes ? `<div style="font-size: 12px; margin-top: 4px;">${escapeHtml(task.notes)}</div>` : ''}
+          </div>`;
+        }
+      });
+      html += '</div>';
+    }
+    
+    // Performance Metrics section
+    if (g.performanceMetrics && g.performanceMetrics.length > 0 && g.performanceMetrics.some(m => m.weekStarting)) {
+      hasContent = true;
+      html += '<div class="agent-goals-section"><div class="agent-goals-section-title">📊 My Performance</div>';
+      html += '<div class="goals-table-wrap"><table class="goals-table"><thead><tr><th>Week</th><th>Tickets</th><th>CSAT</th><th>Notes</th></tr></thead><tbody>';
+      g.performanceMetrics.forEach(m => {
+        if (m.weekStarting) {
+          html += `<tr>
+            <td>${m.weekStarting || '-'}</td>
+            <td>${m.ticketsSolved || '-'}</td>
+            <td>${m.csat || '-'}</td>
+            <td>${escapeHtml(m.notes || '-')}</td>
+          </tr>`;
+        }
+      });
+      html += '</tbody></table></div></div>';
+    }
+    
+    if (!hasContent) {
+      html = `
+        <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+          <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+          <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">No Goals Set Yet</div>
+          <div style="font-size: 13px;">Your manager will set up your goals during your next 1:1 meeting.</div>
+        </div>
+      `;
+    }
+    
+    container.innerHTML = html;
+    
+  } catch (err) {
+    console.error('Error loading my goals:', err);
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Unable to Load Goals</div>
+        <div style="font-size: 13px;">Please check your connection and try again.</div>
+      </div>
+    `;
+  }
+}
+
+// Open My Goals modal for agents
+function openMyGoalsModal() {
+  const modal = document.getElementById('agentGoalsModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    loadMyGoals();
+  }
+}
+
+// Close agent goals modal
+function closeAgentGoalsModal() {
+  const modal = document.getElementById('agentGoalsModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
 </script>
 
 <!-- Future Time Off Request Modal (for agents) -->
@@ -17485,6 +19329,318 @@ body.dark-mode .agent-notif-item.unread {
   height: 8px;
   background: #b37e78;
   border-radius: 50%;
+}
+
+/* ============================================
+   AGENT COMPACT SUMMARY BAR
+   ============================================ */
+#agentCompactBar {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fef7f6 0%, #fff 100%);
+  border-bottom: 2px solid var(--border-color);
+}
+
+body.agent-mode #agentCompactBar {
+  display: flex !important;
+}
+
+/* Hide old agent sections */
+body.agent-mode #agentQuickActions,
+body.agent-mode #agentScheduleBanner,
+body.agent-mode #agentAssignmentsBanner {
+  display: none !important;
+}
+
+.compact-summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 200px;
+  flex: 1;
+  max-width: 300px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.summary-card.now {
+  border-left: 4px solid #22c55e;
+}
+
+.summary-card.next {
+  border-left: 4px solid #3b82f6;
+}
+
+.summary-card.role {
+  border-left: 4px solid #8b5cf6;
+}
+
+.summary-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.summary-content {
+  flex: 1;
+}
+
+.summary-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.summary-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.compact-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.compact-tz-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.compact-tz-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.compact-tz-select {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+}
+
+.compact-btn {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.compact-btn.primary {
+  background: var(--accent-header);
+  color: white;
+}
+
+.compact-btn.primary:hover {
+  filter: brightness(1.1);
+}
+
+.compact-btn.secondary {
+  background: white;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.compact-btn.secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+/* ============================================
+   BIGGER SHIFT CARDS
+   ============================================ */
+.shift-card-b,
+.shiftCard {
+  padding: 16px 18px !important;
+  border-radius: 12px !important;
+  margin-bottom: 10px !important;
+}
+
+.sc-time {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: 6px !important;
+}
+
+.sc-name {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: var(--text-primary) !important;
+}
+
+.sc-role {
+  font-size: 12px !important;
+  padding: 5px 12px !important;
+  margin-top: 8px !important;
+  border-radius: 6px !important;
+}
+
+/* Channel headers bigger */
+.channel-section {
+  margin-bottom: 24px !important;
+}
+
+.channel-title {
+  font-size: 13px !important;
+  padding: 6px 14px !important;
+  font-weight: 700 !important;
+}
+
+/* Day content header */
+.day-content-header h2 {
+  font-size: 22px !important;
+}
+
+.day-content-header #viewDayStats {
+  font-size: 13px !important;
+}
+
+/* Day tabs bigger */
+.day-tab {
+  padding: 12px 14px !important;
+}
+
+.day-tab .day-name {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.day-tab .day-date {
+  font-size: 11px !important;
+}
+
+/* Hide dots on day tabs */
+.day-tab .dot {
+  display: none !important;
+}
+
+/* ============================================
+   TIMEZONE DROPDOWN - CLEANER
+   ============================================ */
+#timezoneDropdown {
+  min-width: 160px !important;
+  padding: 8px !important;
+}
+
+#timezoneDropdown > div:first-child {
+  font-size: 11px !important;
+  padding: 6px 12px 8px !important;
+}
+
+#timezoneDropdown label {
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+}
+
+/* Hide the emoji spans */
+#timezoneDropdown label span {
+  font-size: 14px !important;
+}
+
+/* Hide footer note */
+#timezoneDropdown > div:last-child:not(label) {
+  display: none !important;
+}
+
+/* ============================================
+   SCROLLING FIXES
+   ============================================ */
+.day-content-body,
+#dayContentBody {
+  flex: 1;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure schedule container fills available space */
+#scheduleView {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Ensure day-tabs can scroll */
+.day-tabs {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================
+   NOTIFICATION FIXES
+   ============================================ */
+body:not(.agent-mode) #btnAgentNotif {
+  display: none !important;
+}
+
+body.agent-mode #btnNotif {
+  display: none !important;
+}
+
+body.agent-mode #btnAgentNotif {
+  display: flex !important;
+}
+
+/* Hide manager buttons in agent mode */
+body.agent-mode #btnAdmin,
+body.agent-mode #btnMasterMode,
+body.agent-mode #drawerToggle {
+  display: none !important;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+body.dark-mode #agentCompactBar {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--card-bg) 100%);
+}
+
+body.dark-mode .summary-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .compact-tz-wrapper {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .compact-btn.secondary {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 </style>
 
@@ -18035,5 +20191,142 @@ body.dark-mode .agent-notif-item.unread {
   cursor: pointer;
 }
 </style>
+
+<script>
+/* ============================================
+   COMPACT SUMMARY BAR INITIALIZATION
+   ============================================ */
+(function() {
+  // Initialize when DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCompactBar);
+  } else {
+    setTimeout(initCompactBar, 300);
+  }
+  
+  function initCompactBar() {
+    // Set timezone dropdown to current preference
+    const tzSelect = document.getElementById('compactTzSelect');
+    if (tzSelect) {
+      try {
+        const prefs = getUserPrefs();
+        tzSelect.value = prefs.timezone || 'PST';
+      } catch(e) {}
+    }
+    
+    // Update summary bar periodically
+    setInterval(updateCompactBar, 5000);
+    setTimeout(updateCompactBar, 1000);
+    
+    // Watch for agent mode changes
+    const observer = new MutationObserver(() => {
+      if (document.body.classList.contains('agent-mode')) {
+        setTimeout(updateCompactBar, 100);
+      }
+    });
+    observer.observe(document.body, { attributes: true });
+  }
+  
+  window.updateCompactBar = function() {
+    if (!document.body.classList.contains('agent-mode')) return;
+    
+    const myName = window._myName || '';
+    if (!myName) return;
+    
+    const allData = window._filteredData || window._data || [];
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+    
+    // Get my shifts sorted
+    const myShifts = allData
+      .filter(s => s.person && s.person.toLowerCase().trim() === myName.toLowerCase().trim())
+      .sort((a, b) => {
+        if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '');
+        return (a.start || '').localeCompare(b.start || '');
+      });
+    
+    // Find current shift
+    let currentShift = null;
+    for (const shift of myShifts) {
+      if (shift.date !== today) continue;
+      const startH = parseTimeHour(shift.start);
+      const endH = parseTimeHour(shift.end);
+      if (currentHour >= startH && currentHour < endH) {
+        currentShift = shift;
+        break;
+      }
+    }
+    
+    // Find next shift
+    let nextShift = null;
+    for (const shift of myShifts) {
+      if (shift.date < today) continue;
+      if (shift.date === today) {
+        const startH = parseTimeHour(shift.start);
+        if (startH <= currentHour) continue;
+      }
+      nextShift = shift;
+      break;
+    }
+    
+    // Update NOW card
+    const nowValue = document.getElementById('summaryNowValue');
+    const nowTeam = document.getElementById('summaryNowTeam');
+    if (nowValue) {
+      if (currentShift) {
+        nowValue.textContent = `${toAmPm(currentShift.start)} - ${toAmPm(currentShift.end)}`;
+        if (nowTeam) nowTeam.textContent = currentShift.team || '';
+      } else {
+        nowValue.textContent = 'Off Shift';
+        if (nowTeam) nowTeam.textContent = 'No active shift right now';
+      }
+    }
+    
+    // Update NEXT card
+    const nextValue = document.getElementById('summaryNextValue');
+    const nextDate = document.getElementById('summaryNextDate');
+    if (nextValue) {
+      if (nextShift) {
+        nextValue.textContent = `${toAmPm(nextShift.start)} - ${toAmPm(nextShift.end)}`;
+        if (nextDate) {
+          const d = new Date(nextShift.date + 'T12:00:00');
+          const dateStr = nextShift.date === today ? 'Today' : 
+            d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          nextDate.textContent = `${dateStr} • ${nextShift.team || ''}`;
+        }
+      } else {
+        nextValue.textContent = 'No upcoming shifts';
+        if (nextDate) nextDate.textContent = '';
+      }
+    }
+    
+    // Update ROLE card
+    const roleCard = document.getElementById('summaryRoleCard');
+    const roleValue = document.getElementById('summaryRoleValue');
+    const roleDate = document.getElementById('summaryRoleDate');
+    const meetingLabel = document.getElementById('agentMeetingRoleLabel');
+    
+    if (roleCard && meetingLabel) {
+      const roleText = meetingLabel.textContent;
+      if (roleText && roleText !== 'Meeting Role' && roleText !== '--') {
+        roleCard.style.display = 'flex';
+        if (roleValue) roleValue.textContent = roleText;
+        const meetingDateEl = document.getElementById('agentMeetingRoleDate');
+        if (roleDate && meetingDateEl) roleDate.textContent = meetingDateEl.textContent || '';
+      } else {
+        roleCard.style.display = 'none';
+      }
+    }
+  };
+  
+  function parseTimeHour(timeStr) {
+    if (!timeStr) return 0;
+    const parts = String(timeStr).split(':');
+    return parseInt(parts[0], 10) + (parseInt(parts[1], 10) || 0) / 60;
+  }
+})();
+</script>
+
 </body>
 </html>
