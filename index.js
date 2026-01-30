@@ -5,6 +5,11 @@ const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
 const client = new OAuth2Client(CLIENT_ID);
+
+// Import fetch - use global fetch if available, otherwise fall back to node-fetch
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
 // ============================================
@@ -3012,6 +3017,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
     // POST /agent/heartbeat - Record agent activity
     if (path === "/agent/heartbeat" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, view } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5250,6 +5256,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Get goals for an agent
     if (path === "/goals/get" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5289,6 +5296,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Save goals for an agent
     if (path === "/goals/save" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, goals, updatedBy } = body;
         if (!agentName || !goals) {
           return res.status(400).json({ error: "agentName and goals required" });
