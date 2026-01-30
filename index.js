@@ -70,7 +70,7 @@ async function sendShiftNotification(agentEmail, shiftData) {
 async function getAgentEmailByName(name) {
   if (!name) return null;
 
-  const { people } = await getCachedMetadata();
+  const { people = [] } = await getCachedMetadata();
   const target = String(name).toLowerCase().trim();
 
   for (const p of people) {
@@ -1232,7 +1232,7 @@ if (action) path = "/" + action;
     }
     // Lookups - Now using cached metadata
     if (path === "/people" && req.method === "GET") {
-      const { people } = await getCachedMetadata();
+      const { people = [] } = await getCachedMetadata();
       return res.status(200).json({ count: people.length, people });
     }
     if (path === "/admin/wipe-future" && req.method === "POST") {
@@ -1610,7 +1610,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
         const body = readJsonBody(req);
         const isManager = body.isManager !== false; // Default to true for backward compat
         
-        const { people, teams } = await getCachedMetadata();
+        const { people = [], teams = [] } = await getCachedMetadata();
         
         // For agents, we can return a minimal people list (just names)
         // Managers get full details
@@ -1630,7 +1630,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
       }
     }
     if (path === "/teams" && req.method === "GET") {
-      const { teams } = await getCachedMetadata();
+      const { teams = [] } = await getCachedMetadata();
       return res.status(200).json({ count: teams.length, teams });
     }
     if (path === "/timeoff/request" && req.method === "POST") {
@@ -1806,7 +1806,8 @@ if (path === "/audit/logs" && req.method === "GET") {
           "agent_notifications", 
           "manager_notifications",
           "audit_log",
-          "holiday_transactions"
+          "holiday_transactions",
+          "swap_requests"
         ];
         
         // Use provided collections or defaults, but only allow from the allowlist
@@ -2486,7 +2487,7 @@ if (notifyMode === "silent") notifyStatus = "None";
     }
    
     if (path === "/schedule/extended" && req.method === "POST") {
-      const body = req.body || {};
+      const body = readJsonBody(req);
       const { daysBack = 30, daysForward = 60, targetEmail } = body;
       
       // Clamp values for safety
@@ -2534,7 +2535,7 @@ if (notifyMode === "silent") notifyStatus = "None";
     // LOAD PAST SCHEDULE ONLY
     // ============================================
     if (path === "/schedule/past" && req.method === "POST") {
-      const body = req.body || {};
+      const body = readJsonBody(req);
       const { daysBack = 30, agentName, isManager = true } = body;
       
       const pastDays = Math.min(Math.max(parseInt(daysBack, 10) || 30, 1), 30);
@@ -2589,7 +2590,7 @@ if (notifyMode === "silent") notifyStatus = "None";
     // LOAD EXTENDED FUTURE SCHEDULE (with auto-generation)
     // ============================================
     if (path === "/schedule/future" && req.method === "POST") {
-      const body = req.body || {};
+      const body = readJsonBody(req);
       const { daysForward = 60, startFrom, agentName, isManager = true } = body;
       
       const futureDays = Math.min(Math.max(parseInt(daysForward, 10) || 60, 1), 60);
@@ -3123,6 +3124,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
     // POST /agent/heartbeat - Record agent activity
     if (path === "/agent/heartbeat" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, view } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -4563,7 +4565,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         if (!name && !email) return res.status(400).json({ error: "No name or email provided" });
         
         // 1. Find the agent's email from Firestore (just to get email if only name provided)
-        const { people } = await getCachedMetadata();
+        const { people = [] } = await getCachedMetadata();
         let agentEmail = "";
 
         if (email) {
@@ -4829,7 +4831,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
         });
         
         // Build fairness report
-        const { people } = await getCachedMetadata();
+        const { people = [] } = await getCachedMetadata();
         const fairnessReport = people
           .filter(p => p.active !== false)
           .map(person => {
@@ -5466,6 +5468,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     // Get attendance summary for an agent (pulls from existing data)
     if (path === "/attendance/summary" && req.method === "POST") {
       try {
+        const body = readJsonBody(req);
         const { agentName, days = 90 } = body;
         if (!agentName) {
           return res.status(400).json({ error: "agentName required" });
@@ -5478,11 +5481,11 @@ if (path === "/holiday/bank" && req.method === "POST") {
         // Get time-off requests for this person (simpler query, filter in code)
         let timeoffSnap;
         try {
-          timeoffSnap = await db.collection("timeoff_requests")
+          timeoffSnap = await db.collection("time_off_requests")
             .where("person", "==", agentName)
             .get();
         } catch (e) {
-          console.warn("timeoff_requests query failed:", e.message);
+          console.warn("time_off_requests query failed:", e.message);
           timeoffSnap = { docs: [], forEach: () => {} };
         }
         
@@ -5628,14 +5631,14 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const cutoffISO = cutoffDate.toISOString();
         
         // Get all people
-        const { people } = await getCachedMetadata();
+        const { people = [] } = await getCachedMetadata();
         
         // Get all time-off requests (simple query, filter in code)
         let timeoffSnap;
         try {
-          timeoffSnap = await db.collection("timeoff_requests").get();
+          timeoffSnap = await db.collection("time_off_requests").get();
         } catch (e) {
-          console.warn("timeoff_requests query failed:", e.message);
+          console.warn("time_off_requests query failed:", e.message);
           timeoffSnap = { docs: [], forEach: () => {} };
         }
         
