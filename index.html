@@ -4042,6 +4042,13 @@ body.dark-mode .cov-empty-desc {
   padding-bottom: 8px;
   border-bottom: 1px solid #e2e8f0;
 }
+.profile-section-header[style*="cursor: pointer"]:hover {
+  background: var(--bg-tertiary);
+  margin: -8px -12px 12px -12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-bottom: none;
+}
 .section-icon {
   font-size: 16px;
 }
@@ -4385,6 +4392,7 @@ body.dark-mode .adminCard{background: rgba(35,35,35,0.95); border-color: rgba(17
 .adminIconOrange{background: rgba(249,115,22,0.16);}
 .adminIconTeal{background: rgba(20,184,166,0.16);}
 .adminIconSlate{background: rgba(148,163,184,0.14);}
+.adminIconRed{background: rgba(239,68,68,0.16);}
 .adminCardText{flex:1;}
 .adminCardTitle{font-weight:900; font-size:13px;}
 .adminCardDesc{font-size:12px; opacity:0.72; margin-top:2px;}
@@ -5435,7 +5443,6 @@ body.dark-mode .bulkModal .mBody {
         <option value="EST">Eastern (EST)</option>
       </select>
     </div>
-    <button class="compact-btn secondary" onclick="openMyGoalsModal()">📋 My Goals</button>
     <button class="compact-btn secondary" onclick="agentLoadMoreSchedule()">📆 Load 30 Days</button>
     <button class="compact-btn primary" onclick="openFutureTimeOffModal()">🏖️ Request Time Off</button>
   </div>
@@ -7008,6 +7015,18 @@ body.dark-mode .open-shift {
             </div>
           </div>
 
+          <!-- Clear Event History -->
+          <div class="adminCard" onclick="openClearEventsModal()">
+            <div class="adminCardTop">
+              <div class="adminIcon adminIconRed">🗑️</div>
+              <div class="adminCardText">
+                <div class="adminCardTitle">Clear Event History</div>
+                <div class="adminCardDesc">Remove test data / old events</div>
+              </div>
+              <span class="adminChip">Clean</span>
+            </div>
+          </div>
+
         <!-- Danger Zone -->
         <div class="dangerCard">
           <div class="dangerTop">
@@ -7075,6 +7094,97 @@ body.dark-mode .open-shift {
     </div>
   </div>
 </div>
+
+  <!-- Clear Events Modal -->
+  <div id="clearEventsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeClearEventsModal()">
+    <div class="modal" style="width: 550px; max-width: 90vw;">
+      <div class="mHead">
+        <span class="mTitle">🗑️ Clear Event History</span>
+        <button type="button" class="btn ghost" onclick="closeClearEventsModal()">✕</button>
+      </div>
+      <div class="mBody" style="max-height: 70vh; overflow-y: auto;">
+        <!-- Warning Banner -->
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:14px; margin-bottom:16px;">
+          <div style="display:flex; gap:10px; align-items:start;">
+            <span style="font-size:20px;">⚠️</span>
+            <div>
+              <div style="font-weight:700; font-size:13px; color:#991b1b; margin-bottom:4px;">Caution: Permanent Deletion</div>
+              <div style="font-size:12px; color:#7f1d1d; line-height:1.5;">
+                This will permanently delete event history data. This action cannot be undone. 
+                Use this to clear test data or old records that are affecting attendance scores.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Date Filter (Optional) -->
+        <div style="margin-bottom:16px;">
+          <label class="fieldLabel" style="display:block; margin-bottom:6px;">
+            <input type="checkbox" id="clearEventsUseDateFilter" onchange="toggleClearEventsDateFilter()" style="margin-right:6px;">
+            Only delete events before a specific date
+          </label>
+          <input type="date" id="clearEventsBeforeDate" class="fieldInput" style="width:100%; display:none;" 
+                 title="Delete only events created before this date">
+        </div>
+
+        <!-- Collections to Clear -->
+        <div style="margin-bottom:16px;">
+          <label class="fieldLabel" style="display:block; margin-bottom:8px; font-weight:700;">
+            Select data to clear:
+          </label>
+          <div style="display:flex; flex-direction:column; gap:8px; background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+            <label style="display:flex; align-items:center; cursor:pointer; padding:6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" class="clearEventsCollection" value="time_off_requests" checked style="margin-right:8px;">
+              <span style="font-size:13px; font-weight:600;">Time Off Requests</span>
+              <span style="margin-left:auto; font-size:11px; color:#64748b;">(PTO, sick days)</span>
+            </label>
+            <label style="display:flex; align-items:center; cursor:pointer; padding:6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" class="clearEventsCollection" value="swap_requests" checked style="margin-right:8px;">
+              <span style="font-size:13px; font-weight:600;">Swap Requests</span>
+              <span style="margin-left:auto; font-size:11px; color:#64748b;">(Shift swaps)</span>
+            </label>
+            <label style="display:flex; align-items:center; cursor:pointer; padding:6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" class="clearEventsCollection" value="agent_notifications" style="margin-right:8px;">
+              <span style="font-size:13px; font-weight:600;">Agent Notifications</span>
+              <span style="margin-left:auto; font-size:11px; color:#64748b;">(Alerts to agents)</span>
+            </label>
+            <label style="display:flex; align-items:center; cursor:pointer; padding:6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" class="clearEventsCollection" value="manager_notifications" style="margin-right:8px;">
+              <span style="font-size:13px; font-weight:600;">Manager Notifications</span>
+              <span style="margin-left:auto; font-size:11px; color:#64748b;">(Alerts to managers)</span>
+            </label>
+            <label style="display:flex; align-items:center; cursor:pointer; padding:6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" class="clearEventsCollection" value="audit_log" style="margin-right:8px;">
+              <span style="font-size:13px; font-weight:600;">Audit Log</span>
+              <span style="margin-left:auto; font-size:11px; color:#64748b;">(Activity history)</span>
+            </label>
+            <label style="display:flex; align-items:center; cursor:pointer; padding:6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" class="clearEventsCollection" value="holiday_transactions" style="margin-right:8px;">
+              <span style="font-size:13px; font-weight:600;">Holiday Transactions</span>
+              <span style="margin-left:auto; font-size:11px; color:#64748b;">(Holiday tracking)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Confirmation -->
+        <div style="margin-bottom:20px;">
+          <label style="display:flex; align-items:center; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="clearEventsConfirm" style="margin-right:8px; width:18px; height:18px;">
+            <span style="font-size:14px;">I understand this will permanently delete the selected data</span>
+          </label>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="btn ghost" onclick="closeClearEventsModal()">Cancel</button>
+          <button type="button" class="btn danger" onclick="executeClearEvents()" style="min-width:140px;">
+            🗑️ Clear Selected Data
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ✅ Audit Overlay (sibling, not nested) -->
   <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()">
     <div class="modal" style="width: 700px; max-width: 90vw; height: 80vh; display:flex; flex-direction:column;">
@@ -7513,6 +7623,41 @@ body.dark-mode .open-shift {
           </div>
           <div id="agentRotationInfo" style="font-size: 13px; padding: 10px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 8px; color: #92400e;">
             <div style="color: var(--text-secondary);">Loading...</div>
+          </div>
+        </div>
+        
+        <!-- Goals & Performance Section (NEW - Integrated) -->
+        <div class="profile-section" id="agentGoalsProfileSection">
+          <div class="profile-section-header" style="cursor: pointer;" onclick="toggleProfileGoalsSection()">
+            <span class="section-icon">🎯</span>
+            <span class="section-title">My Goals & Performance</span>
+            <span id="profileGoalsToggle" style="margin-left: auto; font-size: 12px; color: var(--text-tertiary);">▼ Expand</span>
+          </div>
+          <div id="profileGoalsContent" style="display: none; margin-top: 12px;">
+            <div id="profileGoalsLoading" style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px;">
+              Loading your goals...
+            </div>
+            <div id="profileGoalsData" style="display: none;">
+              <!-- S.M.A.R.T. Goals Summary -->
+              <div id="profileSmartGoals" style="margin-bottom: 16px;"></div>
+              
+              <!-- Tasks Summary -->
+              <div id="profileTasks" style="margin-bottom: 16px;"></div>
+              
+              <!-- Performance Metrics -->
+              <div id="profilePerformance" style="margin-bottom: 16px;"></div>
+              
+              <!-- QA'd Tickets Summary -->
+              <div id="profileQATickets" style="margin-bottom: 16px;"></div>
+              
+              <!-- 1:1 Notes Summary -->
+              <div id="profileOneOnOne" style="margin-bottom: 16px;"></div>
+              
+              <!-- Last Updated Info -->
+              <div id="profileGoalsMeta" style="font-size: 11px; color: var(--text-tertiary); text-align: right; padding-top: 8px; border-top: 1px solid var(--border-color);">
+                Last updated: Never
+              </div>
+            </div>
           </div>
         </div>
         
@@ -11790,6 +11935,167 @@ function showToast(message, type = 'info') {
 }
 function closeStaffingModal() {
   $("staffingModal").style.display = "none";
+}
+
+// ============================================
+// CLEAR EVENTS MODAL FUNCTIONS
+// ============================================
+function openClearEventsModal() {
+  $("clearEventsModal").style.display = "flex";
+  
+  // Reset form
+  document.getElementById("clearEventsConfirm").checked = false;
+  document.getElementById("clearEventsUseDateFilter").checked = false;
+  document.getElementById("clearEventsBeforeDate").style.display = "none";
+  document.getElementById("clearEventsBeforeDate").value = "";
+  
+  // Reset checkboxes to default (time_off_requests and swap_requests checked)
+  document.querySelectorAll(".clearEventsCollection").forEach(cb => {
+    cb.checked = (cb.value === "time_off_requests" || cb.value === "swap_requests");
+  });
+}
+
+function closeClearEventsModal() {
+  $("clearEventsModal").style.display = "none";
+}
+
+function toggleClearEventsDateFilter() {
+  const checkbox = document.getElementById("clearEventsUseDateFilter");
+  const dateInput = document.getElementById("clearEventsBeforeDate");
+  
+  if (checkbox.checked) {
+    dateInput.style.display = "block";
+    // Set default to 30 days ago
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    dateInput.value = date.toISOString().split('T')[0];
+  } else {
+    dateInput.style.display = "none";
+    dateInput.value = "";
+  }
+}
+
+async function executeClearEvents() {
+  // Validate confirmation
+  const confirmCheckbox = document.getElementById("clearEventsConfirm");
+  if (!confirmCheckbox.checked) {
+    toast("Please confirm you understand this action is permanent", "error");
+    return;
+  }
+  
+  // Get selected collections
+  const selectedCollections = Array.from(document.querySelectorAll(".clearEventsCollection:checked"))
+    .map(cb => cb.value);
+  
+  if (selectedCollections.length === 0) {
+    toast("Please select at least one data type to clear", "error");
+    return;
+  }
+  
+  // Get date filter if enabled
+  let beforeDate = null;
+  const useDateFilter = document.getElementById("clearEventsUseDateFilter").checked;
+  if (useDateFilter) {
+    beforeDate = document.getElementById("clearEventsBeforeDate").value;
+    if (!beforeDate) {
+      toast("Please select a date or disable the date filter", "error");
+      return;
+    }
+  }
+  
+  // Final confirmation with SweetAlert
+  const dateText = beforeDate ? ` created before ${beforeDate}` : '';
+  const result = await Swal.fire({
+    title: 'Confirm Deletion',
+    html: `
+      <div style="text-align:left; padding:0 20px;">
+        <p style="margin-bottom:12px;">You are about to permanently delete:</p>
+        <ul style="margin:12px 0; padding-left:20px;">
+          ${selectedCollections.map(c => `<li style="margin:6px 0;">${c.replace(/_/g, ' ')}</li>`).join('')}
+        </ul>
+        ${dateText ? `<p style="margin-top:12px; font-weight:600;">Only events${dateText}</p>` : '<p style="margin-top:12px; font-weight:600; color:#dc2626;">All events in these collections</p>'}
+        <p style="margin-top:12px; color:#dc2626; font-weight:700;">This action cannot be undone!</p>
+      </div>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Yes, Delete',
+    cancelButtonText: 'Cancel'
+  });
+  
+  if (!result.isConfirmed) return;
+  
+  // Show loading
+  Swal.fire({
+    title: 'Clearing Events...',
+    html: 'Please wait while we delete the selected data.',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+  
+  try {
+    // Call the API
+    const response = await fetch('/admin/clear-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        confirm: true,
+        beforeDate: beforeDate || undefined,
+        collections: selectedCollections
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok && data.ok) {
+      // Success - show results
+      const deletedByCollection = data.deletedByCollection || {};
+      const totalDeleted = data.totalDeleted || 0;
+      
+      const resultsHtml = Object.entries(deletedByCollection)
+        .map(([collection, count]) => `<li style="margin:6px 0;">${collection.replace(/_/g, ' ')}: <strong>${count}</strong> deleted</li>`)
+        .join('');
+      
+      await Swal.fire({
+        icon: 'success',
+        title: 'Event History Cleared',
+        html: `
+          <div style="text-align:left; padding:0 20px;">
+            <p style="margin-bottom:12px;">Successfully deleted <strong>${totalDeleted}</strong> total entries:</p>
+            <ul style="margin:12px 0; padding-left:20px;">
+              ${resultsHtml}
+            </ul>
+            <p style="margin-top:12px; color:#64748b; font-size:14px;">
+              Attendance scores will update automatically on next refresh.
+            </p>
+          </div>
+        `,
+        confirmButtonColor: '#16a34a'
+      });
+      
+      closeClearEventsModal();
+      
+      // If on goals page, reload attendance data
+      if (typeof loadAgentAttendance === 'function' && window._currentGoalsAgent) {
+        loadAgentAttendance();
+      }
+    } else {
+      throw new Error(data.error || 'Failed to clear events');
+    }
+  } catch (err) {
+    console.error('Clear events error:', err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.message || 'Failed to clear event history. Please try again.',
+      confirmButtonColor: '#dc2626'
+    });
+  }
 }
 
 // ============================================
@@ -16872,7 +17178,7 @@ function getTimeAgo(dateStr) {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 async function markNotifRead(notifId) {
   try {
@@ -18546,7 +18852,7 @@ async function loadAgentGoals(agentName) {
       if (data.goals.updatedAt) {
         const date = new Date(data.goals.updatedAt);
         document.getElementById('goalsAgentMeta').textContent = 
-          `Last updated: ${date.toLocaleDateString()} by ${data.goals.updatedBy || 'Unknown'}`;
+          `Last updated: ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${data.goals.updatedBy || 'Unknown'}`;
       } else {
         document.getElementById('goalsAgentMeta').textContent = 'Last updated: Never';
       }
@@ -18813,7 +19119,7 @@ async function loadAgentAttendance() {
           }
           
           const eventDate = e.date || e.createdAt?.split('T')[0] || '';
-          const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString() : '';
+          const formattedDate = eventDate ? new Date(eventDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
           
           eventsHtml += `
             <div class="attendance-event">
@@ -18899,7 +19205,7 @@ async function saveAgentGoals() {
       
       // Update meta
       document.getElementById('goalsAgentMeta').textContent = 
-        `Last updated: ${new Date().toLocaleDateString()} by ${window._myName || 'Manager'}`;
+        `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${window._myName || 'Manager'}`;
     } else {
       toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
     }
@@ -18951,7 +19257,7 @@ async function loadMyGoals() {
     const metaEl = document.getElementById('agentGoalsMeta');
     if (metaEl) {
       if (g.updatedAt) {
-        metaEl.textContent = `Last updated: ${new Date(g.updatedAt).toLocaleDateString()} by ${g.updatedBy || 'Manager'}`;
+        metaEl.textContent = `Last updated: ${new Date(g.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${g.updatedBy || 'Manager'}`;
       } else {
         metaEl.textContent = 'Last updated: Never';
       }
@@ -18994,7 +19300,7 @@ async function loadMyGoals() {
               <strong>${escapeHtml(task.task)}</strong>
               <span>${statusBadge} ${statusLabel}</span>
             </div>
-            ${task.dueDate ? `<div style="font-size: 11px; color: var(--text-tertiary);">Due: ${task.dueDate}</div>` : ''}
+            ${task.dueDate ? `<div style="font-size: 11px; color: var(--text-tertiary);">Due: ${formatDateUS(task.dueDate)}</div>` : ''}
             ${task.notes ? `<div style="font-size: 12px; margin-top: 4px;">${escapeHtml(task.notes)}</div>` : ''}
           </div>`;
         }
@@ -19010,7 +19316,7 @@ async function loadMyGoals() {
       g.performanceMetrics.forEach(m => {
         if (m.weekStarting) {
           html += `<tr>
-            <td>${m.weekStarting || '-'}</td>
+            <td>${formatDateUS(m.weekStarting)}</td>
             <td>${m.ticketsSolved || '-'}</td>
             <td>${m.csat || '-'}</td>
             <td>${escapeHtml(m.notes || '-')}</td>
@@ -19041,6 +19347,223 @@ async function loadMyGoals() {
         <div style="font-size: 13px;">Please check your connection and try again.</div>
       </div>
     `;
+  }
+}
+
+// Format date to US format (e.g., "Feb 2, 2026" or "02/02/2026")
+function formatDateUS(dateStr, style = 'short') {
+  if (!dateStr) return '-';
+  try {
+    // Handle ISO format (YYYY-MM-DD) or other formats
+    const d = new Date(dateStr + (dateStr.length === 10 ? 'T12:00:00' : ''));
+    if (isNaN(d.getTime())) return dateStr;
+    
+    if (style === 'long') {
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } else if (style === 'short') {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } else {
+      return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    }
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+// Toggle Goals section in profile modal
+function toggleProfileGoalsSection() {
+  const content = document.getElementById('profileGoalsContent');
+  const toggle = document.getElementById('profileGoalsToggle');
+  
+  if (!content || !toggle) return;
+  
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    toggle.textContent = '▲ Collapse';
+    loadProfileGoals();
+  } else {
+    content.style.display = 'none';
+    toggle.textContent = '▼ Expand';
+  }
+}
+
+// Load goals data into the Profile modal
+async function loadProfileGoals() {
+  const loadingEl = document.getElementById('profileGoalsLoading');
+  const dataEl = document.getElementById('profileGoalsData');
+  const metaEl = document.getElementById('profileGoalsMeta');
+  
+  if (!window._myName) {
+    if (loadingEl) loadingEl.innerHTML = '<div style="color: var(--text-tertiary);">Please log in to view your goals</div>';
+    return;
+  }
+  
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (dataEl) dataEl.style.display = 'none';
+  
+  try {
+    const res = await fetch('/goals/get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentName: window._myName })
+    });
+    
+    if (!res.ok) {
+      if (loadingEl) loadingEl.innerHTML = '<div style="color: #f87171;">Unable to load goals</div>';
+      return;
+    }
+    
+    const data = await res.json();
+    if (!data.ok) {
+      if (loadingEl) loadingEl.innerHTML = '<div style="color: #f87171;">Unable to load goals</div>';
+      return;
+    }
+    
+    const g = data.goals;
+    let hasContent = false;
+    
+    // Update last updated meta
+    if (metaEl && g.updatedAt) {
+      metaEl.textContent = `Last updated: ${formatDateUS(g.updatedAt)} by ${g.updatedBy || 'Manager'}`;
+    }
+    
+    // S.M.A.R.T. Goals Summary
+    const smartEl = document.getElementById('profileSmartGoals');
+    if (smartEl && g.smartGoals && g.smartGoals.some(goal => goal.specific)) {
+      hasContent = true;
+      let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>🎯</span> S.M.A.R.T. Goals</div>';
+      html += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+      g.smartGoals.forEach((goal, i) => {
+        if (goal.specific) {
+          html += `<div style="padding: 10px; background: var(--bg-tertiary); border-radius: 8px; border-left: 3px solid var(--accent-primary);">
+            <div style="font-weight: 600; font-size: 12px; color: var(--accent-primary); margin-bottom: 4px;">Goal #${i + 1}</div>
+            <div style="font-size: 12px; color: var(--text-primary);">${escapeHtml(goal.specific)}</div>
+            ${goal.timeBound ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">⏰ ${escapeHtml(goal.timeBound)}</div>` : ''}
+          </div>`;
+        }
+      });
+      html += '</div>';
+      smartEl.innerHTML = html;
+    } else if (smartEl) {
+      smartEl.innerHTML = '';
+    }
+    
+    // Tasks Summary
+    const tasksEl = document.getElementById('profileTasks');
+    if (tasksEl && g.tasks && g.tasks.length > 0 && g.tasks.some(t => t.task)) {
+      hasContent = true;
+      let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>📋</span> Current Tasks</div>';
+      html += '<div style="display: flex; flex-direction: column; gap: 6px;">';
+      g.tasks.forEach(task => {
+        if (task.task) {
+          const statusColors = {
+            'completed': { bg: '#dcfce7', color: '#166534', icon: '✅' },
+            'in_progress': { bg: '#dbeafe', color: '#1e40af', icon: '🔄' },
+            'blocked': { bg: '#fecaca', color: '#b91c1c', icon: '🚫' },
+            'not_started': { bg: '#f3f4f6', color: '#6b7280', icon: '⏳' }
+          };
+          const status = statusColors[task.status] || statusColors['not_started'];
+          html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-tertiary); border-radius: 6px;">
+            <div style="font-size: 12px; color: var(--text-primary);">${escapeHtml(task.task)}</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              ${task.dueDate ? `<span style="font-size: 10px; color: var(--text-tertiary);">Due: ${formatDateUS(task.dueDate)}</span>` : ''}
+              <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${status.bg}; color: ${status.color};">${status.icon}</span>
+            </div>
+          </div>`;
+        }
+      });
+      html += '</div>';
+      tasksEl.innerHTML = html;
+    } else if (tasksEl) {
+      tasksEl.innerHTML = '';
+    }
+    
+    // Performance Metrics
+    const perfEl = document.getElementById('profilePerformance');
+    if (perfEl && g.performanceMetrics && g.performanceMetrics.length > 0 && g.performanceMetrics.some(m => m.weekStarting)) {
+      hasContent = true;
+      let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>📊</span> Recent Performance</div>';
+      html += '<div style="overflow-x: auto;"><table style="width: 100%; font-size: 11px; border-collapse: collapse;">';
+      html += '<thead><tr style="background: var(--bg-tertiary);"><th style="padding: 6px 8px; text-align: left; font-weight: 600;">Week</th><th style="padding: 6px 8px; text-align: center;">Tickets</th><th style="padding: 6px 8px; text-align: center;">CSAT</th><th style="padding: 6px 8px; text-align: left;">Notes</th></tr></thead>';
+      html += '<tbody>';
+      // Show most recent 3 entries
+      const recentMetrics = g.performanceMetrics.filter(m => m.weekStarting).slice(-3).reverse();
+      recentMetrics.forEach(m => {
+        html += `<tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 6px 8px;">${formatDateUS(m.weekStarting)}</td>
+          <td style="padding: 6px 8px; text-align: center; font-weight: 600;">${m.ticketsSolved || '-'}</td>
+          <td style="padding: 6px 8px; text-align: center;"><span style="padding: 2px 6px; border-radius: 4px; background: ${(m.csat >= 90) ? '#dcfce7' : (m.csat >= 70) ? '#fef3c7' : '#fecaca'}; color: ${(m.csat >= 90) ? '#166534' : (m.csat >= 70) ? '#92400e' : '#b91c1c'};">${m.csat || '-'}%</span></td>
+          <td style="padding: 6px 8px; color: var(--text-secondary);">${escapeHtml(m.notes || '-')}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      perfEl.innerHTML = html;
+    } else if (perfEl) {
+      perfEl.innerHTML = '';
+    }
+    
+    // QA'd Tickets Summary
+    const qaEl = document.getElementById('profileQATickets');
+    if (qaEl && g.qaTickets && g.qaTickets.length > 0 && g.qaTickets.some(t => t.ticketNumber)) {
+      hasContent = true;
+      let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>🔍</span> QA\'d Tickets</div>';
+      html += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
+      // Show most recent 5 entries
+      const recentQA = g.qaTickets.filter(t => t.ticketNumber).slice(-5).reverse();
+      recentQA.forEach(t => {
+        const reviewed = t.goneOver === true || t.goneOver === 'yes';
+        html += `<div style="padding: 6px 10px; background: ${reviewed ? '#dcfce7' : '#fef3c7'}; border-radius: 6px; font-size: 11px;">
+          <span style="font-weight: 600;">#${escapeHtml(t.ticketNumber)}</span>
+          ${t.date ? `<span style="color: var(--text-tertiary);"> • ${formatDateUS(t.date)}</span>` : ''}
+        </div>`;
+      });
+      html += '</div>';
+      qaEl.innerHTML = html;
+    } else if (qaEl) {
+      qaEl.innerHTML = '';
+    }
+    
+    // 1:1 Notes Summary
+    const oneOnOneEl = document.getElementById('profileOneOnOne');
+    if (oneOnOneEl && g.oneOnOneNotes && g.oneOnOneNotes.length > 0 && g.oneOnOneNotes.some(n => n.question || n.topic)) {
+      hasContent = true;
+      let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>💬</span> Recent 1:1 Notes</div>';
+      html += '<div style="display: flex; flex-direction: column; gap: 6px;">';
+      // Show most recent 2 entries
+      const recentNotes = g.oneOnOneNotes.filter(n => n.question || n.topic).slice(-2).reverse();
+      recentNotes.forEach(n => {
+        const needsFollowUp = n.followUpNeeded === true || n.followUpNeeded === 'yes';
+        html += `<div style="padding: 8px 10px; background: var(--bg-tertiary); border-radius: 6px; ${needsFollowUp ? 'border-left: 3px solid #f59e0b;' : ''}">
+          <div style="font-size: 12px; color: var(--text-primary); font-weight: 500;">${escapeHtml(n.question || n.topic || '')}</div>
+          ${n.date ? `<div style="font-size: 10px; color: var(--text-tertiary); margin-top: 2px;">${formatDateUS(n.date)}</div>` : ''}
+          ${needsFollowUp ? '<div style="font-size: 10px; color: #f59e0b; margin-top: 4px;">⚠️ Follow-up needed</div>' : ''}
+        </div>`;
+      });
+      html += '</div>';
+      oneOnOneEl.innerHTML = html;
+    } else if (oneOnOneEl) {
+      oneOnOneEl.innerHTML = '';
+    }
+    
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (dataEl) {
+      if (hasContent) {
+        dataEl.style.display = 'block';
+      } else {
+        dataEl.style.display = 'block';
+        dataEl.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">No Goals Set Yet</div>
+            <div style="font-size: 12px; margin-top: 4px;">Your manager will set up your goals during your next 1:1 meeting.</div>
+          </div>
+        `;
+      }
+    }
+    
+  } catch (err) {
+    console.error('Error loading profile goals:', err);
+    if (loadingEl) loadingEl.innerHTML = '<div style="color: #f87171;">Unable to load goals. Please try again.</div>';
   }
 }
 
