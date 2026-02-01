@@ -5378,13 +5378,12 @@ if (path === "/holiday/bank" && req.method === "POST") {
             ok: true,
             goals: {
               agentName,
-              smartGoals: [
-                { specific: '', measurable: '', attainable: '', relevant: '', timeBound: '' },
-                { specific: '', measurable: '', attainable: '', relevant: '', timeBound: '' }
-              ],
+              goals: [],
               tasks: [],
               performanceMetrics: [],
               qaTickets: [],
+              qaFollowUps: [],
+              meetingFollowUps: [],
               topicsDiscussed: [],
               oneOnOneNotes: [],
               updatedAt: null,
@@ -5443,12 +5442,15 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const goalsList = [];
         snap.forEach(doc => {
           const data = doc.data();
+          const hasSmartGoals = Array.isArray(data.goals)
+            ? data.goals.some(goal => goal && (goal.title || goal.specific || goal.measurable || goal.attainable || goal.relevant || goal.timeBound))
+            : (data.smartGoals && data.smartGoals.some(goal => goal.specific));
           goalsList.push({
             id: doc.id,
             agentName: data.agentName,
             updatedAt: data.updatedAt,
             updatedBy: data.updatedBy,
-            hasSmartGoals: data.smartGoals && data.smartGoals.some(g => g.specific),
+            hasSmartGoals,
             taskCount: (data.tasks || []).length,
             metricsCount: (data.performanceMetrics || []).length
           });

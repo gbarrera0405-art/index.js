@@ -5697,265 +5697,650 @@ body.dark-mode .open-shift {
         
         <!-- Tab Navigation -->
         <div class="goals-tabs">
-          <button class="goals-tab active" data-tab="smart" onclick="switchGoalsTab('smart')">📎 S.M.A.R.T. Goals</button>
+          <button class="goals-tab active" data-tab="overview" onclick="switchGoalsTab('overview')">🏠 Overview</button>
+          <button class="goals-tab" data-tab="smart" onclick="switchGoalsTab('smart')">🎯 S.M.A.R.T. Goals</button>
           <button class="goals-tab" data-tab="attendance" onclick="switchGoalsTab('attendance')">📅 Attendance</button>
           <button class="goals-tab" data-tab="metrics" onclick="switchGoalsTab('metrics')">📊 Performance</button>
-          <button class="goals-tab" data-tab="qa" onclick="switchGoalsTab('qa')">✅ QA Tickets</button>
+          <button class="goals-tab" data-tab="qa" onclick="switchGoalsTab('qa')">
+            ✅ QA Tickets
+            <span class="tab-badge" id="qaFollowupBadge" style="display:none;">0</span>
+          </button>
           <button class="goals-tab" data-tab="topics" onclick="switchGoalsTab('topics')">💬 Topics</button>
           <button class="goals-tab" data-tab="notes" onclick="switchGoalsTab('notes')">📝 1:1 Notes</button>
         </div>
         
         <!-- Tab Content -->
         <div class="goals-tab-content">
-          <!-- S.M.A.R.T. Goals Tab -->
-          <div id="tabSmart" class="goals-tab-pane active">
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>🎯 S.M.A.R.T. Goals</span>
-                <span class="goals-section-hint">Specific, Measurable, Attainable, Relevant, Time-bound</span>
-              </div>
-              <div id="smartGoalsContainer" class="smart-goals-grid">
-                <!-- Goal 1 -->
-                <div class="smart-goal-card" data-goal-index="0">
-                  <div class="smart-goal-header">Goal #1</div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">S</span>pecific</label>
-                    <textarea class="smart-input" data-field="specific" placeholder="Clearly define what success looks like and who's involved."></textarea>
+          <!-- Overview Tab -->
+          <div id="tabOverview" class="goals-tab-pane active">
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Overview</div>
+                    <div class="section-subtitle">Snapshot of goals, tasks, QA, and attendance.</div>
                   </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">M</span>easurable</label>
-                    <textarea class="smart-input" data-field="measurable" placeholder="Determine how progress will be tracked or proven."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">A</span>ttainable</label>
-                    <textarea class="smart-input" data-field="attainable" placeholder="Ensure the goal is realistic given time, workload and tools."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">R</span>elevant</label>
-                    <textarea class="smart-input" data-field="relevant" placeholder="Aligns with your current role, responsibilities, and priorities."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">T</span>ime Bound</label>
-                    <textarea class="smart-input" data-field="timeBound" placeholder="Give the goal a realistic but motivating deadline."></textarea>
-                  </div>
-                </div>
-                <!-- Goal 2 -->
-                <div class="smart-goal-card" data-goal-index="1">
-                  <div class="smart-goal-header">Goal #2</div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">S</span>pecific</label>
-                    <textarea class="smart-input" data-field="specific" placeholder="Clearly define what success looks like and who's involved."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">M</span>easurable</label>
-                    <textarea class="smart-input" data-field="measurable" placeholder="Determine how progress will be tracked or proven."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">A</span>ttainable</label>
-                    <textarea class="smart-input" data-field="attainable" placeholder="Ensure the goal is realistic given time, workload and tools."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">R</span>elevant</label>
-                    <textarea class="smart-input" data-field="relevant" placeholder="Aligns with your current role, responsibilities, and priorities."></textarea>
-                  </div>
-                  <div class="smart-goal-row">
-                    <label><span class="smart-label">T</span>ime Bound</label>
-                    <textarea class="smart-input" data-field="timeBound" placeholder="Give the goal a realistic but motivating deadline."></textarea>
+                  <div class="section-actions">
+                    <button class="btn ghost small" onclick="refreshOverview()">Refresh</button>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Tasks & Projects -->
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>📋 Tasks & Projects</span>
-                <button class="btn ghost small" onclick="addTaskRow()">+ Add Task</button>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="overviewSummaryBand"></div>
               </div>
-              <div class="goals-table-wrap">
-                <table class="goals-table" id="tasksTable">
-                  <thead>
-                    <tr>
-                      <th style="width:25%">Task</th>
-                      <th style="width:12%">Priority</th>
-                      <th style="width:15%">Due Date</th>
-                      <th style="width:12%">Status</th>
-                      <th style="width:30%">Notes</th>
-                      <th style="width:6%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="tasksTableBody">
-                    <!-- Rows added by JS -->
-                  </tbody>
-                </table>
+              <div class="tab-shell-main">
+                <div id="overviewDetails" class="overview-grid"></div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Recent Activity</div>
+                    <div class="section-subtitle">Latest goal, task, and QA updates.</div>
+                  </div>
+                </div>
+                <div id="overviewTimeline" class="timeline"></div>
               </div>
             </div>
           </div>
-          
+
+          <!-- S.M.A.R.T. Goals Tab -->
+          <div id="tabSmart" class="goals-tab-pane">
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">S.M.A.R.T. Goals</div>
+                    <div class="section-subtitle">Specific, measurable, attainable, relevant, time-bound goals.</div>
+                  </div>
+                  <div class="section-actions">
+                    <button class="btn ghost small" onclick="openGoalEditor()">+ Add Goal</button>
+                  </div>
+                </div>
+              </div>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="smartGoalsSummary"></div>
+              </div>
+              <div class="tab-shell-main">
+                <div class="workspace-section">
+                  <div id="smartGoalsList" class="goal-cards-grid"></div>
+                  <div id="smartGoalsEmpty" class="empty-state" style="display:none;">
+                    <div class="empty-state-icon">🎯</div>
+                    <div class="empty-state-title">No goals yet</div>
+                    <div class="empty-state-text">Add a S.M.A.R.T. goal to start tracking progress.</div>
+                    <button class="btn primary" onclick="openGoalEditor()">Add your first goal</button>
+                  </div>
+                  <details id="archivedGoalsSection" class="collapsible" style="display:none;">
+                    <summary id="archivedGoalsSummary">Archived (0)</summary>
+                    <div id="archivedGoalsList" class="goal-cards-grid archived"></div>
+                  </details>
+                </div>
+
+                <div class="workspace-divider"></div>
+
+                <div class="workspace-section">
+                  <div class="section-header">
+                    <div>
+                      <div class="section-title">Tasks & Projects</div>
+                      <div class="section-subtitle">Track commitments and next actions.</div>
+                    </div>
+                    <div class="section-actions">
+                      <button class="btn ghost small" onclick="openTaskEditor()">+ Add Task</button>
+                    </div>
+                  </div>
+                  <div id="taskFilters" class="filter-chips"></div>
+                  <div id="tasksList" class="task-list"></div>
+                  <div id="tasksEmpty" class="empty-state" style="display:none;">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-title">No tasks yet</div>
+                    <div class="empty-state-text">Create tasks to keep priorities visible.</div>
+                    <button class="btn primary" onclick="openTaskEditor()">Add your first task</button>
+                  </div>
+                  <details id="tasksCompletedSection" class="collapsible" style="display:none;">
+                    <summary id="tasksCompletedSummary">Completed (0)</summary>
+                    <div id="tasksCompletedList" class="task-list completed"></div>
+                  </details>
+                </div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Goal Activity</div>
+                    <div class="section-subtitle">Recent updates and check-ins.</div>
+                  </div>
+                </div>
+                <div id="goalsTimeline" class="timeline"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- Attendance Tab -->
           <div id="tabAttendance" class="goals-tab-pane">
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>📅 Attendance Summary</span>
-                <select id="attendancePeriod" onchange="loadAgentAttendance()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 12px;">
-                  <option value="30">Last 30 Days</option>
-                  <option value="90" selected>Last 90 Days</option>
-                  <option value="180">Last 180 Days</option>
-                  <option value="365">Last Year</option>
-                </select>
-              </div>
-              
-              <!-- Bradford Factor Card -->
-              <div class="attendance-summary-cards">
-                <div class="attendance-card bradford">
-                  <div class="attendance-card-label">Bradford Factor</div>
-                  <div class="attendance-card-value" id="attBradford">--</div>
-                  <div class="attendance-card-status" id="attBradfordStatus">Calculating...</div>
-                </div>
-                <div class="attendance-card">
-                  <div class="attendance-card-label">Call Outs</div>
-                  <div class="attendance-card-value" id="attCallOuts">--</div>
-                </div>
-                <div class="attendance-card">
-                  <div class="attendance-card-label">PTO Requests</div>
-                  <div class="attendance-card-value" id="attPTO">--</div>
-                </div>
-                <div class="attendance-card">
-                  <div class="attendance-card-label">Swaps Initiated</div>
-                  <div class="attendance-card-value" id="attSwapsInit">--</div>
-                </div>
-                <div class="attendance-card">
-                  <div class="attendance-card-label">Times Replaced</div>
-                  <div class="attendance-card-value" id="attReplaced">--</div>
-                </div>
-                <div class="attendance-card">
-                  <div class="attendance-card-label">Covered Others</div>
-                  <div class="attendance-card-value" id="attCovered">--</div>
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Attendance</div>
+                    <div class="section-subtitle">Absences, swaps, and follow-ups.</div>
+                  </div>
+                  <div class="section-actions">
+                    <select id="attendancePeriod" onchange="loadAgentAttendance()" class="input-select">
+                      <option value="30">Last 30 Days</option>
+                      <option value="90" selected>Last 90 Days</option>
+                      <option value="180">Last 180 Days</option>
+                      <option value="365">Last Year</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-              
-              <!-- Attendance Event Log -->
-              <div class="goals-section-header" style="margin-top: 24px;">
-                <span>📜 Event History</span>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="attendanceSummaryBand">
+                  <div class="summary-card bradford">
+                    <div class="summary-label">Bradford Factor</div>
+                    <div class="summary-value" id="attBradford">--</div>
+                    <div class="summary-sub" id="attBradfordStatus">Calculating...</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">Call Outs</div>
+                    <div class="summary-value" id="attCallOuts">--</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">PTO Requests</div>
+                    <div class="summary-value" id="attPTO">--</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">Swaps Initiated</div>
+                    <div class="summary-value" id="attSwapsInit">--</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">Times Replaced</div>
+                    <div class="summary-value" id="attReplaced">--</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">Covered Others</div>
+                    <div class="summary-value" id="attCovered">--</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">Meeting Follow-ups</div>
+                    <div class="summary-value" id="attMeetingFollowUps">0</div>
+                    <div class="summary-sub">Logged</div>
+                  </div>
+                </div>
               </div>
-              <div class="attendance-events" id="attendanceEvents">
-                <div class="attendance-loading">Loading attendance data...</div>
+              <div class="tab-shell-main">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Meeting Follow-up</div>
+                    <div class="section-subtitle">Log missed meetings or training videos watched.</div>
+                  </div>
+                </div>
+                <div class="meeting-followup-form">
+                  <div class="form-field">
+                    <label for="meetingFollowupType">Type</label>
+                    <select id="meetingFollowupType" class="input-select">
+                      <option value="missed">Missed meeting</option>
+                      <option value="video">Video watched</option>
+                    </select>
+                  </div>
+                  <div class="form-field">
+                    <label for="meetingFollowupDate">Date</label>
+                    <input id="meetingFollowupDate" type="date" class="input-field">
+                  </div>
+                  <div class="form-field">
+                    <label for="meetingFollowupNotes">Notes</label>
+                    <input id="meetingFollowupNotes" type="text" class="input-field" placeholder="Optional notes">
+                  </div>
+                  <button class="btn primary small" onclick="addMeetingFollowUp()">Add follow-up</button>
+                </div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Event History</div>
+                    <div class="section-subtitle">Attendance events and follow-ups.</div>
+                  </div>
+                </div>
+                <div id="attendanceTimeline" class="timeline"></div>
               </div>
             </div>
           </div>
-          
+
           <!-- Performance Metrics Tab -->
           <div id="tabMetrics" class="goals-tab-pane">
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>📊 Weekly Performance Metrics</span>
-                <button class="btn ghost small" onclick="addMetricsRow()">+ Add Week</button>
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Performance</div>
+                    <div class="section-subtitle">Weekly metrics and trends.</div>
+                  </div>
+                  <div class="section-actions">
+                    <button class="btn ghost small" onclick="addMetricsRow()">+ Add Week</button>
+                  </div>
+                </div>
               </div>
-              <div class="goals-table-wrap">
-                <table class="goals-table" id="metricsTable">
-                  <thead>
-                    <tr>
-                      <th style="width:14%">Week Starting</th>
-                      <th style="width:10%">Tickets Solved</th>
-                      <th style="width:10%">CSAT %</th>
-                      <th style="width:20%">Wins / Challenges</th>
-                      <th style="width:10%">Call Outs</th>
-                      <th style="width:12%">Make Up Hours</th>
-                      <th style="width:18%">Notes</th>
-                      <th style="width:6%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="metricsTableBody">
-                    <!-- Rows added by JS -->
-                  </tbody>
-                </table>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="performanceSummaryBand">
+                  <div class="summary-card">
+                    <div class="summary-label">Tickets (Last Week)</div>
+                    <div class="summary-value" id="perfTicketsLast">--</div>
+                    <div class="summary-sub" id="perfTicketsDelta">vs prior --</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">CSAT (Last Week)</div>
+                    <div class="summary-value" id="perfCsatLast">--</div>
+                    <div class="summary-sub" id="perfCsatDelta">vs prior --</div>
+                  </div>
+                  <div class="summary-card">
+                    <div class="summary-label">Call Outs (Last Week)</div>
+                    <div class="summary-value" id="perfCalloutsLast">--</div>
+                    <div class="summary-sub" id="perfCalloutsDelta">vs prior --</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tab-shell-main">
+                <div class="goals-table-wrap">
+                  <table class="goals-table" id="metricsTable">
+                    <thead>
+                      <tr>
+                        <th style="width:14%">Week Starting</th>
+                        <th style="width:10%">Tickets Solved</th>
+                        <th style="width:10%">CSAT %</th>
+                        <th style="width:20%">Wins / Challenges</th>
+                        <th style="width:10%">Call Outs</th>
+                        <th style="width:12%">Make Up Hours</th>
+                        <th style="width:18%">Notes</th>
+                        <th style="width:6%"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="metricsTableBody">
+                      <!-- Rows added by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Performance History</div>
+                    <div class="section-subtitle">Recent weekly snapshots.</div>
+                  </div>
+                </div>
+                <div id="performanceTimeline" class="timeline"></div>
               </div>
             </div>
           </div>
-          
+
           <!-- QA Tickets Tab -->
           <div id="tabQa" class="goals-tab-pane">
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>✅ QA'd Tickets</span>
-                <button class="btn ghost small" onclick="addQaRow()">+ Add QA Review</button>
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">QA & CSAT</div>
+                    <div class="section-subtitle">Reviews and low CSAT follow-ups.</div>
+                  </div>
+                  <div class="section-actions">
+                    <button class="btn ghost small" onclick="addQaRow()">+ Add QA Review</button>
+                    <button class="btn ghost small" onclick="openFollowupEditor()">+ Add Low CSAT</button>
+                  </div>
+                </div>
               </div>
-              <div class="goals-table-wrap">
-                <table class="goals-table" id="qaTable">
-                  <thead>
-                    <tr>
-                      <th style="width:12%">Date</th>
-                      <th style="width:12%">Channel</th>
-                      <th style="width:12%">Ticket #</th>
-                      <th style="width:25%">Notes</th>
-                      <th style="width:10%">Gone Over?</th>
-                      <th style="width:23%">Follow-up Notes</th>
-                      <th style="width:6%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="qaTableBody">
-                    <!-- Rows added by JS -->
-                  </tbody>
-                </table>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="qaSummaryBand"></div>
+              </div>
+              <div class="tab-shell-main">
+                <div class="workspace-section">
+                  <div class="section-header">
+                    <div>
+                      <div class="section-title">QA Reviews</div>
+                      <div class="section-subtitle">Track reviews and follow-up notes.</div>
+                    </div>
+                  </div>
+                  <div class="goals-table-wrap">
+                    <table class="goals-table" id="qaTable">
+                      <thead>
+                        <tr>
+                          <th style="width:12%">Date</th>
+                          <th style="width:12%">Channel</th>
+                          <th style="width:12%">Ticket #</th>
+                          <th style="width:25%">Notes</th>
+                          <th style="width:10%">Gone Over?</th>
+                          <th style="width:23%">Follow-up Notes</th>
+                          <th style="width:6%"></th>
+                        </tr>
+                      </thead>
+                      <tbody id="qaTableBody">
+                        <!-- Rows added by JS -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="workspace-divider"></div>
+
+                <div class="workspace-section">
+                  <div class="section-header">
+                    <div>
+                      <div class="section-title">Low CSAT Follow-ups</div>
+                      <div class="section-subtitle">Low CSAT is rating 1-3. Patient contact is required.</div>
+                    </div>
+                    <div class="section-actions">
+                      <span class="status-pill warning" id="qaPendingCount">0 pending</span>
+                    </div>
+                  </div>
+                  <div id="qaFollowUpsPending" class="followup-list"></div>
+                  <div id="qaFollowUpsEmpty" class="empty-state" style="display:none;">
+                    <div class="empty-state-icon">✅</div>
+                    <div class="empty-state-title">No low CSAT follow-ups</div>
+                    <div class="empty-state-text">Add a low CSAT entry to track follow-up completion.</div>
+                    <button class="btn primary" onclick="openFollowupEditor()">Add low CSAT follow-up</button>
+                  </div>
+                  <details id="qaFollowUpsCompletedSection" class="collapsible" style="display:none;">
+                    <summary id="qaFollowUpsCompletedSummary">Completed (0)</summary>
+                    <div id="qaFollowUpsCompleted" class="followup-list completed"></div>
+                  </details>
+                </div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">QA Timeline</div>
+                    <div class="section-subtitle">Reviews and follow-ups in order.</div>
+                  </div>
+                </div>
+                <div id="qaTimeline" class="timeline"></div>
               </div>
             </div>
           </div>
-          
+
           <!-- Topics Discussed Tab -->
           <div id="tabTopics" class="goals-tab-pane">
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>💬 Topics Discussed</span>
-                <button class="btn ghost small" onclick="addTopicRow()">+ Add Topic</button>
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Topics Discussed</div>
+                    <div class="section-subtitle">Themes and follow-up items from coaching.</div>
+                  </div>
+                  <div class="section-actions">
+                    <button class="btn ghost small" onclick="addTopicRow()">+ Add Topic</button>
+                  </div>
+                </div>
               </div>
-              <div class="goals-table-wrap">
-                <table class="goals-table" id="topicsTable">
-                  <thead>
-                    <tr>
-                      <th style="width:12%">Date</th>
-                      <th style="width:22%">Topic Discussed</th>
-                      <th style="width:22%">Their Thoughts</th>
-                      <th style="width:12%">Follow-up?</th>
-                      <th style="width:26%">Notes</th>
-                      <th style="width:6%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="topicsTableBody">
-                    <!-- Rows added by JS -->
-                  </tbody>
-                </table>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="topicsSummaryBand"></div>
+              </div>
+              <div class="tab-shell-main">
+                <div class="goals-table-wrap">
+                  <table class="goals-table" id="topicsTable">
+                    <thead>
+                      <tr>
+                        <th style="width:12%">Date</th>
+                        <th style="width:22%">Topic Discussed</th>
+                        <th style="width:22%">Their Thoughts</th>
+                        <th style="width:12%">Follow-up?</th>
+                        <th style="width:26%">Notes</th>
+                        <th style="width:6%"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="topicsTableBody">
+                      <!-- Rows added by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">Topic History</div>
+                    <div class="section-subtitle">Recent discussion entries.</div>
+                  </div>
+                </div>
+                <div id="topicsTimeline" class="timeline"></div>
               </div>
             </div>
           </div>
-          
+
           <!-- 1:1 Notes Tab -->
           <div id="tabNotes" class="goals-tab-pane">
-            <div class="goals-section">
-              <div class="goals-section-header">
-                <span>📝 1:1 Notes + Questions Monthly</span>
-                <button class="btn ghost small" onclick="addNoteRow()">+ Add Entry</button>
+            <div class="tab-shell">
+              <div class="tab-shell-header">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">1:1 Notes</div>
+                    <div class="section-subtitle">Questions, answers, and follow-ups.</div>
+                  </div>
+                  <div class="section-actions">
+                    <button class="btn ghost small" onclick="addNoteRow()">+ Add Entry</button>
+                  </div>
+                </div>
               </div>
-              <div class="goals-table-wrap">
-                <table class="goals-table" id="notesTable">
-                  <thead>
-                    <tr>
-                      <th style="width:12%">Date</th>
-                      <th style="width:22%">Question Asked</th>
-                      <th style="width:22%">Their Answer</th>
-                      <th style="width:12%">Follow-up?</th>
-                      <th style="width:26%">Notes</th>
-                      <th style="width:6%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="notesTableBody">
-                    <!-- Rows added by JS -->
-                  </tbody>
-                </table>
+              <div class="tab-shell-summary">
+                <div class="summary-band" id="notesSummaryBand"></div>
+              </div>
+              <div class="tab-shell-main">
+                <div class="goals-table-wrap">
+                  <table class="goals-table" id="notesTable">
+                    <thead>
+                      <tr>
+                        <th style="width:12%">Date</th>
+                        <th style="width:22%">Question Asked</th>
+                        <th style="width:22%">Their Answer</th>
+                        <th style="width:12%">Follow-up?</th>
+                        <th style="width:26%">Notes</th>
+                        <th style="width:6%"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="notesTableBody">
+                      <!-- Rows added by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="tab-shell-history">
+                <div class="section-header">
+                  <div>
+                    <div class="section-title">1:1 History</div>
+                    <div class="section-subtitle">Recent coaching notes.</div>
+                  </div>
+                </div>
+                <div id="notesTimeline" class="timeline"></div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Editor Modal -->
+<div id="goalEditorModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeGoalEditor()">
+  <div class="modal" style="width: 720px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
+      <span class="mTitle" style="color: white;" id="goalEditorTitle">🎯 Goal Editor</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeGoalEditor()">✕</button>
+    </div>
+    <div class="mBody" style="flex: 1; overflow-y: auto; padding: 20px;">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="goalTitle">Goal title</label>
+          <input id="goalTitle" type="text" class="input-field" placeholder="E.g., Improve response quality for complex cases">
+        </div>
+        <div class="form-field">
+          <label for="goalStatus">Status</label>
+          <select id="goalStatus" class="input-select">
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="at_risk">At Risk</option>
+            <option value="complete">Complete</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="goalDueDate">Due date</label>
+          <input id="goalDueDate" type="date" class="input-field">
+        </div>
+        <div class="form-field">
+          <label for="goalReviewCadence">Review cadence</label>
+          <select id="goalReviewCadence" class="input-select">
+            <option value="">None</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Biweekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="goalNextCheckIn">Next check-in</label>
+          <input id="goalNextCheckIn" type="date" class="input-field">
+        </div>
+        <div class="form-field full">
+          <label for="goalSpecific">Specific</label>
+          <textarea id="goalSpecific" class="textarea-field" placeholder="Clearly define what success looks like."></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="goalMeasurable">Measurable</label>
+          <textarea id="goalMeasurable" class="textarea-field" placeholder="How will progress be tracked?"></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="goalAttainable">Attainable</label>
+          <textarea id="goalAttainable" class="textarea-field" placeholder="Why is this achievable?"></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="goalRelevant">Relevant</label>
+          <textarea id="goalRelevant" class="textarea-field" placeholder="Why does this matter for the role?"></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="goalTimeBound">Time-bound</label>
+          <textarea id="goalTimeBound" class="textarea-field" placeholder="Key milestones or deadlines."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mFoot" style="flex-shrink: 0; border-top: 1px solid var(--border-color);">
+      <button type="button" class="btn ghost" onclick="closeGoalEditor()">Cancel</button>
+      <button type="button" class="btn ghost" id="goalArchiveBtn" onclick="archiveActiveGoal()">Archive</button>
+      <button type="button" class="btn primary" onclick="saveGoalEditor()">Save Goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Editor Modal -->
+<div id="taskEditorModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeTaskEditor()">
+  <div class="modal" style="width: 620px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
+      <span class="mTitle" style="color: white;" id="taskEditorTitle">📋 Task Editor</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeTaskEditor()">✕</button>
+    </div>
+    <div class="mBody" style="flex: 1; overflow-y: auto; padding: 20px;">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="taskTitle">Task</label>
+          <input id="taskTitle" type="text" class="input-field" placeholder="E.g., Review QA coaching plan">
+        </div>
+        <div class="form-field">
+          <label for="taskPriority">Priority</label>
+          <select id="taskPriority" class="input-select">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="taskDueDate">Due date</label>
+          <input id="taskDueDate" type="date" class="input-field">
+        </div>
+        <div class="form-field">
+          <label for="taskStatus">Status</label>
+          <select id="taskStatus" class="input-select">
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label for="taskNotes">Notes</label>
+          <textarea id="taskNotes" class="textarea-field" placeholder="Optional notes or context."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mFoot" style="flex-shrink: 0; border-top: 1px solid var(--border-color);">
+      <button type="button" class="btn ghost" onclick="closeTaskEditor()">Cancel</button>
+      <button type="button" class="btn primary" onclick="saveTaskEditor()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Low CSAT Follow-up Editor Modal -->
+<div id="followupEditorModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeFollowupEditor()">
+  <div class="modal" style="width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
+      <span class="mTitle" style="color: white;" id="followupEditorTitle">✅ Low CSAT Follow-up</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeFollowupEditor()">✕</button>
+    </div>
+    <div class="mBody" style="flex: 1; overflow-y: auto; padding: 20px;">
+      <div class="followup-note">Low CSAT is defined as rating 1-3. Follow-up is required.</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="followupDateReceived">Date received</label>
+          <input id="followupDateReceived" type="date" class="input-field">
+        </div>
+        <div class="form-field">
+          <label for="followupTicketNumber">Ticket number</label>
+          <input id="followupTicketNumber" type="text" class="input-field" placeholder="Ticket #">
+        </div>
+        <div class="form-field">
+          <label for="followupChannel">Channel</label>
+          <select id="followupChannel" class="input-select">
+            <option value="">Select</option>
+            <option value="Live Chat">Live Chat</option>
+            <option value="Phone">Phone</option>
+            <option value="Email">Email</option>
+            <option value="Socials">Socials</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="followupRating">Rating (1-5)</label>
+          <select id="followupRating" class="input-select">
+            <option value="">Select</option>
+            <option value="1">1 - Very Bad</option>
+            <option value="2">2 - Bad</option>
+            <option value="3">3 - Poor</option>
+            <option value="4">4 - Good</option>
+            <option value="5">5 - Great</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label for="followupIssueSummary">Issue summary</label>
+          <textarea id="followupIssueSummary" class="textarea-field" placeholder="Optional summary of the issue."></textarea>
+        </div>
+        <div class="form-field">
+          <label for="followupMethod">Follow-up method</label>
+          <select id="followupMethod" class="input-select">
+            <option value="">Select</option>
+            <option value="email">Email</option>
+            <option value="chat">Chat</option>
+            <option value="phone">Phone</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="followupCompletedAt">Follow-up date</label>
+          <input id="followupCompletedAt" type="date" class="input-field">
+        </div>
+        <div class="form-field full">
+          <label class="checkbox-row">
+            <input type="checkbox" id="followupCompleted">
+            Patient contacted (marks follow-up complete)
+          </label>
+        </div>
+        <div class="form-field full">
+          <label for="followupNotes">Notes</label>
+          <textarea id="followupNotes" class="textarea-field" placeholder="Additional follow-up notes."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mFoot" style="flex-shrink: 0; border-top: 1px solid var(--border-color);">
+      <button type="button" class="btn ghost" onclick="closeFollowupEditor()">Cancel</button>
+      <button type="button" class="btn primary" onclick="saveFollowupEditor()">Save Follow-up</button>
     </div>
   </div>
 </div>
@@ -6168,6 +6553,9 @@ body.dark-mode .open-shift {
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .goals-tab:hover {
@@ -6184,6 +6572,9 @@ body.dark-mode .open-shift {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .goals-tab-pane {
@@ -6345,6 +6736,541 @@ body.dark-mode .open-shift {
 
 .goals-table .btn-delete:hover {
   background: #fef2f2;
+}
+
+/* Goals Workspace Modernization */
+.tab-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tab-shell-header,
+.tab-shell-main,
+.tab-shell-history {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 6px 16px var(--shadow-sm);
+}
+
+.tab-shell-summary {
+  padding: 0;
+}
+
+.tab-shell-history {
+  padding-top: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.section-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 18px var(--shadow-sm);
+}
+
+.summary-card.bradford {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border: none;
+}
+
+.summary-card.bradford .summary-label,
+.summary-card.bradford .summary-sub {
+  color: rgba(255,255,255,0.85);
+}
+
+.summary-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 6px;
+}
+
+.summary-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.tab-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: #ef4444;
+  margin-left: 6px;
+}
+
+.workspace-section + .workspace-section {
+  margin-top: 16px;
+}
+
+.workspace-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 18px 0;
+}
+
+.goal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.goal-cards-grid.archived {
+  margin-top: 12px;
+}
+
+.goal-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.goal-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px var(--shadow-sm);
+}
+
+.goal-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.goal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.goal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.goal-summary {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.status-pill.success {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.status-pill.warning {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.status-pill.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.status-pill.info {
+  background: #dbeafe;
+  color: #1e3a8a;
+  border-color: #bfdbfe;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.icon-btn.danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 26px 20px;
+  border: 1px dashed var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 32px;
+}
+
+.empty-state-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 8px;
+}
+
+.empty-state-text {
+  font-size: 12px;
+  margin: 4px 0 12px;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-chip.active {
+  background: var(--accent-selected);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.task-card.overdue {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.task-card.done {
+  opacity: 0.8;
+}
+
+.task-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.task-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.task-notes {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.followup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.followup-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.followup-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.followup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.followup-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.followup-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.followup-controls select,
+.followup-controls input {
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.timeline-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.timeline-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeline-date {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.timeline-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.timeline-body {
+  flex: 1;
+}
+
+.timeline-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.timeline-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.timeline-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.collapsible {
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+}
+
+.collapsible summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.meeting-followup-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.form-field.full {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  font-weight: 600;
+}
+
+.input-field,
+.input-select,
+.textarea-field {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.textarea-field {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.followup-note {
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-color);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
 }
 
 /* Attendance Styles */
@@ -18725,6 +19651,49 @@ document.addEventListener("DOMContentLoaded", function() {
 let _currentGoalsAgent = null;
 let _currentGoalsData = null;
 let _goalsUnsavedChanges = false;
+let _currentAttendanceSummary = null;
+let _activeGoalId = null;
+let _activeTaskId = null;
+let _activeFollowupId = null;
+let _taskFilter = 'all';
+let _goalsListenersBound = false;
+let _timelineState = {};
+
+const LOW_CSAT_MAX_RATING = 3;
+const TASK_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'due', label: 'Due Soon' },
+  { id: 'completed', label: 'Completed' }
+];
+
+const GOAL_STATUS_LABELS = {
+  draft: 'Draft',
+  active: 'Active',
+  at_risk: 'At Risk',
+  complete: 'Complete',
+  archived: 'Archived'
+};
+
+const GOAL_STATUS_PILL = {
+  draft: 'info',
+  active: 'success',
+  at_risk: 'warning',
+  complete: 'success',
+  archived: 'info'
+};
+
+const TASK_STATUS_LABELS = {
+  open: 'Open',
+  in_progress: 'In Progress',
+  done: 'Done'
+};
+
+const TASK_PRIORITY_PILL = {
+  high: 'danger',
+  medium: 'warning',
+  low: 'info'
+};
 
 // Render the agent list in the goals sidebar
 async function renderGoalsAgentList() {
@@ -18791,6 +19760,311 @@ function filterGoalsAgentList() {
   });
 }
 
+// --------------------------------------------
+// Goals Workspace Helpers
+// --------------------------------------------
+function createId(prefix) {
+  if (window.crypto && crypto.randomUUID) {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function parseDateSafe(dateStr) {
+  if (!dateStr) return null;
+  const normalized = dateStr.length === 10 ? `${dateStr}T12:00:00` : dateStr;
+  const date = new Date(normalized);
+  if (isNaN(date.getTime())) return null;
+  return date;
+}
+
+function toDateKey(dateStr) {
+  const date = parseDateSafe(dateStr);
+  if (!date) return '';
+  return date.toISOString().split('T')[0];
+}
+
+function isOverdue(dateStr) {
+  const date = parseDateSafe(dateStr);
+  if (!date) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
+function isDueSoon(dateStr, windowDays = 7) {
+  const date = parseDateSafe(dateStr);
+  if (!date) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const soon = new Date(today);
+  soon.setDate(soon.getDate() + windowDays);
+  return date >= today && date <= soon;
+}
+
+function normalizeGoalStatus(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'completed') return 'complete';
+  if (value === 'complete') return 'complete';
+  if (value === 'archived') return 'archived';
+  if (value === 'at-risk' || value === 'at_risk') return 'at_risk';
+  if (value === 'draft') return 'draft';
+  return 'active';
+}
+
+function normalizeTaskStatus(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'completed' || value === 'complete' || value === 'done') return 'done';
+  if (value === 'in_progress' || value === 'in progress') return 'in_progress';
+  return 'open';
+}
+
+function deriveGoalTitle(goal, index = 0) {
+  if (goal.title) return goal.title;
+  if (goal.specific) return goal.specific.trim().slice(0, 60);
+  if (goal.measurable) return goal.measurable.trim().slice(0, 60);
+  return `Goal ${index + 1}`;
+}
+
+function normalizeGoalsData(raw = {}) {
+  const now = new Date().toISOString();
+  let migrated = false;
+
+  const normalized = {
+    agentName: raw.agentName || _currentGoalsAgent || '',
+    goals: [],
+    tasks: [],
+    performanceMetrics: Array.isArray(raw.performanceMetrics) ? raw.performanceMetrics : [],
+    qaTickets: Array.isArray(raw.qaTickets) ? raw.qaTickets : [],
+    topicsDiscussed: Array.isArray(raw.topicsDiscussed) ? raw.topicsDiscussed : [],
+    oneOnOneNotes: Array.isArray(raw.oneOnOneNotes) ? raw.oneOnOneNotes : [],
+    qaFollowUps: Array.isArray(raw.qaFollowUps)
+      ? raw.qaFollowUps
+      : (Array.isArray(raw.bad_csat_followups) ? raw.bad_csat_followups : []),
+    meetingFollowUps: Array.isArray(raw.meetingFollowUps) ? raw.meetingFollowUps : [],
+    updatedAt: raw.updatedAt || null,
+    updatedBy: raw.updatedBy || null
+  };
+
+  const sourceGoals = Array.isArray(raw.goals) ? raw.goals : null;
+  if (sourceGoals) {
+    normalized.goals = sourceGoals.map((goal, index) => {
+      if (!goal || typeof goal !== 'object') return null;
+      const status = normalizeGoalStatus(goal.status);
+      if (!goal.id) migrated = true;
+      return {
+        id: goal.id || createId('goal'),
+        title: deriveGoalTitle(goal, index),
+        status,
+        dueDate: goal.dueDate || '',
+        reviewCadence: goal.reviewCadence || '',
+        nextCheckInDate: goal.nextCheckInDate || '',
+        specific: goal.specific || '',
+        measurable: goal.measurable || '',
+        attainable: goal.attainable || '',
+        relevant: goal.relevant || '',
+        timeBound: goal.timeBound || '',
+        createdAt: goal.createdAt || now,
+        updatedAt: goal.updatedAt || now
+      };
+    }).filter(Boolean);
+  } else {
+    const legacyGoals = Array.isArray(raw.smartGoals) ? raw.smartGoals : [];
+    if (legacyGoals.length) migrated = true;
+    normalized.goals = legacyGoals.map((goal, index) => {
+      if (!goal || typeof goal !== 'object') return null;
+      const hasContent = ['specific', 'measurable', 'attainable', 'relevant', 'timeBound']
+        .some(field => goal[field]);
+      if (!hasContent) return null;
+      return {
+        id: goal.id || createId('goal'),
+        title: deriveGoalTitle(goal, index),
+        status: normalizeGoalStatus(goal.status),
+        dueDate: goal.dueDate || '',
+        reviewCadence: goal.reviewCadence || '',
+        nextCheckInDate: goal.nextCheckInDate || '',
+        specific: goal.specific || '',
+        measurable: goal.measurable || '',
+        attainable: goal.attainable || '',
+        relevant: goal.relevant || '',
+        timeBound: goal.timeBound || '',
+        createdAt: goal.createdAt || now,
+        updatedAt: goal.updatedAt || now
+      };
+    }).filter(Boolean);
+  }
+
+  const rawTasks = Array.isArray(raw.tasks) ? raw.tasks : [];
+  normalized.tasks = rawTasks.map(task => {
+    if (!task || typeof task !== 'object') return null;
+    const title = task.title || task.task || '';
+    const hasContent = title || task.notes || task.dueDate || task.priority || task.status;
+    if (!hasContent) return null;
+    if (task.task && !task.title) migrated = true;
+    return {
+      id: task.id || createId('task'),
+      title,
+      priority: task.priority || 'medium',
+      dueDate: task.dueDate || '',
+      status: normalizeTaskStatus(task.status),
+      notes: task.notes || '',
+      createdAt: task.createdAt || now,
+      updatedAt: task.updatedAt || now
+    };
+  }).filter(Boolean);
+
+  normalized.qaFollowUps = normalized.qaFollowUps.map(entry => {
+    if (!entry || typeof entry !== 'object') return null;
+    return {
+      id: entry.id || createId('csat'),
+      dateReceived: entry.dateReceived || '',
+      ticketNumber: entry.ticketNumber || '',
+      channel: entry.channel || '',
+      rating: entry.rating || '',
+      issueSummary: entry.issueSummary || '',
+      followUpRequired: entry.followUpRequired !== false,
+      followUpCompleted: Boolean(entry.followUpCompleted),
+      followUpMethod: entry.followUpMethod || '',
+      followUpCompletedAt: entry.followUpCompletedAt || '',
+      notes: entry.notes || '',
+      createdAt: entry.createdAt || now,
+      updatedAt: entry.updatedAt || now
+    };
+  }).filter(Boolean);
+
+  return { data: normalized, migrated };
+}
+
+function collectTableData(tableBodyId) {
+  const rows = [];
+  document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
+    const row = {};
+    tr.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.dataset.field) {
+        if (el.type === 'checkbox') {
+          row[el.dataset.field] = el.checked;
+        } else {
+          row[el.dataset.field] = el.value;
+        }
+      }
+    });
+    if (Object.values(row).some(v => v)) {
+      rows.push(row);
+    }
+  });
+  return rows;
+}
+
+function buildGoalsPayload(options = {}) {
+  const useTableData = options.fromTable !== false;
+  return {
+    goals: _currentGoalsData?.goals || [],
+    tasks: _currentGoalsData?.tasks || [],
+    qaFollowUps: _currentGoalsData?.qaFollowUps || [],
+    meetingFollowUps: _currentGoalsData?.meetingFollowUps || [],
+    performanceMetrics: useTableData ? collectTableData('metricsTableBody') : (_currentGoalsData?.performanceMetrics || []),
+    qaTickets: useTableData ? collectTableData('qaTableBody') : (_currentGoalsData?.qaTickets || []),
+    topicsDiscussed: useTableData ? collectTableData('topicsTableBody') : (_currentGoalsData?.topicsDiscussed || []),
+    oneOnOneNotes: useTableData ? collectTableData('notesTableBody') : (_currentGoalsData?.oneOnOneNotes || [])
+  };
+}
+
+function renderSummaryCards(containerId, cards) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = cards.map(card => `
+    <div class="summary-card ${card.className || ''}">
+      <div class="summary-label">${card.label}</div>
+      <div class="summary-value">${card.value}</div>
+      ${card.sub ? `<div class="summary-sub">${card.sub}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function formatTimelineLabel(dateKey) {
+  if (!dateKey) return 'Unknown';
+  const today = getTodayDate();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = yesterday.toISOString().split('T')[0];
+  if (dateKey === today) return 'Today';
+  if (dateKey === yesterdayKey) return 'Yesterday';
+  return formatDateUS(dateKey);
+}
+
+function renderTimeline(containerId, events, filters = []) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const currentState = _timelineState[containerId] || { active: 'all' };
+  const activeFilter = currentState.active || 'all';
+  _timelineState[containerId] = { events, filters, active: activeFilter };
+
+  const filtered = activeFilter === 'all'
+    ? events
+    : events.filter(event => event.type === activeFilter);
+
+  let html = '';
+  if (filters.length) {
+    const allFilters = [{ id: 'all', label: 'All' }, ...filters];
+    html += `<div class="timeline-filters">${allFilters.map(filter => `
+      <button class="filter-chip ${filter.id === activeFilter ? 'active' : ''}" data-filter="${filter.id}">
+        ${filter.label}
+      </button>
+    `).join('')}</div>`;
+  }
+
+  if (!filtered.length) {
+    html += `
+      <div class="empty-state">
+        <div class="empty-state-title">No activity yet</div>
+        <div class="empty-state-text">Events will appear here as updates are logged.</div>
+      </div>
+    `;
+    container.innerHTML = html;
+  } else {
+    const grouped = {};
+    filtered.forEach(event => {
+      const dateKey = toDateKey(event.date || event.createdAt);
+      const key = dateKey || 'unknown';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(event);
+    });
+
+    const sortedKeys = Object.keys(grouped).sort((a, b) => (b || '').localeCompare(a || ''));
+    html += sortedKeys.map(key => `
+      <div class="timeline-group">
+        <div class="timeline-date">${formatTimelineLabel(key)}</div>
+        ${grouped[key].map(event => `
+          <div class="timeline-item">
+            <div class="timeline-icon">${event.icon || '•'}</div>
+            <div class="timeline-body">
+              <div class="timeline-title">${escapeHtml(event.title || '')}</div>
+              ${event.subtitle ? `<div class="timeline-subtitle">${escapeHtml(event.subtitle)}</div>` : ''}
+              <div class="timeline-meta">
+                ${event.status ? `<span class="status-pill ${event.statusTone || ''}">${escapeHtml(event.status)}</span>` : ''}
+                ${event.date ? `<span class="timeline-subtitle">${formatDateUS(event.date)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+    container.innerHTML = html;
+  }
+
+  container.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _timelineState[containerId].active = btn.dataset.filter;
+      renderTimeline(containerId, events, filters);
+    });
+  });
+}
+
 // Select an agent to view/edit goals
 async function selectGoalsAgent(agentName) {
   // Check for unsaved changes
@@ -18815,6 +20089,7 @@ async function selectGoalsAgent(agentName) {
   
   _currentGoalsAgent = agentName;
   _goalsUnsavedChanges = false;
+  _taskFilter = 'all';
   
   // Update active state in list
   document.querySelectorAll('.goals-agent-item').forEach(item => {
@@ -18827,6 +20102,9 @@ async function selectGoalsAgent(agentName) {
   
   // Update header
   document.getElementById('goalsAgentName').textContent = agentName;
+
+  // Default to overview tab on agent switch
+  switchGoalsTab('overview');
   
   // Load goals data
   await loadAgentGoals(agentName);
@@ -18846,26 +20124,26 @@ async function loadAgentGoals(agentName) {
     
     const data = await res.json();
     if (data.ok) {
-      _currentGoalsData = data.goals;
-      
-      // Update last updated meta
-      if (data.goals.updatedAt) {
-        const date = new Date(data.goals.updatedAt);
-        document.getElementById('goalsAgentMeta').textContent = 
-          `Last updated: ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${data.goals.updatedBy || 'Unknown'}`;
-      } else {
-        document.getElementById('goalsAgentMeta').textContent = 'Last updated: Never';
-      }
-      
-      // Populate S.M.A.R.T. goals
-      populateSmartGoals(data.goals.smartGoals || [{}, {}]);
-      
+      const normalized = normalizeGoalsData(data.goals || {});
+      _currentGoalsData = normalized.data;
+      _goalsUnsavedChanges = false;
+      _taskFilter = 'all';
+
+      updateGoalsMeta();
+
       // Populate tables
-      populateTable('tasksTableBody', data.goals.tasks || [], createTaskRow);
-      populateTable('metricsTableBody', data.goals.performanceMetrics || [], createMetricsRow);
-      populateTable('qaTableBody', data.goals.qaTickets || [], createQaRow);
-      populateTable('topicsTableBody', data.goals.topicsDiscussed || [], createTopicRow);
-      populateTable('notesTableBody', data.goals.oneOnOneNotes || [], createNoteRow);
+      populateTable('metricsTableBody', _currentGoalsData.performanceMetrics || [], createMetricsRow);
+      populateTable('qaTableBody', _currentGoalsData.qaTickets || [], createQaRow);
+      populateTable('topicsTableBody', _currentGoalsData.topicsDiscussed || [], createTopicRow);
+      populateTable('notesTableBody', _currentGoalsData.oneOnOneNotes || [], createNoteRow);
+
+      bindGoalsListeners();
+      renderGoalsWorkspace();
+      refreshGoalsDerivedViews();
+
+      if (normalized.migrated) {
+        await persistGoalsData(buildGoalsPayload({ fromTable: false }), { silent: true });
+      }
     }
   } catch (err) {
     console.error('Error loading goals:', err);
@@ -18873,17 +20151,655 @@ async function loadAgentGoals(agentName) {
   }
 }
 
-// Populate S.M.A.R.T. goals fields
-function populateSmartGoals(goals) {
-  const cards = document.querySelectorAll('.smart-goal-card');
-  cards.forEach((card, index) => {
-    const goal = goals[index] || {};
-    card.querySelectorAll('.smart-input').forEach(input => {
-      const field = input.dataset.field;
-      input.value = goal[field] || '';
-      input.oninput = () => { _goalsUnsavedChanges = true; };
+function updateGoalsMeta() {
+  const metaEl = document.getElementById('goalsAgentMeta');
+  if (!metaEl) return;
+  if (_currentGoalsData?.updatedAt) {
+    const date = new Date(_currentGoalsData.updatedAt);
+    metaEl.textContent = `Last updated: ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${_currentGoalsData.updatedBy || 'Unknown'}`;
+  } else {
+    metaEl.textContent = 'Last updated: Never';
+  }
+}
+
+function truncateText(text, max = 120) {
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 3)}...`;
+}
+
+function renderGoalsWorkspace() {
+  renderSmartGoals();
+  renderTaskFilters();
+  renderTasksList();
+  renderQaFollowUps();
+}
+
+function renderSmartGoals() {
+  const listEl = document.getElementById('smartGoalsList');
+  const emptyEl = document.getElementById('smartGoalsEmpty');
+  const archivedSection = document.getElementById('archivedGoalsSection');
+  const archivedList = document.getElementById('archivedGoalsList');
+  const archivedSummary = document.getElementById('archivedGoalsSummary');
+  if (!listEl || !emptyEl) return;
+
+  const goals = _currentGoalsData?.goals || [];
+  const activeGoals = goals.filter(goal => goal.status !== 'archived');
+  const archivedGoals = goals.filter(goal => goal.status === 'archived');
+
+  if (!activeGoals.length) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+  } else {
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = activeGoals.map(goal => {
+      const status = normalizeGoalStatus(goal.status);
+      const dueLabel = goal.dueDate ? `Due ${formatDateUS(goal.dueDate)}` : 'No due date';
+      const updatedLabel = goal.updatedAt ? `Updated ${formatDateUS(goal.updatedAt)}` : 'No updates';
+      const nextReviewLabel = goal.nextCheckInDate ? `Next review ${formatDateUS(goal.nextCheckInDate)}` : '';
+      const summaryText = truncateText(goal.specific || goal.measurable || goal.relevant || goal.attainable || goal.timeBound || '');
+      const cadenceText = goal.reviewCadence ? `${goal.reviewCadence} reviews` : '';
+      return `
+        <div class="goal-card" onclick="openGoalEditor('${goal.id}')">
+          <div class="goal-card-header">
+            <div class="goal-title">${escapeHtml(goal.title || 'Untitled goal')}</div>
+            <span class="status-pill ${GOAL_STATUS_PILL[status] || ''}">${GOAL_STATUS_LABELS[status] || 'Active'}</span>
+          </div>
+          <div class="goal-meta">
+            <span>${escapeHtml(dueLabel)}</span>
+            <span>${escapeHtml(updatedLabel)}</span>
+            ${cadenceText ? `<span>${escapeHtml(cadenceText)}</span>` : ''}
+            ${nextReviewLabel ? `<span>${escapeHtml(nextReviewLabel)}</span>` : ''}
+          </div>
+          ${summaryText ? `<div class="goal-summary">${escapeHtml(summaryText)}</div>` : ''}
+          <div class="row-actions" style="margin-top: 10px;">
+            <button class="icon-btn" onclick="event.stopPropagation(); openGoalEditor('${goal.id}')">Edit</button>
+            <button class="icon-btn danger" onclick="event.stopPropagation(); archiveGoal('${goal.id}')">Archive</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (archivedSection && archivedList && archivedSummary) {
+    if (!archivedGoals.length) {
+      archivedSection.style.display = 'none';
+    } else {
+      archivedSection.style.display = 'block';
+      archivedSummary.textContent = `Archived (${archivedGoals.length})`;
+      archivedList.innerHTML = archivedGoals.map(goal => `
+        <div class="goal-card" onclick="openGoalEditor('${goal.id}')">
+          <div class="goal-card-header">
+            <div class="goal-title">${escapeHtml(goal.title || 'Untitled goal')}</div>
+            <span class="status-pill">${GOAL_STATUS_LABELS.archived}</span>
+          </div>
+          <div class="goal-meta">
+            <span>${goal.dueDate ? `Due ${formatDateUS(goal.dueDate)}` : 'No due date'}</span>
+          </div>
+          <div class="row-actions" style="margin-top: 10px;">
+            <button class="icon-btn" onclick="event.stopPropagation(); restoreGoal('${goal.id}')">Restore</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+function renderSmartGoalsSummary() {
+  const goals = _currentGoalsData?.goals || [];
+  const tasks = _currentGoalsData?.tasks || [];
+  const activeGoals = goals.filter(goal => ['active', 'at_risk'].includes(normalizeGoalStatus(goal.status))).length;
+  const atRisk = goals.filter(goal => normalizeGoalStatus(goal.status) === 'at_risk').length;
+  const reviewDue = goals.filter(goal => {
+    if (!goal.reviewCadence || !goal.nextCheckInDate) return false;
+    const nextCheck = parseDateSafe(goal.nextCheckInDate);
+    if (!nextCheck) return false;
+    return nextCheck <= new Date();
+  }).length;
+  const overdueTasks = tasks.filter(task => task.status !== 'done' && isOverdue(task.dueDate)).length;
+
+  renderSummaryCards('smartGoalsSummary', [
+    { label: 'Active Goals', value: activeGoals },
+    { label: 'At Risk', value: atRisk },
+    { label: 'Goals Needing Review', value: reviewDue },
+    { label: 'Overdue Tasks', value: overdueTasks }
+  ]);
+}
+
+function renderTaskFilters() {
+  const container = document.getElementById('taskFilters');
+  if (!container) return;
+  container.innerHTML = TASK_FILTERS.map(filter => `
+    <button class="filter-chip ${_taskFilter === filter.id ? 'active' : ''}" onclick="setTaskFilter('${filter.id}')">
+      ${filter.label}
+    </button>
+  `).join('');
+}
+
+function setTaskFilter(filterId) {
+  _taskFilter = filterId;
+  renderTaskFilters();
+  renderTasksList();
+}
+
+function renderTasksList() {
+  const listEl = document.getElementById('tasksList');
+  const emptyEl = document.getElementById('tasksEmpty');
+  const completedSection = document.getElementById('tasksCompletedSection');
+  const completedList = document.getElementById('tasksCompletedList');
+  const completedSummary = document.getElementById('tasksCompletedSummary');
+  if (!listEl || !emptyEl) return;
+
+  const tasks = _currentGoalsData?.tasks || [];
+  const completedTasks = tasks.filter(task => task.status === 'done');
+  const pendingTasks = tasks.filter(task => task.status !== 'done');
+
+  let filtered = tasks;
+  if (_taskFilter === 'overdue') {
+    filtered = pendingTasks.filter(task => isOverdue(task.dueDate));
+  } else if (_taskFilter === 'due') {
+    filtered = pendingTasks.filter(task => isDueSoon(task.dueDate));
+  } else if (_taskFilter === 'completed') {
+    filtered = completedTasks;
+  } else {
+    filtered = pendingTasks;
+  }
+
+  if (!filtered.length) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+  } else {
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = filtered.map(task => {
+      const overdue = task.status !== 'done' && isOverdue(task.dueDate);
+      const dueSoon = task.status !== 'done' && isDueSoon(task.dueDate) && !overdue;
+      const statusLabel = TASK_STATUS_LABELS[task.status] || 'Open';
+      return `
+        <div class="task-card ${overdue ? 'overdue' : ''} ${task.status === 'done' ? 'done' : ''}">
+          <div>
+            <div class="task-title">${escapeHtml(task.title || 'Untitled task')}</div>
+            <div class="task-meta">${task.dueDate ? `Due ${formatDateUS(task.dueDate)}` : 'No due date'} • ${statusLabel}</div>
+            <div class="task-tags">
+              <span class="status-pill ${TASK_PRIORITY_PILL[task.priority] || ''}">${escapeHtml(task.priority || 'medium')}</span>
+              <span class="status-pill ${task.status === 'done' ? 'success' : 'info'}">${escapeHtml(statusLabel)}</span>
+              ${overdue ? '<span class="status-pill danger">Overdue</span>' : ''}
+              ${dueSoon ? '<span class="status-pill warning">Due Soon</span>' : ''}
+            </div>
+            ${task.notes ? `<div class="task-notes">${escapeHtml(truncateText(task.notes, 140))}</div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn" onclick="openTaskEditor('${task.id}')">Edit</button>
+            <button class="icon-btn danger" onclick="deleteTask('${task.id}')">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (completedSection && completedList && completedSummary) {
+    if (!completedTasks.length || _taskFilter === 'completed') {
+      completedSection.style.display = 'none';
+    } else {
+      completedSection.style.display = 'block';
+      completedSummary.textContent = `Completed (${completedTasks.length})`;
+      completedList.innerHTML = completedTasks.map(task => `
+        <div class="task-card done">
+          <div>
+            <div class="task-title">${escapeHtml(task.title || 'Untitled task')}</div>
+            <div class="task-meta">${task.dueDate ? `Completed ${formatDateUS(task.dueDate)}` : 'Completed'}</div>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn" onclick="openTaskEditor('${task.id}')">Edit</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+function renderQaFollowUps() {
+  const pendingEl = document.getElementById('qaFollowUpsPending');
+  const completedEl = document.getElementById('qaFollowUpsCompleted');
+  const emptyEl = document.getElementById('qaFollowUpsEmpty');
+  const completedSection = document.getElementById('qaFollowUpsCompletedSection');
+  const completedSummary = document.getElementById('qaFollowUpsCompletedSummary');
+  if (!pendingEl || !emptyEl) return;
+
+  const followUps = _currentGoalsData?.qaFollowUps || [];
+  const pending = followUps.filter(entry => !entry.followUpCompleted);
+  const completed = followUps.filter(entry => entry.followUpCompleted);
+
+  if (!followUps.length) {
+    pendingEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+  } else {
+    emptyEl.style.display = 'none';
+  }
+
+  pendingEl.innerHTML = pending.map(entry => {
+    const statusLabel = entry.followUpCompleted ? 'Completed' : 'Pending';
+    const statusTone = entry.followUpCompleted ? 'success' : 'warning';
+    return `
+      <div class="followup-card">
+        <div class="followup-header">
+          <div>
+            <div class="followup-title">Ticket ${escapeHtml(entry.ticketNumber || 'N/A')}</div>
+            <div class="followup-meta">${entry.dateReceived ? `Received ${formatDateUS(entry.dateReceived)}` : 'Date not set'} • ${escapeHtml(entry.channel || 'Channel')} • Rating ${escapeHtml(entry.rating || 'N/A')}</div>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn" onclick="openFollowupEditor('${entry.id}')">Edit</button>
+            <button class="icon-btn danger" onclick="deleteFollowUp('${entry.id}')">Delete</button>
+          </div>
+        </div>
+        ${entry.issueSummary ? `<div class="followup-meta" style="margin-top: 8px;">${escapeHtml(entry.issueSummary)}</div>` : ''}
+        <div class="followup-controls">
+          <span class="status-pill ${statusTone}">${statusLabel}</span>
+          <label class="checkbox-row">
+            <input type="checkbox" ${entry.followUpCompleted ? 'checked' : ''} onchange="toggleFollowUpCompleted('${entry.id}', this.checked)">
+            Patient contacted
+          </label>
+          <select onchange="updateFollowupField('${entry.id}', 'followUpMethod', this.value)">
+            <option value="">Method</option>
+            <option value="email" ${entry.followUpMethod === 'email' ? 'selected' : ''}>Email</option>
+            <option value="chat" ${entry.followUpMethod === 'chat' ? 'selected' : ''}>Chat</option>
+            <option value="phone" ${entry.followUpMethod === 'phone' ? 'selected' : ''}>Phone</option>
+          </select>
+          <input type="date" value="${entry.followUpCompletedAt || ''}" onchange="updateFollowupField('${entry.id}', 'followUpCompletedAt', this.value)">
+        </div>
+        ${entry.notes ? `<div class="followup-meta" style="margin-top: 8px;">${escapeHtml(entry.notes)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  if (completedEl && completedSection && completedSummary) {
+    if (!completed.length) {
+      completedSection.style.display = 'none';
+    } else {
+      completedSection.style.display = 'block';
+      completedSummary.textContent = `Completed (${completed.length})`;
+      completedEl.innerHTML = completed.map(entry => `
+        <div class="followup-card">
+          <div class="followup-header">
+            <div>
+              <div class="followup-title">Ticket ${escapeHtml(entry.ticketNumber || 'N/A')}</div>
+              <div class="followup-meta">${entry.followUpCompletedAt ? `Completed ${formatDateUS(entry.followUpCompletedAt)}` : 'Completed'} • ${escapeHtml(entry.followUpMethod || 'Method')}</div>
+            </div>
+            <div class="row-actions">
+              <button class="icon-btn" onclick="openFollowupEditor('${entry.id}')">Edit</button>
+            </div>
+          </div>
+          ${entry.notes ? `<div class="followup-meta" style="margin-top: 8px;">${escapeHtml(entry.notes)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+  }
+}
+
+function renderQaSummary() {
+  const qaTickets = collectTableData('qaTableBody');
+  const pendingReviews = qaTickets.filter(ticket => !ticket.goneOver || ticket.goneOver === 'pending').length;
+  const followUps = _currentGoalsData?.qaFollowUps || [];
+  const pendingFollowUps = followUps.filter(entry => !entry.followUpCompleted).length;
+  const completedFollowUps = followUps.filter(entry => entry.followUpCompleted).length;
+
+  renderSummaryCards('qaSummaryBand', [
+    { label: 'QA Reviews', value: qaTickets.length },
+    { label: 'Pending Reviews', value: pendingReviews },
+    { label: 'CSAT Pending', value: pendingFollowUps },
+    { label: 'CSAT Completed', value: completedFollowUps }
+  ]);
+
+  const pendingCountEl = document.getElementById('qaPendingCount');
+  if (pendingCountEl) {
+    pendingCountEl.textContent = `${pendingFollowUps} pending`;
+  }
+
+  updateQaBadge();
+}
+
+function updateQaBadge() {
+  const badge = document.getElementById('qaFollowupBadge');
+  if (!badge) return;
+  const pending = (_currentGoalsData?.qaFollowUps || []).filter(entry => !entry.followUpCompleted).length;
+  if (pending > 0) {
+    badge.textContent = pending;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function parseMetricValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = parseFloat(String(value).replace('%', ''));
+  return isNaN(number) ? null : number;
+}
+
+function formatDelta(current, previous) {
+  if (current === null || previous === null) return 'vs prior --';
+  const diff = current - previous;
+  const sign = diff > 0 ? '+' : '';
+  return `vs prior ${sign}${diff}`;
+}
+
+function renderPerformanceSummary() {
+  const metrics = collectTableData('metricsTableBody');
+  const sorted = metrics.slice().sort((a, b) => String(b.weekStarting || '').localeCompare(String(a.weekStarting || '')));
+  const latest = sorted[0] || {};
+  const prior = sorted[1] || {};
+
+  const ticketsLast = parseMetricValue(latest.ticketsSolved);
+  const ticketsPrev = parseMetricValue(prior.ticketsSolved);
+  const csatLast = parseMetricValue(latest.csat);
+  const csatPrev = parseMetricValue(prior.csat);
+  const calloutsLast = parseMetricValue(latest.callOuts);
+  const calloutsPrev = parseMetricValue(prior.callOuts);
+
+  const ticketsEl = document.getElementById('perfTicketsLast');
+  const ticketsDeltaEl = document.getElementById('perfTicketsDelta');
+  const csatEl = document.getElementById('perfCsatLast');
+  const csatDeltaEl = document.getElementById('perfCsatDelta');
+  const calloutsEl = document.getElementById('perfCalloutsLast');
+  const calloutsDeltaEl = document.getElementById('perfCalloutsDelta');
+  if (!ticketsEl || !ticketsDeltaEl || !csatEl || !csatDeltaEl || !calloutsEl || !calloutsDeltaEl) return;
+
+  ticketsEl.textContent = ticketsLast !== null ? ticketsLast : '--';
+  ticketsDeltaEl.textContent = formatDelta(ticketsLast, ticketsPrev);
+  csatEl.textContent = csatLast !== null ? `${csatLast}%` : '--';
+  csatDeltaEl.textContent = formatDelta(csatLast, csatPrev);
+  calloutsEl.textContent = calloutsLast !== null ? calloutsLast : '--';
+  calloutsDeltaEl.textContent = formatDelta(calloutsLast, calloutsPrev);
+}
+
+function renderTopicsSummary() {
+  const topics = collectTableData('topicsTableBody');
+  const followUps = topics.filter(topic => topic.followUpNeeded === 'yes').length;
+  renderSummaryCards('topicsSummaryBand', [
+    { label: 'Topics Logged', value: topics.length },
+    { label: 'Follow-ups Needed', value: followUps }
+  ]);
+}
+
+function renderNotesSummary() {
+  const notes = collectTableData('notesTableBody');
+  const followUps = notes.filter(note => note.followUpNeeded === 'yes').length;
+  renderSummaryCards('notesSummaryBand', [
+    { label: '1:1 Entries', value: notes.length },
+    { label: 'Follow-ups Needed', value: followUps }
+  ]);
+}
+
+function renderOverviewTab() {
+  const summaryEl = document.getElementById('overviewSummaryBand');
+  const detailsEl = document.getElementById('overviewDetails');
+  if (!summaryEl || !detailsEl || !_currentGoalsData) return;
+
+  const goals = _currentGoalsData.goals || [];
+  const tasks = _currentGoalsData.tasks || [];
+  const qaTickets = collectTableData('qaTableBody');
+  const followUps = _currentGoalsData.qaFollowUps || [];
+
+  const activeGoals = goals.filter(goal => ['active', 'at_risk'].includes(normalizeGoalStatus(goal.status))).length;
+  const overdueTasks = tasks.filter(task => task.status !== 'done' && isOverdue(task.dueDate)).length;
+  const pendingReviews = qaTickets.filter(ticket => !ticket.goneOver || ticket.goneOver === 'pending').length;
+  const pendingFollowUps = followUps.filter(entry => !entry.followUpCompleted).length;
+
+  renderSummaryCards('overviewSummaryBand', [
+    { label: 'Active Goals', value: activeGoals },
+    { label: 'Overdue Tasks', value: overdueTasks },
+    { label: 'QA Pending', value: pendingReviews },
+    { label: 'CSAT Follow-ups', value: pendingFollowUps }
+  ]);
+
+  const hasAnyData = goals.length || tasks.length || qaTickets.length || followUps.length || _currentAttendanceSummary;
+  if (!hasAnyData) {
+    detailsEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🏠</div>
+        <div class="empty-state-title">No overview data yet</div>
+        <div class="empty-state-text">Select a tab and add entries to see summaries here.</div>
+      </div>
+    `;
+    renderOverviewTimeline();
+    return;
+  }
+
+  const nextGoalDue = goals
+    .filter(goal => goal.dueDate && goal.status !== 'archived' && goal.status !== 'complete')
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))[0];
+  const dueSoonTasks = tasks.filter(task => task.status !== 'done' && isDueSoon(task.dueDate)).length;
+  const goalsNeedingReview = goals.filter(goal => {
+    if (!goal.reviewCadence || !goal.nextCheckInDate) return false;
+    const nextCheck = parseDateSafe(goal.nextCheckInDate);
+    if (!nextCheck) return false;
+    return nextCheck <= new Date();
+  }).length;
+  const concernLabel = _currentAttendanceSummary?.concernLevel
+    ? _currentAttendanceSummary.concernLevel.charAt(0).toUpperCase() + _currentAttendanceSummary.concernLevel.slice(1)
+    : 'Unknown';
+
+  detailsEl.innerHTML = `
+    <div class="summary-card">
+      <div class="summary-label">Next Goal Due</div>
+      <div class="summary-value">${nextGoalDue?.dueDate ? formatDateUS(nextGoalDue.dueDate) : '--'}</div>
+      <div class="summary-sub">${goalsNeedingReview} needing review</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Tasks Due Soon</div>
+      <div class="summary-value">${dueSoonTasks}</div>
+      <div class="summary-sub">${overdueTasks} overdue</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">QA Reviews</div>
+      <div class="summary-value">${qaTickets.length}</div>
+      <div class="summary-sub">${pendingReviews} pending</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Attendance</div>
+      <div class="summary-value">${escapeHtml(concernLabel)}</div>
+      <div class="summary-sub">Bradford ${_currentAttendanceSummary?.bradfordFactor || '--'}</div>
+    </div>
+  `;
+
+  renderOverviewTimeline();
+}
+
+function renderOverviewTimeline() {
+  const goals = _currentGoalsData?.goals || [];
+  const tasks = _currentGoalsData?.tasks || [];
+  const followUps = _currentGoalsData?.qaFollowUps || [];
+  const qaTickets = collectTableData('qaTableBody');
+
+  const meetingEvents = (_currentGoalsData?.meetingFollowUps || []).map(entry => ({
+    id: entry.id,
+    type: 'meeting',
+    title: entry.type === 'video' ? 'Video watched' : 'Meeting follow-up',
+    subtitle: entry.notes || '',
+    date: entry.date,
+    status: 'Logged',
+    statusTone: 'info',
+    icon: entry.type === 'video' ? '🎥' : '📝'
+  }));
+
+  const events = [
+    ...goals.map(goal => ({
+      id: goal.id,
+      type: 'goal',
+      title: goal.title || 'Goal updated',
+      subtitle: GOAL_STATUS_LABELS[normalizeGoalStatus(goal.status)] || 'Goal',
+      date: goal.updatedAt || goal.createdAt || goal.dueDate,
+      status: GOAL_STATUS_LABELS[normalizeGoalStatus(goal.status)] || '',
+      statusTone: GOAL_STATUS_PILL[normalizeGoalStatus(goal.status)] || '',
+      icon: '🎯'
+    })),
+    ...tasks.map(task => ({
+      id: task.id,
+      type: 'task',
+      title: task.title || 'Task updated',
+      subtitle: TASK_STATUS_LABELS[task.status] || 'Task',
+      date: task.updatedAt || task.createdAt || task.dueDate,
+      status: TASK_STATUS_LABELS[task.status] || '',
+      statusTone: task.status === 'done' ? 'success' : 'info',
+      icon: '📋'
+    })),
+    ...qaTickets.map((ticket, index) => ({
+      id: `qa_${index}`,
+      type: 'qa',
+      title: `QA Review ${ticket.ticketNumber ? `#${ticket.ticketNumber}` : ''}`.trim(),
+      subtitle: ticket.channel || 'QA Review',
+      date: ticket.date,
+      status: ticket.goneOver === 'yes' ? 'Reviewed' : (ticket.goneOver === 'no' ? 'Not Reviewed' : 'Pending'),
+      statusTone: ticket.goneOver === 'yes' ? 'success' : (ticket.goneOver === 'no' ? 'danger' : 'warning'),
+      icon: '✅'
+    })),
+    ...followUps.map(entry => ({
+      id: entry.id,
+      type: 'csat',
+      title: `CSAT Follow-up ${entry.ticketNumber ? `#${entry.ticketNumber}` : ''}`.trim(),
+      subtitle: entry.followUpCompleted ? 'Completed' : 'Pending',
+      date: entry.followUpCompletedAt || entry.dateReceived,
+      status: entry.followUpCompleted ? 'Completed' : 'Pending',
+      statusTone: entry.followUpCompleted ? 'success' : 'warning',
+      icon: '🧾'
+    })),
+    ...meetingEvents
+  ];
+
+  renderTimeline('overviewTimeline', events, [
+    { id: 'goal', label: 'Goals' },
+    { id: 'task', label: 'Tasks' },
+    { id: 'qa', label: 'QA' },
+    { id: 'csat', label: 'CSAT' },
+    { id: 'meeting', label: 'Meetings' }
+  ]);
+}
+
+function renderGoalsTimeline() {
+  const goals = _currentGoalsData?.goals || [];
+  const events = goals.map(goal => ({
+    id: goal.id,
+    type: 'goal',
+    title: goal.title || 'Goal updated',
+    subtitle: goal.specific || goal.measurable || '',
+    date: goal.updatedAt || goal.createdAt || goal.dueDate,
+    status: GOAL_STATUS_LABELS[normalizeGoalStatus(goal.status)] || '',
+    statusTone: GOAL_STATUS_PILL[normalizeGoalStatus(goal.status)] || '',
+    icon: '🎯'
+  }));
+  renderTimeline('goalsTimeline', events, [{ id: 'goal', label: 'Goals' }]);
+}
+
+function renderQaTimeline() {
+  const qaTickets = collectTableData('qaTableBody');
+  const followUps = _currentGoalsData?.qaFollowUps || [];
+  const events = [
+    ...qaTickets.map((ticket, index) => ({
+      id: `qa_${index}`,
+      type: 'qa',
+      title: `QA Review ${ticket.ticketNumber ? `#${ticket.ticketNumber}` : ''}`.trim(),
+      subtitle: ticket.notes || '',
+      date: ticket.date,
+      status: ticket.goneOver === 'yes' ? 'Reviewed' : (ticket.goneOver === 'no' ? 'Not Reviewed' : 'Pending'),
+      statusTone: ticket.goneOver === 'yes' ? 'success' : (ticket.goneOver === 'no' ? 'danger' : 'warning'),
+      icon: '✅'
+    })),
+    ...followUps.map(entry => ({
+      id: entry.id,
+      type: 'csat',
+      title: `Low CSAT ${entry.ticketNumber ? `#${entry.ticketNumber}` : ''}`.trim(),
+      subtitle: entry.followUpCompleted ? 'Completed' : 'Pending',
+      date: entry.followUpCompletedAt || entry.dateReceived,
+      status: entry.followUpCompleted ? 'Completed' : 'Pending',
+      statusTone: entry.followUpCompleted ? 'success' : 'warning',
+      icon: '🧾'
+    }))
+  ];
+  renderTimeline('qaTimeline', events, [
+    { id: 'qa', label: 'QA' },
+    { id: 'csat', label: 'CSAT' }
+  ]);
+}
+
+function renderPerformanceTimeline() {
+  const metrics = collectTableData('metricsTableBody');
+  const events = metrics.map((metric, index) => ({
+    id: `perf_${index}`,
+    type: 'performance',
+    title: `Week of ${metric.weekStarting ? formatDateUS(metric.weekStarting) : 'Unknown'}`,
+    subtitle: metric.winsChallenges || metric.notes || '',
+    date: metric.weekStarting,
+    status: metric.csat ? `CSAT ${metric.csat}` : '',
+    statusTone: 'info',
+    icon: '📈'
+  }));
+  renderTimeline('performanceTimeline', events, [{ id: 'performance', label: 'Performance' }]);
+}
+
+function renderTopicsTimeline() {
+  const topics = collectTableData('topicsTableBody');
+  const events = topics.map((topic, index) => ({
+    id: `topic_${index}`,
+    type: 'topic',
+    title: topic.topic || 'Topic',
+    subtitle: topic.notes || topic.theirThoughts || '',
+    date: topic.date,
+    status: topic.followUpNeeded === 'yes' ? 'Follow-up' : '',
+    statusTone: topic.followUpNeeded === 'yes' ? 'warning' : '',
+    icon: '💬'
+  }));
+  renderTimeline('topicsTimeline', events, [{ id: 'topic', label: 'Topics' }]);
+}
+
+function renderNotesTimeline() {
+  const notes = collectTableData('notesTableBody');
+  const events = notes.map((note, index) => ({
+    id: `note_${index}`,
+    type: 'note',
+    title: note.question || '1:1 Note',
+    subtitle: note.answer || note.notes || '',
+    date: note.date,
+    status: note.followUpNeeded === 'yes' ? 'Follow-up' : '',
+    statusTone: note.followUpNeeded === 'yes' ? 'warning' : '',
+    icon: '📝'
+  }));
+  renderTimeline('notesTimeline', events, [{ id: 'note', label: 'Notes' }]);
+}
+
+function refreshGoalsDerivedViews() {
+  renderSmartGoalsSummary();
+  renderQaSummary();
+  renderPerformanceSummary();
+  renderTopicsSummary();
+  renderNotesSummary();
+  renderOverviewTab();
+  renderGoalsTimeline();
+  renderQaTimeline();
+  renderPerformanceTimeline();
+  renderTopicsTimeline();
+  renderNotesTimeline();
+}
+
+function bindGoalsListeners() {
+  if (_goalsListenersBound) return;
+  ['metricsTableBody', 'qaTableBody', 'topicsTableBody', 'notesTableBody'].forEach(id => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    container.addEventListener('input', () => {
+      _goalsUnsavedChanges = true;
+      refreshGoalsDerivedViews();
+    });
+    container.addEventListener('change', () => {
+      _goalsUnsavedChanges = true;
+      refreshGoalsDerivedViews();
     });
   });
+  _goalsListenersBound = true;
+}
+
+function refreshOverview() {
+  if (!_currentGoalsAgent) return;
+  loadAgentGoals(_currentGoalsAgent);
+  loadAgentAttendance();
 }
 
 // Generic table populator
@@ -18926,7 +20842,7 @@ function createTaskRow(data = {}, index) {
       </select>
     </td>
     <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
-    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true; refreshGoalsDerivedViews();">✕</button></td>
   `;
   return tr;
 }
@@ -18942,7 +20858,7 @@ function createMetricsRow(data = {}, index) {
     <td><input type="number" value="${data.callOuts || ''}" data-field="callOuts" placeholder="0" onchange="_goalsUnsavedChanges=true"></td>
     <td><input type="text" value="${escapeHtml(data.makeUpHours || '')}" data-field="makeUpHours" placeholder="0" onchange="_goalsUnsavedChanges=true"></td>
     <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
-    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true; refreshGoalsDerivedViews();">✕</button></td>
   `;
   return tr;
 }
@@ -18972,7 +20888,7 @@ function createQaRow(data = {}, index) {
       </select>
     </td>
     <td><textarea data-field="followUpNotes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.followUpNotes || '')}</textarea></td>
-    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true; refreshGoalsDerivedViews();">✕</button></td>
   `;
   return tr;
 }
@@ -18992,7 +20908,7 @@ function createTopicRow(data = {}, index) {
       </select>
     </td>
     <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
-    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true; refreshGoalsDerivedViews();">✕</button></td>
   `;
   return tr;
 }
@@ -19012,35 +20928,448 @@ function createNoteRow(data = {}, index) {
       </select>
     </td>
     <td><textarea data-field="notes" onchange="_goalsUnsavedChanges=true">${escapeHtml(data.notes || '')}</textarea></td>
-    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true;">✕</button></td>
+    <td><button class="btn-delete" onclick="this.closest('tr').remove(); _goalsUnsavedChanges=true; refreshGoalsDerivedViews();">✕</button></td>
   `;
   return tr;
 }
 
 // Add row functions
 function addTaskRow() {
-  document.getElementById('tasksTableBody').appendChild(createTaskRow({}, 0));
-  _goalsUnsavedChanges = true;
+  openTaskEditor();
 }
 
 function addMetricsRow() {
   document.getElementById('metricsTableBody').appendChild(createMetricsRow({}, 0));
   _goalsUnsavedChanges = true;
+  refreshGoalsDerivedViews();
 }
 
 function addQaRow() {
   document.getElementById('qaTableBody').appendChild(createQaRow({}, 0));
   _goalsUnsavedChanges = true;
+  refreshGoalsDerivedViews();
 }
 
 function addTopicRow() {
   document.getElementById('topicsTableBody').appendChild(createTopicRow({}, 0));
   _goalsUnsavedChanges = true;
+  refreshGoalsDerivedViews();
 }
 
 function addNoteRow() {
   document.getElementById('notesTableBody').appendChild(createNoteRow({}, 0));
   _goalsUnsavedChanges = true;
+  refreshGoalsDerivedViews();
+}
+
+// Goal editor actions
+function openGoalEditor(goalId) {
+  if (!_currentGoalsData) return;
+  const modal = document.getElementById('goalEditorModal');
+  const archiveBtn = document.getElementById('goalArchiveBtn');
+  const titleEl = document.getElementById('goalEditorTitle');
+  if (!modal) return;
+
+  const goal = goalId ? _currentGoalsData.goals.find(item => item.id === goalId) : null;
+  _activeGoalId = goal ? goal.id : null;
+  const isNew = !goal;
+  const draft = goal || {
+    title: '',
+    status: 'active',
+    dueDate: '',
+    reviewCadence: '',
+    nextCheckInDate: '',
+    specific: '',
+    measurable: '',
+    attainable: '',
+    relevant: '',
+    timeBound: ''
+  };
+
+  if (titleEl) titleEl.textContent = isNew ? '🎯 Add Goal' : '🎯 Edit Goal';
+  if (archiveBtn) archiveBtn.style.display = isNew ? 'none' : 'inline-flex';
+
+  document.getElementById('goalTitle').value = draft.title || '';
+  document.getElementById('goalStatus').value = normalizeGoalStatus(draft.status);
+  document.getElementById('goalDueDate').value = draft.dueDate || '';
+  document.getElementById('goalReviewCadence').value = draft.reviewCadence || '';
+  document.getElementById('goalNextCheckIn').value = draft.nextCheckInDate || '';
+  document.getElementById('goalSpecific').value = draft.specific || '';
+  document.getElementById('goalMeasurable').value = draft.measurable || '';
+  document.getElementById('goalAttainable').value = draft.attainable || '';
+  document.getElementById('goalRelevant').value = draft.relevant || '';
+  document.getElementById('goalTimeBound').value = draft.timeBound || '';
+
+  modal.style.display = 'flex';
+}
+
+function closeGoalEditor() {
+  const modal = document.getElementById('goalEditorModal');
+  if (modal) modal.style.display = 'none';
+  _activeGoalId = null;
+}
+
+function saveGoalEditor() {
+  if (!_currentGoalsData) return;
+  const title = document.getElementById('goalTitle').value.trim();
+  const status = normalizeGoalStatus(document.getElementById('goalStatus').value);
+  const dueDate = document.getElementById('goalDueDate').value;
+  const reviewCadence = document.getElementById('goalReviewCadence').value;
+  const nextCheckInDate = document.getElementById('goalNextCheckIn').value;
+  const specific = document.getElementById('goalSpecific').value.trim();
+  const measurable = document.getElementById('goalMeasurable').value.trim();
+  const attainable = document.getElementById('goalAttainable').value.trim();
+  const relevant = document.getElementById('goalRelevant').value.trim();
+  const timeBound = document.getElementById('goalTimeBound').value.trim();
+
+  if (!title && !specific && !measurable && !attainable && !relevant && !timeBound) {
+    toast('Add a goal title or SMART details before saving.', 'error');
+    return;
+  }
+
+  const now = new Date().toISOString();
+  if (_activeGoalId) {
+    const existing = _currentGoalsData.goals.find(item => item.id === _activeGoalId);
+    if (existing) {
+      existing.title = title || existing.title;
+      existing.status = status;
+      existing.dueDate = dueDate;
+      existing.reviewCadence = reviewCadence;
+      existing.nextCheckInDate = nextCheckInDate;
+      existing.specific = specific;
+      existing.measurable = measurable;
+      existing.attainable = attainable;
+      existing.relevant = relevant;
+      existing.timeBound = timeBound;
+      existing.updatedAt = now;
+    }
+  } else {
+    _currentGoalsData.goals.push({
+      id: createId('goal'),
+      title: title || 'Untitled goal',
+      status,
+      dueDate,
+      reviewCadence,
+      nextCheckInDate,
+      specific,
+      measurable,
+      attainable,
+      relevant,
+      timeBound,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  _goalsUnsavedChanges = true;
+  closeGoalEditor();
+  renderSmartGoals();
+  refreshGoalsDerivedViews();
+}
+
+function archiveActiveGoal() {
+  if (!_activeGoalId) return;
+  archiveGoal(_activeGoalId);
+  closeGoalEditor();
+}
+
+function archiveGoal(goalId) {
+  if (!_currentGoalsData) return;
+  const goal = _currentGoalsData.goals.find(item => item.id === goalId);
+  if (!goal) return;
+  goal.status = 'archived';
+  goal.updatedAt = new Date().toISOString();
+  _goalsUnsavedChanges = true;
+  renderSmartGoals();
+  refreshGoalsDerivedViews();
+}
+
+function restoreGoal(goalId) {
+  if (!_currentGoalsData) return;
+  const goal = _currentGoalsData.goals.find(item => item.id === goalId);
+  if (!goal) return;
+  goal.status = 'active';
+  goal.updatedAt = new Date().toISOString();
+  _goalsUnsavedChanges = true;
+  renderSmartGoals();
+  refreshGoalsDerivedViews();
+}
+
+// Task editor actions
+function openTaskEditor(taskId) {
+  if (!_currentGoalsData) return;
+  const modal = document.getElementById('taskEditorModal');
+  const titleEl = document.getElementById('taskEditorTitle');
+  if (!modal) return;
+
+  const task = taskId ? _currentGoalsData.tasks.find(item => item.id === taskId) : null;
+  _activeTaskId = task ? task.id : null;
+  const isNew = !task;
+  const draft = task || {
+    title: '',
+    priority: 'medium',
+    dueDate: '',
+    status: 'open',
+    notes: ''
+  };
+
+  if (titleEl) titleEl.textContent = isNew ? '📋 Add Task' : '📋 Edit Task';
+  document.getElementById('taskTitle').value = draft.title || '';
+  document.getElementById('taskPriority').value = draft.priority || 'medium';
+  document.getElementById('taskDueDate').value = draft.dueDate || '';
+  document.getElementById('taskStatus').value = normalizeTaskStatus(draft.status);
+  document.getElementById('taskNotes').value = draft.notes || '';
+
+  modal.style.display = 'flex';
+}
+
+function closeTaskEditor() {
+  const modal = document.getElementById('taskEditorModal');
+  if (modal) modal.style.display = 'none';
+  _activeTaskId = null;
+}
+
+function saveTaskEditor() {
+  if (!_currentGoalsData) return;
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) {
+    toast('Task title is required.', 'error');
+    return;
+  }
+  const priority = document.getElementById('taskPriority').value;
+  const dueDate = document.getElementById('taskDueDate').value;
+  const status = normalizeTaskStatus(document.getElementById('taskStatus').value);
+  const notes = document.getElementById('taskNotes').value.trim();
+  const now = new Date().toISOString();
+
+  if (_activeTaskId) {
+    const existing = _currentGoalsData.tasks.find(item => item.id === _activeTaskId);
+    if (existing) {
+      existing.title = title;
+      existing.priority = priority;
+      existing.dueDate = dueDate;
+      existing.status = status;
+      existing.notes = notes;
+      existing.updatedAt = now;
+    }
+  } else {
+    _currentGoalsData.tasks.push({
+      id: createId('task'),
+      title,
+      priority,
+      dueDate,
+      status,
+      notes,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  _goalsUnsavedChanges = true;
+  closeTaskEditor();
+  renderTasksList();
+  refreshGoalsDerivedViews();
+}
+
+function deleteTask(taskId) {
+  if (!_currentGoalsData) return;
+  _currentGoalsData.tasks = _currentGoalsData.tasks.filter(task => task.id !== taskId);
+  _goalsUnsavedChanges = true;
+  renderTasksList();
+  refreshGoalsDerivedViews();
+}
+
+// Low CSAT follow-up editor actions
+function openFollowupEditor(followupId) {
+  if (!_currentGoalsData) return;
+  const modal = document.getElementById('followupEditorModal');
+  const titleEl = document.getElementById('followupEditorTitle');
+  if (!modal) return;
+
+  const entry = followupId ? _currentGoalsData.qaFollowUps.find(item => item.id === followupId) : null;
+  _activeFollowupId = entry ? entry.id : null;
+  const isNew = !entry;
+  const draft = entry || {
+    dateReceived: '',
+    ticketNumber: '',
+    channel: '',
+    rating: '',
+    issueSummary: '',
+    followUpMethod: '',
+    followUpCompleted: false,
+    followUpCompletedAt: '',
+    notes: ''
+  };
+
+  if (titleEl) titleEl.textContent = isNew ? '✅ Add Low CSAT Follow-up' : '✅ Edit Low CSAT Follow-up';
+  document.getElementById('followupDateReceived').value = draft.dateReceived || '';
+  document.getElementById('followupTicketNumber').value = draft.ticketNumber || '';
+  document.getElementById('followupChannel').value = draft.channel || '';
+  document.getElementById('followupRating').value = draft.rating || '';
+  document.getElementById('followupIssueSummary').value = draft.issueSummary || '';
+  document.getElementById('followupMethod').value = draft.followUpMethod || '';
+  document.getElementById('followupCompleted').checked = Boolean(draft.followUpCompleted);
+  document.getElementById('followupCompletedAt').value = draft.followUpCompletedAt || '';
+  document.getElementById('followupNotes').value = draft.notes || '';
+
+  modal.style.display = 'flex';
+}
+
+function closeFollowupEditor() {
+  const modal = document.getElementById('followupEditorModal');
+  if (modal) modal.style.display = 'none';
+  _activeFollowupId = null;
+}
+
+function saveFollowupEditor() {
+  if (!_currentGoalsData) return;
+  const dateReceived = document.getElementById('followupDateReceived').value;
+  const ticketNumber = document.getElementById('followupTicketNumber').value.trim();
+  const channel = document.getElementById('followupChannel').value;
+  const ratingValue = document.getElementById('followupRating').value;
+  const rating = parseInt(ratingValue, 10);
+  const issueSummary = document.getElementById('followupIssueSummary').value.trim();
+  const followUpMethod = document.getElementById('followupMethod').value;
+  const followUpCompletedAtInput = document.getElementById('followupCompletedAt').value;
+  const followUpCompleted = document.getElementById('followupCompleted').checked;
+  const notes = document.getElementById('followupNotes').value.trim();
+
+  if (!dateReceived || !ticketNumber || !channel || !ratingValue) {
+    toast('Date received, ticket number, channel, and rating are required.', 'error');
+    return;
+  }
+  if (rating > LOW_CSAT_MAX_RATING) {
+    toast('Low CSAT follow-ups must be rating 1-3.', 'error');
+    return;
+  }
+  if (followUpCompleted && !followUpMethod) {
+    toast('Select a follow-up method before marking complete.', 'error');
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const followUpCompletedAt = followUpCompleted
+    ? (followUpCompletedAtInput || getTodayDate())
+    : '';
+
+  if (_activeFollowupId) {
+    const existing = _currentGoalsData.qaFollowUps.find(item => item.id === _activeFollowupId);
+    if (existing) {
+      existing.dateReceived = dateReceived;
+      existing.ticketNumber = ticketNumber;
+      existing.channel = channel;
+      existing.rating = ratingValue;
+      existing.issueSummary = issueSummary;
+      existing.followUpMethod = followUpMethod;
+      existing.followUpCompleted = followUpCompleted;
+      existing.followUpCompletedAt = followUpCompletedAt;
+      existing.notes = notes;
+      existing.updatedAt = now;
+    }
+  } else {
+    _currentGoalsData.qaFollowUps.push({
+      id: createId('csat'),
+      dateReceived,
+      ticketNumber,
+      channel,
+      rating: ratingValue,
+      issueSummary,
+      followUpRequired: true,
+      followUpCompleted,
+      followUpMethod,
+      followUpCompletedAt,
+      notes,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  _goalsUnsavedChanges = true;
+  closeFollowupEditor();
+  renderQaFollowUps();
+  refreshGoalsDerivedViews();
+}
+
+function updateFollowupField(id, field, value) {
+  if (!_currentGoalsData) return;
+  const entry = _currentGoalsData.qaFollowUps.find(item => item.id === id);
+  if (!entry) return;
+  entry[field] = value;
+  if (field === 'followUpMethod' && !value && entry.followUpCompleted) {
+    entry.followUpCompleted = false;
+    entry.followUpCompletedAt = '';
+  }
+  if (field === 'followUpCompletedAt' && !value && entry.followUpCompleted) {
+    entry.followUpCompleted = false;
+  }
+  entry.updatedAt = new Date().toISOString();
+  _goalsUnsavedChanges = true;
+  renderQaFollowUps();
+  refreshGoalsDerivedViews();
+}
+
+function toggleFollowUpCompleted(id, checked) {
+  if (!_currentGoalsData) return;
+  const entry = _currentGoalsData.qaFollowUps.find(item => item.id === id);
+  if (!entry) return;
+
+  if (checked) {
+    if (!entry.followUpMethod) {
+      toast('Select a follow-up method before completing.', 'error');
+      renderQaFollowUps();
+      return;
+    }
+    if (!entry.followUpCompletedAt) {
+      entry.followUpCompletedAt = getTodayDate();
+    }
+    entry.followUpCompleted = true;
+  } else {
+    entry.followUpCompleted = false;
+    entry.followUpCompletedAt = '';
+  }
+
+  entry.updatedAt = new Date().toISOString();
+  _goalsUnsavedChanges = true;
+  renderQaFollowUps();
+  refreshGoalsDerivedViews();
+}
+
+function deleteFollowUp(id) {
+  if (!_currentGoalsData) return;
+  _currentGoalsData.qaFollowUps = _currentGoalsData.qaFollowUps.filter(item => item.id !== id);
+  _goalsUnsavedChanges = true;
+  renderQaFollowUps();
+  refreshGoalsDerivedViews();
+}
+
+// Meeting follow-up logging
+function addMeetingFollowUp() {
+  if (!_currentGoalsData) return;
+  const type = document.getElementById('meetingFollowupType')?.value || 'missed';
+  const date = document.getElementById('meetingFollowupDate')?.value;
+  const notes = document.getElementById('meetingFollowupNotes')?.value.trim() || '';
+  if (!date) {
+    toast('Select a meeting follow-up date.', 'error');
+    return;
+  }
+
+  _currentGoalsData.meetingFollowUps = _currentGoalsData.meetingFollowUps || [];
+  _currentGoalsData.meetingFollowUps.push({
+    id: createId('meeting'),
+    type,
+    date,
+    notes,
+    createdAt: new Date().toISOString()
+  });
+
+  _goalsUnsavedChanges = true;
+  if (document.getElementById('meetingFollowupNotes')) {
+    document.getElementById('meetingFollowupNotes').value = '';
+  }
+  document.getElementById('meetingFollowupDate').value = '';
+
+  loadAgentAttendance();
+  renderOverviewTab();
 }
 
 // Switch goals tabs
@@ -19055,6 +21384,13 @@ function switchGoalsTab(tabId) {
   if (tabId === 'attendance') {
     loadAgentAttendance();
   }
+  if (tabId === 'overview') {
+    renderOverviewTab();
+  }
+  if (tabId === 'qa') {
+    renderQaSummary();
+    renderQaFollowUps();
+  }
 }
 
 // Load attendance data for current agent
@@ -19062,9 +21398,10 @@ async function loadAgentAttendance() {
   if (!_currentGoalsAgent) return;
   
   const days = document.getElementById('attendancePeriod')?.value || 90;
-  const eventsContainer = document.getElementById('attendanceEvents');
-  
-  eventsContainer.innerHTML = '<div class="attendance-loading">Loading attendance data...</div>';
+  const timelineContainer = document.getElementById('attendanceTimeline');
+  if (timelineContainer) {
+    timelineContainer.innerHTML = '<div class="attendance-loading">Loading attendance data...</div>';
+  }
   
   try {
     const res = await fetch('/attendance/summary', {
@@ -19076,70 +21413,116 @@ async function loadAgentAttendance() {
     const data = await res.json();
     if (data.ok && data.summary) {
       const s = data.summary;
+      _currentAttendanceSummary = s;
       
       // Update cards
       document.getElementById('attBradford').textContent = s.bradfordFactor;
       const statusEl = document.getElementById('attBradfordStatus');
       statusEl.textContent = s.concernLevel.charAt(0).toUpperCase() + s.concernLevel.slice(1);
-      statusEl.className = 'attendance-card-status ' + s.concernLevel;
+      statusEl.className = 'summary-sub attendance-card-status ' + s.concernLevel;
       
       document.getElementById('attCallOuts').textContent = s.stats.callOuts;
       document.getElementById('attPTO').textContent = s.stats.ptoRequests;
       document.getElementById('attSwapsInit').textContent = s.stats.swapsInitiated;
       document.getElementById('attReplaced').textContent = s.stats.timesReplaced;
       document.getElementById('attCovered').textContent = s.stats.coveredForOthers;
+      const meetingCount = (_currentGoalsData?.meetingFollowUps || []).length;
+      const meetingEl = document.getElementById('attMeetingFollowUps');
+      if (meetingEl) meetingEl.textContent = meetingCount;
       
       // Render events
-      if (s.events && s.events.length > 0) {
-        let eventsHtml = '';
-        s.events.forEach(e => {
-          let icon = '📅';
-          let iconClass = 'timeoff';
-          let title = '';
-          
-          if (e.type === 'timeoff') {
-            icon = e.isCallOut ? '🤒' : '🏖️';
-            title = e.isCallOut ? 'Call Out / Sick Day' : 'PTO Request';
-          } else if (e.type === 'swap_initiated') {
-            icon = '🔄';
-            iconClass = 'swap';
-            title = `Swap requested with ${e.withPerson}`;
-          } else if (e.type === 'swap_received') {
-            icon = '🔄';
-            iconClass = 'swap';
-            title = `Swap received from ${e.withPerson}`;
-          } else if (e.type === 'replaced') {
-            icon = '🔁';
-            iconClass = 'replaced';
-            title = `Replaced by ${e.newPerson}`;
-          } else if (e.type === 'replacement_took') {
-            icon = '✋';
-            iconClass = 'covered';
-            title = `Covered for ${e.originalPerson}`;
-          }
-          
-          const eventDate = e.date || e.createdAt?.split('T')[0] || '';
-          const formattedDate = eventDate ? new Date(eventDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          
-          eventsHtml += `
-            <div class="attendance-event">
-              <div class="attendance-event-icon ${iconClass}">${icon}</div>
-              <div class="attendance-event-info">
-                <div class="attendance-event-title">${title}</div>
-                <div class="attendance-event-meta">${e.reason || e.status || ''}</div>
-              </div>
-              <div class="attendance-event-date">${formattedDate}</div>
-            </div>
-          `;
-        });
-        eventsContainer.innerHTML = eventsHtml;
-      } else {
-        eventsContainer.innerHTML = '<div class="attendance-loading">No attendance events found</div>';
-      }
+      const attendanceEvents = (s.events || []).map(e => {
+        let icon = '📅';
+        let title = '';
+        let subtitle = e.reason || e.status || '';
+        if (e.type === 'timeoff') {
+          icon = e.isCallOut ? '🤒' : '🏖️';
+          title = e.isCallOut ? 'Call Out / Sick Day' : 'PTO Request';
+        } else if (e.type === 'swap_initiated') {
+          icon = '🔄';
+          title = `Swap requested with ${e.withPerson}`;
+        } else if (e.type === 'swap_received') {
+          icon = '🔄';
+          title = `Swap received from ${e.withPerson}`;
+        } else if (e.type === 'replaced') {
+          icon = '🔁';
+          title = `Replaced by ${e.newPerson}`;
+        } else if (e.type === 'replacement_took') {
+          icon = '✋';
+          title = `Covered for ${e.originalPerson}`;
+        }
+        return {
+          id: e.id || `${e.type}_${e.createdAt || e.date || Math.random()}`,
+          type: 'attendance',
+          title,
+          subtitle,
+          date: e.date || e.createdAt?.split('T')[0] || '',
+          status: e.status || '',
+          statusTone: e.status === 'approved' ? 'success' : (e.status === 'pending' ? 'warning' : ''),
+          icon
+        };
+      });
+
+      const meetingEvents = (_currentGoalsData?.meetingFollowUps || []).map(entry => ({
+        id: entry.id,
+        type: 'meeting',
+        title: entry.type === 'video' ? 'Video watched' : 'Missed meeting',
+        subtitle: entry.notes || '',
+        date: entry.date,
+        status: 'Logged',
+        statusTone: 'info',
+        icon: entry.type === 'video' ? '🎥' : '📝'
+      }));
+
+      renderTimeline('attendanceTimeline', [...attendanceEvents, ...meetingEvents], [
+        { id: 'attendance', label: 'Attendance' },
+        { id: 'meeting', label: 'Follow-ups' }
+      ]);
+
+      renderOverviewTab();
     }
   } catch (err) {
     console.error('Error loading attendance:', err);
-    eventsContainer.innerHTML = '<div class="attendance-loading">Error loading attendance data</div>';
+    if (timelineContainer) {
+      timelineContainer.innerHTML = '<div class="attendance-loading">Error loading attendance data</div>';
+    }
+  }
+}
+
+async function persistGoalsData(goalsPayload, options = {}) {
+  const silent = options.silent === true;
+  try {
+    const res = await fetch('/goals/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentName: _currentGoalsAgent,
+        goals: goalsPayload,
+        updatedBy: window._myName || 'Manager'
+      })
+    });
+
+    const data = await res.json();
+    if (data.ok) {
+      _goalsUnsavedChanges = false;
+      _currentGoalsData = {
+        ..._currentGoalsData,
+        ...goalsPayload,
+        updatedAt: new Date().toISOString(),
+        updatedBy: window._myName || 'Manager'
+      };
+      updateGoalsMeta();
+      if (!silent) {
+        toast('Goals saved successfully!', 'success');
+      }
+    } else if (!silent) {
+      toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    console.error('Error saving goals:', err);
+    if (!silent) {
+      toast('Failed to save goals', 'error');
+    }
   }
 }
 
@@ -19149,70 +21532,11 @@ async function saveAgentGoals() {
     toast('No agent selected', 'error');
     return;
   }
-  
-  try {
-    // Collect S.M.A.R.T. goals
-    const smartGoals = [];
-    document.querySelectorAll('.smart-goal-card').forEach(card => {
-      const goal = {};
-      card.querySelectorAll('.smart-input').forEach(input => {
-        goal[input.dataset.field] = input.value;
-      });
-      smartGoals.push(goal);
-    });
-    
-    // Collect table data
-    const collectTableData = (tableBodyId) => {
-      const rows = [];
-      document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
-        const row = {};
-        tr.querySelectorAll('input, select, textarea').forEach(el => {
-          if (el.dataset.field) {
-            row[el.dataset.field] = el.value;
-          }
-        });
-        // Only add if there's some data
-        if (Object.values(row).some(v => v)) {
-          rows.push(row);
-        }
-      });
-      return rows;
-    };
-    
-    const goals = {
-      smartGoals,
-      tasks: collectTableData('tasksTableBody'),
-      performanceMetrics: collectTableData('metricsTableBody'),
-      qaTickets: collectTableData('qaTableBody'),
-      topicsDiscussed: collectTableData('topicsTableBody'),
-      oneOnOneNotes: collectTableData('notesTableBody')
-    };
-    
-    const res = await fetch('/goals/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        agentName: _currentGoalsAgent,
-        goals,
-        updatedBy: window._myName || 'Manager'
-      })
-    });
-    
-    const data = await res.json();
-    if (data.ok) {
-      _goalsUnsavedChanges = false;
-      toast('Goals saved successfully!', 'success');
-      
-      // Update meta
-      document.getElementById('goalsAgentMeta').textContent = 
-        `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${window._myName || 'Manager'}`;
-    } else {
-      toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
-    }
-  } catch (err) {
-    console.error('Error saving goals:', err);
-    toast('Failed to save goals', 'error');
-  }
+
+  const payload = buildGoalsPayload({ fromTable: true });
+  _currentGoalsData = { ..._currentGoalsData, ...payload };
+  await persistGoalsData(payload);
+  refreshGoalsDerivedViews();
 }
 
 // Load my goals (for agent view)
@@ -19251,7 +21575,7 @@ async function loadMyGoals() {
       return;
     }
     
-    const g = data.goals;
+    const g = normalizeGoalsData(data.goals || {}).data;
     
     // Update meta
     const metaEl = document.getElementById('agentGoalsMeta');
@@ -19267,37 +21591,41 @@ async function loadMyGoals() {
     let hasContent = false;
     
     // S.M.A.R.T. Goals section
-    if (g.smartGoals && g.smartGoals.some(goal => goal.specific)) {
+    const visibleGoals = (g.goals || []).filter(goal => goal.status !== 'archived');
+    if (visibleGoals.length > 0) {
       hasContent = true;
       html += '<div class="agent-goals-section"><div class="agent-goals-section-title">🎯 My S.M.A.R.T. Goals</div>';
-      g.smartGoals.forEach((goal, i) => {
-        if (goal.specific) {
-          html += `<div class="agent-goal-item">
-            <div class="agent-goal-label" style="font-weight: 700; color: var(--accent-primary); margin-bottom: 8px;">Goal #${i + 1}</div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px;">
-              <div><span class="agent-goal-label">Specific:</span><div class="agent-goal-value">${escapeHtml(goal.specific || '')}</div></div>
-              <div><span class="agent-goal-label">Measurable:</span><div class="agent-goal-value">${escapeHtml(goal.measurable || '')}</div></div>
-              <div><span class="agent-goal-label">Attainable:</span><div class="agent-goal-value">${escapeHtml(goal.attainable || '')}</div></div>
-              <div><span class="agent-goal-label">Relevant:</span><div class="agent-goal-value">${escapeHtml(goal.relevant || '')}</div></div>
-              <div><span class="agent-goal-label">Time Bound:</span><div class="agent-goal-value">${escapeHtml(goal.timeBound || '')}</div></div>
-            </div>
-          </div>`;
-        }
+      visibleGoals.forEach((goal, i) => {
+        const statusLabel = GOAL_STATUS_LABELS[normalizeGoalStatus(goal.status)] || 'Active';
+        html += `<div class="agent-goal-item">
+          <div class="agent-goal-label" style="font-weight: 700; color: var(--accent-primary); margin-bottom: 8px;">${escapeHtml(goal.title || `Goal #${i + 1}`)}</div>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text-tertiary); margin-bottom: 8px;">
+            <span>Status: ${escapeHtml(statusLabel)}</span>
+            ${goal.dueDate ? `<span>Due: ${formatDateUS(goal.dueDate)}</span>` : ''}
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px;">
+            <div><span class="agent-goal-label">Specific:</span><div class="agent-goal-value">${escapeHtml(goal.specific || '-')}</div></div>
+            <div><span class="agent-goal-label">Measurable:</span><div class="agent-goal-value">${escapeHtml(goal.measurable || '-')}</div></div>
+            <div><span class="agent-goal-label">Attainable:</span><div class="agent-goal-value">${escapeHtml(goal.attainable || '-')}</div></div>
+            <div><span class="agent-goal-label">Relevant:</span><div class="agent-goal-value">${escapeHtml(goal.relevant || '-')}</div></div>
+            <div><span class="agent-goal-label">Time Bound:</span><div class="agent-goal-value">${escapeHtml(goal.timeBound || '-')}</div></div>
+          </div>
+        </div>`;
       });
       html += '</div>';
     }
     
     // Tasks section
-    if (g.tasks && g.tasks.length > 0 && g.tasks.some(t => t.task)) {
+    if (g.tasks && g.tasks.length > 0 && g.tasks.some(t => t.title)) {
       hasContent = true;
       html += '<div class="agent-goals-section"><div class="agent-goals-section-title">📋 My Tasks</div>';
       g.tasks.forEach(task => {
-        if (task.task) {
-          const statusBadge = task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : task.status === 'blocked' ? '🚫' : '⏳';
-          const statusLabel = task.status ? task.status.replace('_', ' ') : 'Not Started';
+        if (task.title) {
+          const statusBadge = task.status === 'done' ? '✅' : task.status === 'in_progress' ? '🔄' : '⏳';
+          const statusLabel = TASK_STATUS_LABELS[task.status] || 'Open';
           html += `<div class="agent-goal-item">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <strong>${escapeHtml(task.task)}</strong>
+              <strong>${escapeHtml(task.title)}</strong>
               <span>${statusBadge} ${statusLabel}</span>
             </div>
             ${task.dueDate ? `<div style="font-size: 11px; color: var(--text-tertiary);">Due: ${formatDateUS(task.dueDate)}</div>` : ''}
@@ -19419,7 +21747,7 @@ async function loadProfileGoals() {
       return;
     }
     
-    const g = data.goals;
+    const g = normalizeGoalsData(data.goals || {}).data;
     let hasContent = false;
     
     // Update last updated meta
@@ -19429,18 +21757,17 @@ async function loadProfileGoals() {
     
     // S.M.A.R.T. Goals Summary
     const smartEl = document.getElementById('profileSmartGoals');
-    if (smartEl && g.smartGoals && g.smartGoals.some(goal => goal.specific)) {
+    const visibleGoals = (g.goals || []).filter(goal => goal.status !== 'archived');
+    if (smartEl && visibleGoals.length > 0) {
       hasContent = true;
       let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>🎯</span> S.M.A.R.T. Goals</div>';
       html += '<div style="display: flex; flex-direction: column; gap: 8px;">';
-      g.smartGoals.forEach((goal, i) => {
-        if (goal.specific) {
-          html += `<div style="padding: 10px; background: var(--bg-tertiary); border-radius: 8px; border-left: 3px solid var(--accent-primary);">
-            <div style="font-weight: 600; font-size: 12px; color: var(--accent-primary); margin-bottom: 4px;">Goal #${i + 1}</div>
-            <div style="font-size: 12px; color: var(--text-primary);">${escapeHtml(goal.specific)}</div>
-            ${goal.timeBound ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">⏰ ${escapeHtml(goal.timeBound)}</div>` : ''}
-          </div>`;
-        }
+      visibleGoals.forEach((goal, i) => {
+        html += `<div style="padding: 10px; background: var(--bg-tertiary); border-radius: 8px; border-left: 3px solid var(--accent-primary);">
+          <div style="font-weight: 600; font-size: 12px; color: var(--accent-primary); margin-bottom: 4px;">${escapeHtml(goal.title || `Goal #${i + 1}`)}</div>
+          <div style="font-size: 12px; color: var(--text-primary);">${escapeHtml(goal.specific || goal.measurable || '-')}</div>
+          ${goal.dueDate ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">⏰ Due ${formatDateUS(goal.dueDate)}</div>` : ''}
+        </div>`;
       });
       html += '</div>';
       smartEl.innerHTML = html;
@@ -19450,24 +21777,23 @@ async function loadProfileGoals() {
     
     // Tasks Summary
     const tasksEl = document.getElementById('profileTasks');
-    if (tasksEl && g.tasks && g.tasks.length > 0 && g.tasks.some(t => t.task)) {
+    if (tasksEl && g.tasks && g.tasks.length > 0 && g.tasks.some(t => t.title)) {
       hasContent = true;
       let html = '<div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><span>📋</span> Current Tasks</div>';
       html += '<div style="display: flex; flex-direction: column; gap: 6px;">';
       g.tasks.forEach(task => {
-        if (task.task) {
+        if (task.title) {
           const statusColors = {
-            'completed': { bg: '#dcfce7', color: '#166534', icon: '✅' },
+            'done': { bg: '#dcfce7', color: '#166534', icon: '✅' },
             'in_progress': { bg: '#dbeafe', color: '#1e40af', icon: '🔄' },
-            'blocked': { bg: '#fecaca', color: '#b91c1c', icon: '🚫' },
-            'not_started': { bg: '#f3f4f6', color: '#6b7280', icon: '⏳' }
+            'open': { bg: '#f3f4f6', color: '#6b7280', icon: '⏳' }
           };
-          const status = statusColors[task.status] || statusColors['not_started'];
+          const status = statusColors[task.status] || statusColors['open'];
           html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-tertiary); border-radius: 6px;">
-            <div style="font-size: 12px; color: var(--text-primary);">${escapeHtml(task.task)}</div>
+            <div style="font-size: 12px; color: var(--text-primary);">${escapeHtml(task.title)}</div>
             <div style="display: flex; align-items: center; gap: 6px;">
               ${task.dueDate ? `<span style="font-size: 10px; color: var(--text-tertiary);">Due: ${formatDateUS(task.dueDate)}</span>` : ''}
-              <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${status.bg}; color: ${status.color};">${status.icon}</span>
+              <span style="background: ${status.bg}; color: ${status.color}; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600;">${status.icon} ${TASK_STATUS_LABELS[task.status] || 'Open'}</span>
             </div>
           </div>`;
         }
