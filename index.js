@@ -1127,7 +1127,8 @@ if (action) path = "/" + action;
       "/goals/save",
       "/goals/list",
       "/attendance/summary",
-      "/attendance/all"
+      "/attendance/all",
+      "/events"
     ].includes(path);
 
     if (!isApi) {
@@ -1135,6 +1136,185 @@ if (action) path = "/" + action;
     }
     // Health
     if (path === "/health") return res.status(200).json({ ok: true, service: "scheduler-api" });
+    
+    // ============================================
+    // SSE REAL-TIME EVENTS ENDPOINT
+    // Replaces polling with push-based updates
+    // ============================================
+    if (path === "/events" && req.method === "GET") {
+      // Get user info from query params (set by frontend)
+      const userEmail = req.query.email || "";
+      const userName = req.query.name || "";
+      const isManager = req.query.isManager === "true";
+      
+      if (!userEmail && !userName) {
+        return res.status(400).json({ error: "User identification required" });
+      }
+      
+      console.log(`🔌 SSE connection: ${userName} (${userEmail}) - Manager: ${isManager}`);
+      
+      // Set SSE headers
+      res.set({
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no" // Disable nginx buffering
+      });
+      res.flushHeaders();
+      
+      // Send initial connected event
+      const sendEvent = (eventType, data) => {
+        res.write(`event: ${eventType}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+      
+      sendEvent("connected", {
+        ok: true,
+        serverTime: new Date().toISOString(),
+        user: { email: userEmail, name: userName, isManager }
+      });
+      
+      // Track active listeners for cleanup
+      const listeners = [];
+      
+      // Ping every 25 seconds to keep connection alive
+      const pingInterval = setInterval(() => {
+        try {
+          sendEvent("ping", { t: new Date().toISOString() });
+        } catch (e) {
+          console.warn("SSE ping failed:", e.message);
+        }
+      }, 25000);
+      
+      // ---- FIRESTORE LISTENERS ----
+      
+      // 1. Agent Notifications listener (for this specific user)
+      if (userName) {
+        const agentNotifListener = db.collection("agent_notifications")
+          .where("recipientName", "==", userName)
+          .onSnapshot(snapshot => {
+            const notifications = [];
+            let unreadCount = 0;
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              notifications.push({ id: doc.id, ...data });
+              if (!data.read) unreadCount++;
+            });
+            // Sort by createdAt desc
+            notifications.sort((a, b) => 
+              new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            );
+            sendEvent("notification", { 
+              unreadCount, 
+              latestItems: notifications.slice(0, 5),
+              total: notifications.length
+            });
+          }, err => {
+            console.error("Agent notifications listener error:", err);
+          });
+        listeners.push(agentNotifListener);
+      }
+      
+      // 2. Manager-specific listeners
+      if (isManager) {
+        // Manager notifications (time-off requests, etc.)
+        const managerNotifListener = db.collection("manager_notifications")
+          .onSnapshot(snapshot => {
+            const notifications = [];
+            let pendingCount = 0;
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              notifications.push({ id: doc.id, ...data });
+              if (!data.read && data.status === "pending") pendingCount++;
+            });
+            notifications.sort((a, b) => 
+              new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            );
+            sendEvent("manager_notification", {
+              pendingCount,
+              latestItems: notifications.slice(0, 10),
+              total: notifications.length
+            });
+          }, err => {
+            console.error("Manager notifications listener error:", err);
+          });
+        listeners.push(managerNotifListener);
+        
+        // Manager presence (who's online)
+        const cutoffTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const presenceListener = db.collection("manager_presence")
+          .where("lastHeartbeat", ">=", cutoffTime)
+          .onSnapshot(snapshot => {
+            const activeManagers = [];
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              activeManagers.push({
+                managerName: data.managerName,
+                view: data.view,
+                area: data.area,
+                isEditing: data.isEditing || false,
+                lastHeartbeat: data.lastHeartbeat
+              });
+            });
+            sendEvent("presence", {
+              online: activeManagers,
+              updatedAt: new Date().toISOString()
+            });
+          }, err => {
+            console.error("Presence listener error:", err);
+          });
+        listeners.push(presenceListener);
+        
+        // Time-off requests count (for badge)
+        const timeoffListener = db.collection("time_off_requests")
+          .where("status", "==", "pending")
+          .onSnapshot(snapshot => {
+            sendEvent("timeoff_count", {
+              count: snapshot.size,
+              updatedAt: new Date().toISOString()
+            });
+          }, err => {
+            console.error("Time-off listener error:", err);
+          });
+        listeners.push(timeoffListener);
+      }
+      
+      // 3. Agent presence (for managers to see who's online)
+      if (isManager) {
+        const agentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const agentPresenceListener = db.collection("agent_presence")
+          .where("lastHeartbeat", ">=", agentCutoff)
+          .onSnapshot(snapshot => {
+            const activeAgents = [];
+            snapshot.forEach(doc => {
+              activeAgents.push(doc.data());
+            });
+            sendEvent("agent_presence", {
+              online: activeAgents,
+              updatedAt: new Date().toISOString()
+            });
+          }, err => {
+            console.error("Agent presence listener error:", err);
+          });
+        listeners.push(agentPresenceListener);
+      }
+      
+      // Cleanup on disconnect
+      req.on("close", () => {
+        console.log(`🔌 SSE disconnected: ${userName}`);
+        clearInterval(pingInterval);
+        listeners.forEach(unsubscribe => {
+          try {
+            unsubscribe();
+          } catch (e) {
+            console.warn("Listener cleanup error:", e.message);
+          }
+        });
+      });
+      
+      // Don't end response - keep it open for SSE
+      return;
+    }
     
     // Debug endpoint for base_schedule
     if (path === "/debug/base-schedule" && req.method === "GET") {
@@ -5100,7 +5280,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     if (path === "/weekly-assignments/save" && req.method === "POST") {
       try {
         const body = readJsonBody(req);
-        const { weekOf, teamMemberTips, momentsThatMadeSmile, ticketWalkthroughs, teamBuilding, teamBuildingVolunteer, csatWorkshop, notes, events } = body;
+        const { weekOf, lcTeamMemberTips, teamMemberTips, momentsThatMadeSmile, ticketWalkthroughs, teamBuilding, teamBuildingVolunteer, csatWorkshop, notes, events } = body;
         
         if (!weekOf) {
           return res.status(400).json({ error: "weekOf date is required" });
@@ -5110,8 +5290,9 @@ if (path === "/holiday/bank" && req.method === "POST") {
         const docId = weekOf;
         await db.collection("weekly_assignments").doc(docId).set({
           weekOf,
-          teamMemberTips: teamMemberTips || [],  // Array of names
-          momentsThatMadeSmile: momentsThatMadeSmile || [], // Array of names
+          lcTeamMemberTips: lcTeamMemberTips || [], // Array of names (LC Sync presentations)
+          teamMemberTips: teamMemberTips || [],  // Array of names (regular meeting tips)
+          momentsThatMadeSmile: momentsThatMadeSmile || [], // Array of names (now single person)
           ticketWalkthroughs: ticketWalkthroughs || "", // Single name
           teamBuilding: teamBuilding || "", // Single name
           teamBuildingVolunteer: teamBuildingVolunteer || "", // Single name
@@ -5157,6 +5338,12 @@ if (path === "/holiday/bank" && req.method === "POST") {
         snap.forEach(doc => {
           const data = doc.data();
           const roles = [];
+          
+          // Check LC Team Member Tips (new field)
+          const lcTips = data.lcTeamMemberTips || [];
+          if (lcTips.some(n => n.toLowerCase().trim() === agentNameLower)) {
+            roles.push("LC Team Member Tips");
+          }
           
           // Check each assignment type
           const tips = data.teamMemberTips || [];
@@ -5357,11 +5544,44 @@ if (path === "/holiday/bank" && req.method === "POST") {
     }
 
     // ============================================
+
+// ── B1: Goal Data Migration (server-side) ──
+function migrateGoalsDataServer(data) {
+  if (!data) return data;
+  if (data.smartGoals && Array.isArray(data.smartGoals)) {
+    const needsMigration = data.smartGoals.length > 0 && !data.smartGoals[0].id;
+    if (needsMigration) {
+      data.smartGoals = data.smartGoals
+        .filter(g => g.specific || g.measurable || g.attainable || g.relevant || g.timeBound)
+        .map((g, i) => ({
+          id: 'goal_' + Date.now() + '_' + i,
+          title: g.specific ? g.specific.substring(0, 80) : 'Goal #' + (i + 1),
+          status: 'active', dueDate: '', reviewCadence: '', nextCheckInDate: '',
+          specific: g.specific || '', measurable: g.measurable || '',
+          attainable: g.attainable || '', relevant: g.relevant || '', timeBound: g.timeBound || '',
+          createdAt: data.updatedAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString()
+        }));
+    }
+  }
+  if (data.tasks && Array.isArray(data.tasks)) {
+    data.tasks = data.tasks.map((t, i) => ({
+      id: t.id || 'task_' + Date.now() + '_' + i,
+      title: t.task || t.title || '', priority: t.priority || '',
+      dueDate: t.dueDate || '', status: t.status || 'open', notes: t.notes || '',
+      createdAt: t.createdAt || new Date().toISOString(),
+      updatedAt: t.updatedAt || new Date().toISOString()
+    }));
+  }
+  if (!data.csatFollowups) data.csatFollowups = [];
+  if (!data.meetingFollowups) data.meetingFollowups = [];
+  return data;
+}
     // AGENT GOALS API ENDPOINTS
     // ============================================
     
     // Get goals for an agent
-    if (path === "/goals/get" && req.method === "POST") {
+    if ((path === "/goals/get" || action === "goals/get") && req.method === "POST") {
       try {
         const body = readJsonBody(req);
         const { agentName } = body;
@@ -5378,13 +5598,12 @@ if (path === "/holiday/bank" && req.method === "POST") {
             ok: true,
             goals: {
               agentName,
-              smartGoals: [
-                { specific: '', measurable: '', attainable: '', relevant: '', timeBound: '' },
-                { specific: '', measurable: '', attainable: '', relevant: '', timeBound: '' }
-              ],
+              smartGoals: [],
               tasks: [],
               performanceMetrics: [],
               qaTickets: [],
+              csatFollowups: [],
+              meetingFollowups: [],
               topicsDiscussed: [],
               oneOnOneNotes: [],
               updatedAt: null,
@@ -5393,7 +5612,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
           });
         }
         
-        return res.status(200).json({ ok: true, goals: doc.data() });
+        return res.status(200).json({ ok: true, goals: migrateGoalsDataServer(doc.data()) });
       } catch (err) {
         console.error("Goals get error:", err);
         return res.status(500).json({ error: err.message });
@@ -5401,7 +5620,7 @@ if (path === "/holiday/bank" && req.method === "POST") {
     }
     
     // Save goals for an agent
-    if (path === "/goals/save" && req.method === "POST") {
+    if ((path === "/goals/save" || action === "goals/save") && req.method === "POST") {
       try {
         const body = readJsonBody(req);
         const { agentName, goals, updatedBy } = body;
@@ -5410,7 +5629,21 @@ if (path === "/holiday/bank" && req.method === "POST") {
         }
         
         const goalsRef = db.collection("agent_goals").doc(agentName.toLowerCase().replace(/\s+/g, '_'));
-        
+
+        // Sanitize CSAT follow-ups (D0: enforce completion rules)
+        if (goals.csatFollowups && Array.isArray(goals.csatFollowups)) {
+          goals.csatFollowups = goals.csatFollowups.map(fu => {
+            if (fu.followUpCompleted && !fu.followUpCompletedAt) {
+              fu.followUpCompletedAt = new Date().toISOString().split('T')[0];
+            }
+            if (fu.followUpCompleted && !fu.followUpMethod) {
+              fu.followUpCompleted = false;
+              fu.followUpCompletedAt = '';
+            }
+            return fu;
+          });
+        }
+
         await goalsRef.set({
           agentName,
           ...goals,
@@ -5423,7 +5656,13 @@ if (path === "/holiday/bank" && req.method === "POST") {
           action: "goals_updated",
           agentName,
           updatedBy: updatedBy || 'system',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          summary: {
+            goalCount: (goals.smartGoals || []).length,
+            taskCount: (goals.tasks || []).length,
+            csatFollowupCount: (goals.csatFollowups || []).length,
+            csatPendingCount: (goals.csatFollowups || []).filter(c => !c.followUpCompleted).length
+          }
         });
         
         return res.status(200).json({ ok: true });
@@ -5448,9 +5687,12 @@ if (path === "/holiday/bank" && req.method === "POST") {
             agentName: data.agentName,
             updatedAt: data.updatedAt,
             updatedBy: data.updatedBy,
-            hasSmartGoals: data.smartGoals && data.smartGoals.some(g => g.specific),
+            hasSmartGoals: data.smartGoals && data.smartGoals.some(g => g.specific || g.title),
+            goalCount: (data.smartGoals || []).filter(g => g.status === 'active' || g.status === 'at_risk').length,
             taskCount: (data.tasks || []).length,
-            metricsCount: (data.performanceMetrics || []).length
+            metricsCount: (data.performanceMetrics || []).length,
+            csatPendingCount: (data.csatFollowups || []).filter(c => !c.followUpCompleted).length,
+            csatTotalCount: (data.csatFollowups || []).length
           });
         });
         
@@ -5705,6 +5947,31 @@ if (path === "/holiday/bank" && req.method === "POST") {
       }
     }
    
+    // CSAT Follow-up Summary endpoint
+    if (path === "/goals/csat-summary" && req.method === "GET") {
+      try {
+        const snap = await db.collection("agent_goals").get();
+        const summary = { totalFollowups: 0, pendingFollowups: 0, completedFollowups: 0, byAgent: [] };
+        snap.forEach(doc => {
+          const data = doc.data();
+          const followups = data.csatFollowups || [];
+          const pending = followups.filter(c => !c.followUpCompleted).length;
+          const completed = followups.filter(c => c.followUpCompleted).length;
+          summary.totalFollowups += followups.length;
+          summary.pendingFollowups += pending;
+          summary.completedFollowups += completed;
+          if (followups.length > 0) {
+            summary.byAgent.push({ agentName: data.agentName, total: followups.length, pending, completed });
+          }
+        });
+        summary.byAgent.sort((a, b) => b.pending - a.pending);
+        return res.status(200).json({ ok: true, summary });
+      } catch (err) {
+        console.error("CSAT summary error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
     return res.status(404).json({ error: "Not found" });
   } catch (err) {
     console.error("ERROR:", err);
