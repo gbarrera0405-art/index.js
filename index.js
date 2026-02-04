@@ -1297,6 +1297,27 @@ if (action) path = "/" + action;
             console.error("Agent presence listener error:", err);
           });
         listeners.push(agentPresenceListener);
+        
+        // 4. System banners / coverage alerts (managers only)
+        const bannerListener = db.collection("system_banners")
+          .where("active", "==", true)
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .onSnapshot(snapshot => {
+            if (!snapshot.empty) {
+              const bannerDoc = snapshot.docs[0];
+              const data = bannerDoc.data();
+              sendEvent("banner", {
+                type: data.type || "info",
+                message: data.message || "",
+                severity: data.severity || "info",
+                updatedAt: data.updatedAt || data.createdAt || new Date().toISOString()
+              });
+            }
+          }, err => {
+            console.error("Banner listener error:", err);
+          });
+        listeners.push(bannerListener);
       }
       
       // Cleanup on disconnect

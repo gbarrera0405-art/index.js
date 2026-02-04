@@ -10784,6 +10784,11 @@ function clearScheduleCache() {
           if (data.message && data.severity !== "info") {
             toast(data.message, data.severity || "warning");
           }
+          
+          // If this is a coverage-related banner, refresh coverage dashboard
+          if (data.type === "coverage" && typeof renderCoverageDashboard === "function") {
+            renderCoverageDashboard();
+          }
         } catch (err) {
           console.warn("[SSE] Banner parse error:", err);
         }
