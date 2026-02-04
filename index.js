@@ -891,15 +891,17 @@ function invalidateManagerNotificationCache() {
 // ============================================
 const LOCK_TTL = {
   shift: 120 * 1000,    // 120 seconds for shift locks
-  master: 180 * 1000    // 180 seconds for master schedule locks
+  master: 180 * 1000,   // 180 seconds for master schedule locks
+  default: 120 * 1000   // Default fallback for unknown types
 };
 
 /**
  * Check if a lock is expired
+ * @param {Object} lockData - Lock data object with expiresAt field
  */
-function isLockExpired(lockDoc) {
-  if (!lockDoc || !lockDoc.expiresAt) return true;
-  const expiresAt = new Date(lockDoc.expiresAt).getTime();
+function isLockExpired(lockData) {
+  if (!lockData || !lockData.expiresAt) return true;
+  const expiresAt = new Date(lockData.expiresAt).getTime();
   return Date.now() > expiresAt;
 }
 
@@ -915,7 +917,7 @@ function getLockId(resourceType, resourceId) {
  */
 async function acquireLock(db, { resourceType, resourceId, lockedByEmail, lockedByName, lockSessionId }) {
   const lockId = getLockId(resourceType, resourceId);
-  const ttl = LOCK_TTL[resourceType] || LOCK_TTL.shift;
+  const ttl = LOCK_TTL[resourceType] || LOCK_TTL.default;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttl);
   
@@ -987,7 +989,7 @@ async function renewLock(db, { resourceType, resourceId, lockSessionId }) {
   }
   
   // Extend the lock
-  const ttl = LOCK_TTL[resourceType] || LOCK_TTL.shift;
+  const ttl = LOCK_TTL[resourceType] || LOCK_TTL.default;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttl);
   

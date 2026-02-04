@@ -10242,11 +10242,21 @@ function clearScheduleCache() {
 window.__editModeActive = false;
 window.__pendingRefresh = false;
 
-// Lock session ID - unique per browser tab
+// Lock session ID - unique per browser tab (uses crypto for security)
 function getLockSessionId() {
   let sessionId = sessionStorage.getItem('scheduler_lock_session_id');
   if (!sessionId) {
-    sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+    // Use crypto.randomUUID if available, fallback to crypto.getRandomValues
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      sessionId = 'sess_' + crypto.randomUUID();
+    } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      sessionId = 'sess_' + Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+      // Fallback for very old browsers
+      sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+    }
     sessionStorage.setItem('scheduler_lock_session_id', sessionId);
   }
   return sessionId;
@@ -10404,20 +10414,22 @@ function releaseAllLocks() {
   _activeLocks.forEach((lockInfo, resourceKey) => {
     clearInterval(lockInfo.renewalTimer);
     const [resourceType, ...resourceIdParts] = resourceKey.split('_');
-    navigator.sendBeacon('./?action=locks/release', JSON.stringify({
+    const data = JSON.stringify({
       resourceType,
       resourceId: resourceIdParts.join('_'),
       lockSessionId: getLockSessionId()
-    }));
+    });
+    // sendBeacon requires Blob for JSON content
+    const blob = new Blob([data], { type: 'application/json' });
+    navigator.sendBeacon('./?action=locks/release', blob);
   });
   _activeLocks.clear();
 }
 
 window.addEventListener('beforeunload', releaseAllLocks);
 
-  // Helper to get time ago string
+  // Helper to format relative time for notifications and other UI elements
   function getTimeAgo(timestamp) {
-
     const now = Date.now();
     const then = new Date(timestamp).getTime();
     const diff = Math.floor((now - then) / 1000);
@@ -10660,16 +10672,16 @@ window.addEventListener('beforeunload', releaseAllLocks);
     }
   }
   
-  // ---- Start realtime stream (ONLY after auth is known) ----
+  // ---- Start realtime notifications stream (ONLY after auth is known) ----
 let _notificationPollTimer = null;
 let _isEditingSchedule = false; // Flag to prevent refresh during edits
 
+// Start realtime notifications for managers (keeps old function name for compatibility)
 function startManagerPresenceTracking() {
-  // Now just starts real-time stream (no presence heartbeats)
   if (!window._isManager) return;
   if (!window._myName || !window._myEmail) return;
 
-  // Try SSE for real-time notifications
+  // Start SSE for real-time notifications (no presence heartbeats)
   startRealtimeStream();
 }
 
