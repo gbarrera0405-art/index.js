@@ -767,6 +767,234 @@ setInterval(() => {
 }, 5 * 60 * 1000); // Clean every 5 minutes
 
 // ============================================
+// NOTIFICATION CACHE (reduces Firestore reads)
+// Short TTL since notifications change frequently
+// ============================================
+const notificationCache = {
+  agent: new Map(), // agentName -> { data, timestamp }
+  manager: null, // { data, timestamp }
+  TTL: 30 * 1000, // 30 second cache
+  pendingRequests: new Map() // For request coalescing
+};
+
+async function getAgentNotificationsWithCache(agentName, db) {
+  const cacheKey = agentName.toLowerCase().trim();
+  const now = Date.now();
+  
+  // Check cache
+  const cached = notificationCache.agent.get(cacheKey);
+  if (cached && (now - cached.timestamp) < notificationCache.TTL) {
+    console.log(`📫 Agent notifications cache HIT for ${agentName}`);
+    return cached.data;
+  }
+  
+  // Request coalescing
+  if (notificationCache.pendingRequests.has(cacheKey)) {
+    return notificationCache.pendingRequests.get(cacheKey);
+  }
+  
+  console.log(`📬 Agent notifications cache MISS for ${agentName}`);
+  const fetchPromise = db.collection("agent_notifications")
+    .where("recipientName", "==", agentName)
+    .limit(50) // OPTIMIZATION: Limit to 50 most recent
+    .get()
+    .then(snap => {
+      const notifications = [];
+      snap.forEach(doc => {
+        notifications.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Sort by createdAt desc in memory
+      notifications.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      const unreadCount = notifications.filter(n => !n.read).length;
+      const result = { notifications, unreadCount };
+      
+      // Cache the result
+      notificationCache.agent.set(cacheKey, { data: result, timestamp: Date.now() });
+      return result;
+    });
+  
+  notificationCache.pendingRequests.set(cacheKey, fetchPromise);
+  
+  try {
+    return await fetchPromise;
+  } finally {
+    notificationCache.pendingRequests.delete(cacheKey);
+  }
+}
+
+async function getManagerNotificationsWithCache(db) {
+  const now = Date.now();
+  
+  // Check cache
+  if (notificationCache.manager && (now - notificationCache.manager.timestamp) < notificationCache.TTL) {
+    console.log("📫 Manager notifications cache HIT");
+    return notificationCache.manager.data;
+  }
+  
+  // Request coalescing
+  const cacheKey = "manager_all";
+  if (notificationCache.pendingRequests.has(cacheKey)) {
+    return notificationCache.pendingRequests.get(cacheKey);
+  }
+  
+  console.log("📬 Manager notifications cache MISS");
+  // OPTIMIZATION: Fetch only 50 with orderBy to get most recent
+  // This requires a Firestore index on manager_notifications(createdAt)
+  const fetchPromise = db.collection("manager_notifications")
+    .orderBy("createdAt", "desc")
+    .limit(50) // Only fetch what we need
+    .get()
+    .then(snap => {
+      const notifications = [];
+      snap.forEach(doc => {
+        notifications.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Already sorted by Firestore, no need to sort in memory
+      const unreadCount = notifications.filter(n => !n.read && n.status === "pending").length;
+      const result = { notifications, unreadCount };
+      
+      // Cache the result
+      notificationCache.manager = { data: result, timestamp: Date.now() };
+      return result;
+    });
+  
+  notificationCache.pendingRequests.set(cacheKey, fetchPromise);
+  
+  try {
+    return await fetchPromise;
+  } finally {
+    notificationCache.pendingRequests.delete(cacheKey);
+  }
+}
+
+// Invalidate notification cache when notifications are added/updated
+function invalidateAgentNotificationCache(agentName) {
+  if (agentName) {
+    notificationCache.agent.delete(agentName.toLowerCase().trim());
+  }
+}
+
+function invalidateManagerNotificationCache() {
+  notificationCache.manager = null;
+}
+
+// ============================================
+// PRESENCE CACHE (reduces Firestore reads from heartbeat polls)
+// Short TTL since presence changes frequently
+// ============================================
+const presenceCache = {
+  agents: null, // { data, timestamp }
+  managers: null, // { data, timestamp }
+  TTL: 15 * 1000, // 15 second cache - balance freshness vs. cost
+  pendingRequests: new Map()
+};
+
+async function getAgentPresenceWithCache(db) {
+  const now = Date.now();
+  
+  // Check cache
+  if (presenceCache.agents && (now - presenceCache.agents.timestamp) < presenceCache.TTL) {
+    console.log("👤 Agent presence cache HIT");
+    return presenceCache.agents.data;
+  }
+  
+  // Request coalescing
+  const cacheKey = "agent_presence";
+  if (presenceCache.pendingRequests.has(cacheKey)) {
+    return presenceCache.pendingRequests.get(cacheKey);
+  }
+  
+  console.log("👤 Agent presence cache MISS");
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  
+  const fetchPromise = db.collection("agent_presence")
+    .where("lastHeartbeat", ">=", cutoff)
+    .limit(100) // OPTIMIZATION: Cap at 100 active agents
+    .get()
+    .then(snap => {
+      const activeAgents = [];
+      snap.forEach(doc => {
+        activeAgents.push(doc.data());
+      });
+      
+      // Cache the result
+      presenceCache.agents = { data: activeAgents, timestamp: Date.now() };
+      return activeAgents;
+    });
+  
+  presenceCache.pendingRequests.set(cacheKey, fetchPromise);
+  
+  try {
+    return await fetchPromise;
+  } finally {
+    presenceCache.pendingRequests.delete(cacheKey);
+  }
+}
+
+async function getManagerPresenceWithCache(db) {
+  const now = Date.now();
+  
+  // Check cache
+  if (presenceCache.managers && (now - presenceCache.managers.timestamp) < presenceCache.TTL) {
+    console.log("👔 Manager presence cache HIT");
+    return presenceCache.managers.data;
+  }
+  
+  // Request coalescing
+  const cacheKey = "manager_presence";
+  if (presenceCache.pendingRequests.has(cacheKey)) {
+    return presenceCache.pendingRequests.get(cacheKey);
+  }
+  
+  console.log("👔 Manager presence cache MISS");
+  const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  
+  const fetchPromise = db.collection("manager_presence")
+    .where("lastHeartbeat", ">=", cutoff)
+    .limit(50) // OPTIMIZATION: Cap at 50 active managers
+    .get()
+    .then(snap => {
+      const activeManagers = [];
+      snap.forEach(doc => {
+        const data = doc.data();
+        activeManagers.push({
+          managerName: data.managerName,
+          view: data.view,
+          area: data.area,
+          isEditing: data.isEditing || false,
+          editingTarget: data.editingTarget || null,
+          lastHeartbeat: data.lastHeartbeat
+        });
+      });
+      
+      // Cache the result
+      presenceCache.managers = { data: activeManagers, timestamp: Date.now() };
+      return activeManagers;
+    });
+  
+  presenceCache.pendingRequests.set(cacheKey, fetchPromise);
+  
+  try {
+    return await fetchPromise;
+  } finally {
+    presenceCache.pendingRequests.delete(cacheKey);
+  }
+}
+
+// Invalidate presence cache when heartbeats are sent
+function invalidatePresenceCache() {
+  presenceCache.agents = null;
+  presenceCache.managers = null;
+}
+
+// ============================================
 // HELPER: Get Agent's Team/Channel History
 // Returns list of teams the agent has worked on
 // ============================================
@@ -1218,7 +1446,11 @@ if (action) path = "/" + action;
       // 2. Manager-specific listeners
       if (isManager) {
         // Manager notifications (time-off requests, etc.)
+        // OPTIMIZATION: Only listen to pending notifications to reduce reads
+        // Resolved notifications don't need real-time updates
         const managerNotifListener = db.collection("manager_notifications")
+          .where("status", "==", "pending")
+          .limit(50) // OPTIMIZATION: Limit to 50 most relevant docs
           .onSnapshot(snapshot => {
             const notifications = [];
             let pendingCount = 0;
@@ -1280,10 +1512,12 @@ if (action) path = "/" + action;
       }
       
       // 3. Agent presence (for managers to see who's online)
+      // OPTIMIZATION: Add limit to reduce reads when many agents are active
       if (isManager) {
         const agentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         const agentPresenceListener = db.collection("agent_presence")
           .where("lastHeartbeat", ">=", agentCutoff)
+          .limit(100) // OPTIMIZATION: Cap at 100 active agents max
           .onSnapshot(snapshot => {
             const activeAgents = [];
             snapshot.forEach(doc => {
@@ -1870,6 +2104,9 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           createdAt: new Date().toISOString(),
           read: false
         });
+        
+        // OPTIMIZATION: Invalidate manager notification cache
+        invalidateManagerNotificationCache();
         
         console.log(`📝 Time off request created: ${person} - ${type} for ${displayDate}`);
         
@@ -2857,30 +3094,12 @@ if (notifyMode === "silent") notifyStatus = "None";
           return res.status(400).json({ error: "Missing agentName" });
         }
         
-        // Get all notifications for this agent (avoid index requirement)
-        const snap = await db.collection("agent_notifications")
-          .where("recipientName", "==", agentName)
-          .get();
-        
-        const notifications = [];
-        snap.forEach(doc => {
-          notifications.push({ id: doc.id, ...doc.data() });
-        });
-        
-        // Sort by createdAt desc in memory
-        notifications.sort((a, b) => {
-          const dateA = new Date(a.createdAt || 0).getTime();
-          const dateB = new Date(b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
-        
-        // Limit to 50
-        const limited = notifications.slice(0, 50);
-        const unreadCount = limited.filter(n => !n.read).length;
+        // OPTIMIZATION: Use cached notifications to reduce Firestore reads
+        const { notifications, unreadCount } = await getAgentNotificationsWithCache(agentName, db);
         
         return res.status(200).json({ 
           ok: true, 
-          notifications: limited,
+          notifications,
           unreadCount
         });
         
@@ -2895,6 +3114,7 @@ if (notifyMode === "silent") notifyStatus = "None";
       try {
         const body = readJsonBody(req);
         const notifId = String(body.notifId || "").trim();
+        const agentName = String(body.agentName || "").trim(); // For cache invalidation (optional)
         
         if (!notifId) {
           return res.status(400).json({ error: "Missing notifId" });
@@ -2904,6 +3124,12 @@ if (notifyMode === "silent") notifyStatus = "None";
           read: true,
           readAt: new Date().toISOString()
         });
+        
+        // OPTIMIZATION: Invalidate cache for this agent if provided
+        // If agentName is not provided, cache will expire naturally in 30 seconds
+        if (agentName) {
+          invalidateAgentNotificationCache(agentName);
+        }
         
         return res.status(200).json({ ok: true });
         
@@ -2939,6 +3165,9 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
       deleted += snap.size;
       if (snap.size < 400) break;
     }
+
+    // OPTIMIZATION: Invalidate cache for this agent
+    invalidateAgentNotificationCache(agentName);
 
     return res.json({ ok: true, deleted });
   } catch (err) {
@@ -2997,6 +3226,9 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           createdAt: new Date().toISOString(),
           read: false
         });
+        
+        // OPTIMIZATION: Invalidate agent notification cache
+        invalidateAgentNotificationCache(toPerson);
         
         // Also send Chat notification to target agent
         try {
@@ -3179,6 +3411,9 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           createdAt: new Date().toISOString(),
           read: false
         });
+        
+        // OPTIMIZATION: Invalidate agent notification cache
+        invalidateAgentNotificationCache(swapData.fromPerson);
 
         // ✅ LOG DECLINED SWAPS TO AUDIT AS WELL
         if (response === "declined") {
@@ -3265,26 +3500,8 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
       const guard = requireManager(req);
       if (!guard.ok) return res.status(guard.status).json(guard.body);
       try {
-        // Consider managers active if heartbeat within last 10 minutes
-        const cutoffIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
-        // Query only active managers
-        const snap = await db.collection("manager_presence")
-          .where("lastHeartbeat", ">=", cutoffIso)
-          .get();
-
-        const activeManagers = [];
-        snap.forEach(doc => {
-          const data = doc.data();
-          activeManagers.push({
-            managerName: data.managerName,
-            view: data.view,
-            area: data.area,
-            isEditing: data.isEditing || false,
-            editingTarget: data.editingTarget || null,
-            lastHeartbeat: data.lastHeartbeat
-          });
-        });
+        // OPTIMIZATION: Use cached presence to reduce Firestore reads
+        const activeManagers = await getManagerPresenceWithCache(db);
 
         logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
           total: activeManagers.length,
@@ -3328,17 +3545,8 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
     // GET /agent/presence - Get active agents (for managers to see)
     if (path === "/agent/presence" && req.method === "GET") {
       try {
-        // Consider agents active if heartbeat within last 5 minutes
-        const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        
-        const snap = await db.collection("agent_presence")
-          .where("lastHeartbeat", ">=", cutoff)
-          .get();
-        
-        const activeAgents = [];
-        snap.forEach(doc => {
-          activeAgents.push(doc.data());
-        });
+        // OPTIMIZATION: Use cached presence to reduce Firestore reads
+        const activeAgents = await getAgentPresenceWithCache(db);
         
         return res.status(200).json({ ok: true, activeAgents });
       } catch (err) {
@@ -3355,27 +3563,12 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
     // GET manager notifications
     if (path === "/manager/notifications" && req.method === "POST") {
       try {
-        // Get all manager notifications (no filter by name since all managers see all)
-        const snap = await db.collection("manager_notifications").get();
-        
-        const notifications = [];
-        snap.forEach(doc => {
-          notifications.push({ id: doc.id, ...doc.data() });
-        });
-        
-        // Sort by createdAt desc
-        notifications.sort((a, b) => {
-          const dateA = new Date(a.createdAt || 0).getTime();
-          const dateB = new Date(b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
-        
-        const limited = notifications.slice(0, 50);
-        const unreadCount = limited.filter(n => !n.read && n.status === "pending").length;
+        // OPTIMIZATION: Use cached notifications to reduce Firestore reads
+        const { notifications, unreadCount } = await getManagerNotificationsWithCache(db);
         
         return res.status(200).json({ 
           ok: true, 
-          notifications: limited,
+          notifications,
           unreadCount
         });
         
@@ -3399,6 +3592,9 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           read: true,
           readAt: new Date().toISOString()
         });
+        
+        // OPTIMIZATION: Invalidate manager notification cache
+        invalidateManagerNotificationCache();
         
         return res.status(200).json({ ok: true });
         
@@ -3527,6 +3723,10 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           read: false
         });
         
+        // OPTIMIZATION: Invalidate agent and manager notification caches
+        invalidateAgentNotificationCache(agentName);
+        invalidateManagerNotificationCache();
+        
         console.log(`✅ Time off approved: ${agentName} - ${requestDate} by ${managerName}`);
         
         return res.status(200).json({ 
@@ -3587,6 +3787,10 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
           createdAt: new Date().toISOString(),
           read: false
         });
+        
+        // OPTIMIZATION: Invalidate agent and manager notification caches
+        invalidateAgentNotificationCache(requestData.person);
+        invalidateManagerNotificationCache();
         
         console.log(`❌ Time off denied: ${requestData.person} - ${requestData.date} by ${managerName}`);
         
