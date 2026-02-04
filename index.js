@@ -1307,11 +1307,15 @@ if (action) path = "/" + action;
             if (!snapshot.empty) {
               const bannerDoc = snapshot.docs[0];
               const data = bannerDoc.data();
+              const timestamp = data.updatedAt || data.createdAt;
+              if (!timestamp) {
+                console.warn("Banner missing timestamp fields:", bannerDoc.id);
+              }
               sendEvent("banner", {
                 type: data.type || "info",
                 message: data.message || "",
                 severity: data.severity || "info",
-                updatedAt: data.updatedAt || data.createdAt || new Date().toISOString()
+                updatedAt: timestamp || new Date().toISOString()
               });
             }
           }, err => {
