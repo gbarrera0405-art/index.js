@@ -886,112 +886,171 @@ function invalidateManagerNotificationCache() {
 }
 
 // ============================================
-// PRESENCE CACHE (reduces Firestore reads from heartbeat polls)
-// Short TTL since presence changes frequently
+// EDIT LOCK SYSTEM
+// Provides edit locking for shifts and master schedule
 // ============================================
-const presenceCache = {
-  agents: null, // { data, timestamp }
-  managers: null, // { data, timestamp }
-  TTL: 15 * 1000, // 15 second cache - balance freshness vs. cost
-  pendingRequests: new Map()
+const LOCK_TTL = {
+  shift: 120 * 1000,    // 120 seconds for shift locks
+  master: 180 * 1000    // 180 seconds for master schedule locks
 };
 
-async function getAgentPresenceWithCache(db) {
-  const now = Date.now();
-  
-  // Check cache
-  if (presenceCache.agents && (now - presenceCache.agents.timestamp) < presenceCache.TTL) {
-    console.log("👤 Agent presence cache HIT");
-    return presenceCache.agents.data;
-  }
-  
-  // Request coalescing
-  const cacheKey = "agent_presence";
-  if (presenceCache.pendingRequests.has(cacheKey)) {
-    return presenceCache.pendingRequests.get(cacheKey);
-  }
-  
-  console.log("👤 Agent presence cache MISS");
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  
-  const fetchPromise = db.collection("agent_presence")
-    .where("lastHeartbeat", ">=", cutoff)
-    .limit(100) // OPTIMIZATION: Cap at 100 active agents
-    .get()
-    .then(snap => {
-      const activeAgents = [];
-      snap.forEach(doc => {
-        activeAgents.push(doc.data());
-      });
-      
-      // Cache the result
-      presenceCache.agents = { data: activeAgents, timestamp: Date.now() };
-      return activeAgents;
-    });
-  
-  presenceCache.pendingRequests.set(cacheKey, fetchPromise);
-  
-  try {
-    return await fetchPromise;
-  } finally {
-    presenceCache.pendingRequests.delete(cacheKey);
-  }
+/**
+ * Check if a lock is expired
+ */
+function isLockExpired(lockDoc) {
+  if (!lockDoc || !lockDoc.expiresAt) return true;
+  const expiresAt = new Date(lockDoc.expiresAt).getTime();
+  return Date.now() > expiresAt;
 }
 
-async function getManagerPresenceWithCache(db) {
-  const now = Date.now();
+/**
+ * Get lock ID from resource type and ID
+ */
+function getLockId(resourceType, resourceId) {
+  return `${resourceType}_${resourceId}`;
+}
+
+/**
+ * Acquire a lock on a resource
+ */
+async function acquireLock(db, { resourceType, resourceId, lockedByEmail, lockedByName, lockSessionId }) {
+  const lockId = getLockId(resourceType, resourceId);
+  const ttl = LOCK_TTL[resourceType] || LOCK_TTL.shift;
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttl);
   
-  // Check cache
-  if (presenceCache.managers && (now - presenceCache.managers.timestamp) < presenceCache.TTL) {
-    console.log("👔 Manager presence cache HIT");
-    return presenceCache.managers.data;
-  }
+  const lockRef = db.collection("locks").doc(lockId);
+  const lockSnap = await lockRef.get();
   
-  // Request coalescing
-  const cacheKey = "manager_presence";
-  if (presenceCache.pendingRequests.has(cacheKey)) {
-    return presenceCache.pendingRequests.get(cacheKey);
-  }
-  
-  console.log("👔 Manager presence cache MISS");
-  const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  
-  const fetchPromise = db.collection("manager_presence")
-    .where("lastHeartbeat", ">=", cutoff)
-    .limit(50) // OPTIMIZATION: Cap at 50 active managers
-    .get()
-    .then(snap => {
-      const activeManagers = [];
-      snap.forEach(doc => {
-        const data = doc.data();
-        activeManagers.push({
-          managerName: data.managerName,
-          view: data.view,
-          area: data.area,
-          isEditing: data.isEditing || false,
-          editingTarget: data.editingTarget || null,
-          lastHeartbeat: data.lastHeartbeat
+  // Check if lock exists and is not expired
+  if (lockSnap.exists) {
+    const existingLock = lockSnap.data();
+    
+    // If not expired, check ownership
+    if (!isLockExpired(existingLock)) {
+      // Same session already owns it - treat as acquired
+      if (existingLock.lockSessionId === lockSessionId) {
+        // Extend the lock
+        await lockRef.update({
+          expiresAt: expiresAt.toISOString(),
+          updatedAt: now.toISOString()
         });
-      });
+        return { acquired: true, lock: { ...existingLock, expiresAt: expiresAt.toISOString() } };
+      }
       
-      // Cache the result
-      presenceCache.managers = { data: activeManagers, timestamp: Date.now() };
-      return activeManagers;
-    });
-  
-  presenceCache.pendingRequests.set(cacheKey, fetchPromise);
-  
-  try {
-    return await fetchPromise;
-  } finally {
-    presenceCache.pendingRequests.delete(cacheKey);
+      // Different session owns it - cannot acquire
+      return { 
+        acquired: false, 
+        lock: {
+          lockedByEmail: existingLock.lockedByEmail,
+          lockedByName: existingLock.lockedByName,
+          expiresAt: existingLock.expiresAt,
+          lockSessionId: existingLock.lockSessionId
+        }
+      };
+    }
   }
+  
+  // No lock or expired - acquire it
+  const lockData = {
+    resourceType,
+    resourceId,
+    lockedByEmail,
+    lockedByName,
+    lockSessionId,
+    lockedAt: now.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+    updatedAt: now.toISOString()
+  };
+  
+  await lockRef.set(lockData);
+  return { acquired: true, lock: lockData };
 }
 
-// Invalidate presence cache when heartbeats are sent
-function invalidatePresenceCache() {
-  presenceCache.agents = null;
-  presenceCache.managers = null;
+/**
+ * Renew a lock if the session owns it
+ */
+async function renewLock(db, { resourceType, resourceId, lockSessionId }) {
+  const lockId = getLockId(resourceType, resourceId);
+  const lockRef = db.collection("locks").doc(lockId);
+  const lockSnap = await lockRef.get();
+  
+  if (!lockSnap.exists) {
+    return { renewed: false, reason: "lock_not_found" };
+  }
+  
+  const existingLock = lockSnap.data();
+  
+  // Check ownership
+  if (existingLock.lockSessionId !== lockSessionId) {
+    return { renewed: false, reason: "not_owner" };
+  }
+  
+  // Extend the lock
+  const ttl = LOCK_TTL[resourceType] || LOCK_TTL.shift;
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttl);
+  
+  await lockRef.update({
+    expiresAt: expiresAt.toISOString(),
+    updatedAt: now.toISOString()
+  });
+  
+  return { renewed: true, expiresAt: expiresAt.toISOString() };
+}
+
+/**
+ * Release a lock if the session owns it
+ */
+async function releaseLock(db, { resourceType, resourceId, lockSessionId }) {
+  const lockId = getLockId(resourceType, resourceId);
+  const lockRef = db.collection("locks").doc(lockId);
+  const lockSnap = await lockRef.get();
+  
+  if (!lockSnap.exists) {
+    return { released: true, reason: "lock_not_found" };
+  }
+  
+  const existingLock = lockSnap.data();
+  
+  // Only delete if we own it or if it's expired
+  if (existingLock.lockSessionId === lockSessionId || isLockExpired(existingLock)) {
+    await lockRef.delete();
+    return { released: true };
+  }
+  
+  return { released: false, reason: "not_owner" };
+}
+
+/**
+ * Get current lock status
+ */
+async function getLockStatus(db, { resourceType, resourceId }) {
+  const lockId = getLockId(resourceType, resourceId);
+  const lockRef = db.collection("locks").doc(lockId);
+  const lockSnap = await lockRef.get();
+  
+  if (!lockSnap.exists) {
+    return { locked: false };
+  }
+  
+  const lockData = lockSnap.data();
+  
+  if (isLockExpired(lockData)) {
+    // Clean up expired lock
+    await lockRef.delete();
+    return { locked: false };
+  }
+  
+  return {
+    locked: true,
+    lock: {
+      lockedByEmail: lockData.lockedByEmail,
+      lockedByName: lockData.lockedByName,
+      expiresAt: lockData.expiresAt,
+      lockSessionId: lockData.lockSessionId
+    }
+  };
 }
 
 // ============================================
@@ -1323,9 +1382,11 @@ if (action) path = "/" + action;
       "/swap/pending",
       "/swap/respond",
       "/schedule/check-conflict",
-      "/manager/heartbeat",
-      "/manager/presence",
       "/manager/notifications",
+      "/locks/acquire",
+      "/locks/renew",
+      "/locks/release",
+      "/locks/status",
       "/manager/notifications/read",
       "/timeoff/approve",
       "/timeoff/deny",
@@ -1349,8 +1410,6 @@ if (action) path = "/" + action;
       "/weekly-assignments/delete",
       "/agent/team-history",
       "/makeup/auto-assign",
-      "/agent/heartbeat",
-      "/agent/presence",
       "/goals/get",
       "/goals/save",
       "/goals/list",
@@ -1472,31 +1531,6 @@ if (action) path = "/" + action;
           });
         listeners.push(managerNotifListener);
         
-        // Manager presence (who's online)
-        const cutoffTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        const presenceListener = db.collection("manager_presence")
-          .where("lastHeartbeat", ">=", cutoffTime)
-          .onSnapshot(snapshot => {
-            const activeManagers = [];
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              activeManagers.push({
-                managerName: data.managerName,
-                view: data.view,
-                area: data.area,
-                isEditing: data.isEditing || false,
-                lastHeartbeat: data.lastHeartbeat
-              });
-            });
-            sendEvent("presence", {
-              online: activeManagers,
-              updatedAt: new Date().toISOString()
-            });
-          }, err => {
-            console.error("Presence listener error:", err);
-          });
-        listeners.push(presenceListener);
-        
         // Time-off requests count (for badge)
         const timeoffListener = db.collection("time_off_requests")
           .where("status", "==", "pending")
@@ -1509,28 +1543,6 @@ if (action) path = "/" + action;
             console.error("Time-off listener error:", err);
           });
         listeners.push(timeoffListener);
-      }
-      
-      // 3. Agent presence (for managers to see who's online)
-      // OPTIMIZATION: Add limit to reduce reads when many agents are active
-      if (isManager) {
-        const agentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const agentPresenceListener = db.collection("agent_presence")
-          .where("lastHeartbeat", ">=", agentCutoff)
-          .limit(100) // OPTIMIZATION: Cap at 100 active agents max
-          .onSnapshot(snapshot => {
-            const activeAgents = [];
-            snapshot.forEach(doc => {
-              activeAgents.push(doc.data());
-            });
-            sendEvent("agent_presence", {
-              online: activeAgents,
-              updatedAt: new Date().toISOString()
-            });
-          }, err => {
-            console.error("Agent presence listener error:", err);
-          });
-        listeners.push(agentPresenceListener);
       }
       
       // Cleanup on disconnect
@@ -3450,107 +3462,110 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
     }
 
     // ============================================
-    // MANAGER PRESENCE TRACKING
+    // EDIT LOCK SYSTEM ENDPOINTS
     // ============================================
 
-    // POST /manager/heartbeat - Record manager activity
-    if (path === "/manager/heartbeat" && req.method === "POST") {
-      try {
-        logWithTrace(traceId, 'info', 'manager/heartbeat', 'Recording manager heartbeat');
-
-        const body = readJsonBody(req);
-        const { managerName, view, area, isEditing, editingTarget } = body; // Enhanced presence data
-
-        if (!managerName) {
-          return res.status(400).json({ error: "Missing managerName" });
-        }
-
-        const now = new Date().toISOString();
-        const presenceDocId = managerName.replace(/\s+/g, '_').toLowerCase();
-
-        await db.collection("manager_presence").doc(presenceDocId).set({
-          managerName,
-          view: view || "Unknown",
-          area: area || "",
-          isEditing: isEditing || false,
-          editingTarget: editingTarget || null,
-          lastHeartbeat: now,
-          updatedAt: now
-        }, { merge: true });
-
-        logWithTrace(traceId, 'info', 'manager/heartbeat', 'Heartbeat recorded', {
-          managerName,
-          view,
-          area,
-          isEditing
-        });
-
-        return res.status(200).json({ ok: true });
-
-      } catch (err) {
-        logWithTrace(traceId, 'error', 'manager/heartbeat', 'Error recording heartbeat', {
-          error: err.message
-        });
-        return res.status(500).json({ error: err.message });
-      }
-    }
-
-    // GET or POST /manager/presence - Get active manager presence
-    if (path === "/manager/presence" && (req.method === "GET" || req.method === "POST")) {
-      const guard = requireManager(req);
-      if (!guard.ok) return res.status(guard.status).json(guard.body);
-      try {
-        // OPTIMIZATION: Use cached presence to reduce Firestore reads
-        const activeManagers = await getManagerPresenceWithCache(db);
-
-        logWithTrace(traceId, 'info', 'manager/presence', 'Fetched active managers', {
-          total: activeManagers.length,
-          managers: activeManagers.map(m => m.managerName)
-        });
-
-        return res.status(200).json({ ok: true, activeManagers });
-
-      } catch (err) {
-        logWithTrace(traceId, 'error', 'manager/presence', 'Error fetching manager presence', {
-          error: err.message
-        });
-        return res.status(500).json({ error: err.message });
-      }
-    }
-
-    // POST /agent/heartbeat - Record agent activity
-    if (path === "/agent/heartbeat" && req.method === "POST") {
+    // POST /locks/acquire - Acquire a lock on a resource
+    if (path === "/locks/acquire" && req.method === "POST") {
       try {
         const body = readJsonBody(req);
-        const { agentName, view } = body;
-        if (!agentName) {
-          return res.status(400).json({ error: "agentName required" });
+        const { resourceType, resourceId, lockedByEmail, lockedByName, lockSessionId } = body;
+        
+        if (!resourceType || !resourceId || !lockSessionId) {
+          return res.status(400).json({ error: "Missing required fields: resourceType, resourceId, lockSessionId" });
         }
         
-        const presenceDocId = agentName.replace(/\s+/g, '_').toLowerCase();
+        // Master schedule locks are manager-only
+        if (resourceType === "master") {
+          const guard = requireManager(req);
+          if (!guard.ok) return res.status(guard.status).json(guard.body);
+        }
         
-        await db.collection("agent_presence").doc(presenceDocId).set({
-          agentName,
-          view: view || 'schedule',
-          lastHeartbeat: new Date().toISOString()
-        }, { merge: true });
+        const result = await acquireLock(db, { resourceType, resourceId, lockedByEmail, lockedByName, lockSessionId });
         
-        return res.status(200).json({ ok: true });
+        logWithTrace(traceId, 'info', 'locks/acquire', 'Lock acquisition attempt', {
+          resourceType,
+          resourceId,
+          acquired: result.acquired,
+          lockedByName
+        });
+        
+        return res.status(200).json({ ok: true, ...result });
+        
       } catch (err) {
-        console.error("Agent heartbeat error:", err);
+        logWithTrace(traceId, 'error', 'locks/acquire', 'Error acquiring lock', { error: err.message });
         return res.status(500).json({ error: err.message });
       }
     }
-    
-    // GET /agent/presence - Get active agents (for managers to see)
-    if (path === "/agent/presence" && req.method === "GET") {
+
+    // POST /locks/renew - Renew an existing lock
+    if (path === "/locks/renew" && req.method === "POST") {
       try {
-        // OPTIMIZATION: Use cached presence to reduce Firestore reads
-        const activeAgents = await getAgentPresenceWithCache(db);
+        const body = readJsonBody(req);
+        const { resourceType, resourceId, lockSessionId } = body;
         
-        return res.status(200).json({ ok: true, activeAgents });
+        if (!resourceType || !resourceId || !lockSessionId) {
+          return res.status(400).json({ error: "Missing required fields: resourceType, resourceId, lockSessionId" });
+        }
+        
+        const result = await renewLock(db, { resourceType, resourceId, lockSessionId });
+        
+        logWithTrace(traceId, 'info', 'locks/renew', 'Lock renewal attempt', {
+          resourceType,
+          resourceId,
+          renewed: result.renewed
+        });
+        
+        return res.status(200).json({ ok: true, ...result });
+        
       } catch (err) {
-        console.error("Agent presence error:", err);
+        logWithTrace(traceId, 'error', 'locks/renew', 'Error renewing lock', { error: err.message });
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // POST /locks/release - Release a lock
+    if (path === "/locks/release" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { resourceType, resourceId, lockSessionId } = body;
+        
+        if (!resourceType || !resourceId || !lockSessionId) {
+          return res.status(400).json({ error: "Missing required fields: resourceType, resourceId, lockSessionId" });
+        }
+        
+        const result = await releaseLock(db, { resourceType, resourceId, lockSessionId });
+        
+        logWithTrace(traceId, 'info', 'locks/release', 'Lock release attempt', {
+          resourceType,
+          resourceId,
+          released: result.released
+        });
+        
+        return res.status(200).json({ ok: true, ...result });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'locks/release', 'Error releasing lock', { error: err.message });
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // GET /locks/status - Get current lock status
+    if (path === "/locks/status" && req.method === "GET") {
+      try {
+        const resourceType = req.query.resourceType;
+        const resourceId = req.query.resourceId;
+        
+        if (!resourceType || !resourceId) {
+          return res.status(400).json({ error: "Missing required query params: resourceType, resourceId" });
+        }
+        
+        const result = await getLockStatus(db, { resourceType, resourceId });
+        
+        return res.status(200).json({ ok: true, ...result });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'locks/status', 'Error getting lock status', { error: err.message });
         return res.status(500).json({ error: err.message });
       }
     }
