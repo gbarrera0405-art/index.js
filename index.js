@@ -1297,6 +1297,31 @@ if (action) path = "/" + action;
             console.error("Agent presence listener error:", err);
           });
         listeners.push(agentPresenceListener);
+        
+        // 4. System banners / coverage alerts (managers only)
+        const bannerListener = db.collection("system_banners")
+          .where("active", "==", true)
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .onSnapshot(snapshot => {
+            if (!snapshot.empty) {
+              const bannerDoc = snapshot.docs[0];
+              const data = bannerDoc.data();
+              const timestamp = data.updatedAt || data.createdAt;
+              if (!timestamp) {
+                console.warn("Banner missing timestamp fields:", bannerDoc.id);
+              }
+              sendEvent("banner", {
+                type: data.type || "info",
+                message: data.message || "",
+                severity: data.severity || "info",
+                updatedAt: timestamp || new Date().toISOString()
+              });
+            }
+          }, err => {
+            console.error("Banner listener error:", err);
+          });
+        listeners.push(bannerListener);
       }
       
       // Cleanup on disconnect
