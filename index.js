@@ -5,6 +5,11 @@ const fs = require("fs");
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = "63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com";
 const client = new OAuth2Client(CLIENT_ID);
+
+// Import fetch - use global fetch if available, otherwise fall back to node-fetch
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
 // ============================================
 // GOOGLE CHAT BOT INTEGRATION
 // ============================================
