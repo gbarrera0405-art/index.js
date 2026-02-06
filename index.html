@@ -80,11 +80,6 @@
     --modal-btn-shadow: rgba(179, 126, 120, 0.3);
     --modal-btn-hover-shadow: rgba(179, 126, 120, 0.4);
     --accent-secondary: #d8636b;
-    --presence-pill-bg: rgba(255,255,255,0.16);
-  --presence-pill-border: rgba(255,255,255,0.22);
-  --presence-pill-text: rgba(255,255,255,0.95);
-  --presence-pill-muted: rgba(255,255,255,0.72);
-  --presence-dot: #34d399;
   }
   
   body.dark-mode {
@@ -127,11 +122,6 @@
     --modal-btn-hover-shadow: rgba(164, 89, 83, 0.5);
     --accent-primary: #a45953;
     --accent-secondary: #a45953;
-    --presence-pill-bg: rgba(255,255,255,0.10);
-  --presence-pill-border: rgba(255,255,255,0.16);
-  --presence-pill-text: rgba(255,255,255,0.95);
-  --presence-pill-muted: rgba(255,255,255,0.70);
-  --presence-dot: #34d399;
   }
   
   body { 
@@ -213,20 +203,6 @@
   transform: scale(1.05);
   background: #ffffff;
 }
-.manager-presence-pill{
-  background: var(--presence-pill-bg);
-  border: 1px solid var(--presence-pill-border);
-  color: var(--presence-pill-text);
-}
-
-.manager-presence-pill .presence-dot{
-  background: var(--presence-dot) !important;
-}
-
-.manager-presence-pill .presence-view{
-  color: var(--presence-pill-muted);
-  border-left: 1px solid rgba(255,255,255,0.18);
-}
 
   /* Profile Pill for Agents */
   .pill.profile-pill {
@@ -295,65 +271,6 @@
   }
 
   .pill.tz { background: rgba(255,255,255,0.1); color: #94a3b8; }
-  
-  /* Manager Presence Indicator - Better contrast for light mode */
-  .manager-presence-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  .manager-presence-pill:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-}
-  .presence-dot {
-    width: 8px;
-    height: 8px;
-    background: #22c55e;
-    border-radius: 50%;
-    animation: presence-pulse 2s ease-in-out infinite;
-  }
-  @keyframes presence-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(0.9); }
-  }
-  .presence-name {
-  color: #5d3a36;
-  font-weight: 700;
-}
-  .presence-view {
-    color: #7a5652;
-    font-size: 10px;
-    padding-left: 6px;
-    border-left: 1px solid rgba(0, 0, 0, 0.15);
-  }
-  .presence-count {
-  color: #5d3a36;
-  font-weight: 700;
-}
-  body.dark-mode .manager-presence-pill {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: none;
-  }
-  body.dark-mode .presence-name,
-body.dark-mode .presence-count {
-  color: rgba(255, 255, 255, 0.9);
-}
-  body.dark-mode .presence-view {
-  color: rgba(255, 255, 255, 0.65);
-  border-left-color: rgba(255, 255, 255, 0.15);
-}
   
   .hRight { display: flex; align-items: center; gap: 16px; }
   .seg { 
@@ -936,53 +853,68 @@ body.dark-mode .countBadge.ok{ color:#86efac; }
 .shifts-grid.view-list .sc-role {
   margin-top: 0;
 }
-/* Light mode */
-.manager-presence-pill.mp-solo { background: rgba(255,255,255,0.35); border: 1px solid rgba(0,0,0,0.10); }
-.manager-presence-pill.mp-one  { background: linear-gradient(135deg, rgba(179,126,120,0.40), rgba(143,95,90,0.35)); border: 1px solid rgba(179,126,120,0.35); }
-.manager-presence-pill.mp-many { background: linear-gradient(135deg, rgba(164,89,83,0.40),  rgba(143,74,69,0.35)); border: 1px solid rgba(164,89,83,0.35); }
-.manager-presence-pill.mp-editing { background: linear-gradient(135deg, rgba(245,158,11,0.40), rgba(217,119,6,0.35)); border: 1px solid rgba(245,158,11,0.45); }
-.manager-presence-pill.mp-conflict { background: linear-gradient(135deg, rgba(239,68,68,0.50), rgba(220,38,38,0.45)); border: 1px solid rgba(239,68,68,0.6); animation: conflict-pulse 1.5s ease-in-out infinite; }
-@keyframes conflict-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-  50% { box-shadow: 0 0 12px 4px rgba(239,68,68,0.3); }
-}
 
-/* Presence editing indicators */
-.presence-dot.editing { background: #f59e0b !important; animation: editing-pulse 1s ease-in-out infinite; }
-.presence-dot.conflict { background: #ef4444 !important; animation: editing-pulse 0.8s ease-in-out infinite; }
-@keyframes editing-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.7; }
-}
-.presence-editing-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  background: rgba(245,158,11,0.2);
-  border: 1px solid rgba(245,158,11,0.4);
-  border-radius: 4px;
+/* Edit Lock Indicator Styles */
+.edit-lock-banner {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.1));
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   color: #b45309;
+  margin-bottom: 12px;
+}
+.edit-lock-banner .lock-icon {
+  font-size: 14px;
+}
+.edit-lock-banner .lock-expires {
   font-weight: 600;
+  margin-left: auto;
 }
-.presence-conflict-text {
-  color: #dc2626;
-  font-weight: 700;
-  font-size: 11px;
-}
-body.dark-mode .presence-editing-badge {
-  background: rgba(245,158,11,0.15);
-  border-color: rgba(245,158,11,0.35);
+body.dark-mode .edit-lock-banner {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05));
+  border-color: rgba(245, 158, 11, 0.25);
   color: #fbbf24;
 }
-body.dark-mode .presence-conflict-text {
-  color: #fca5a5;
-}
 
-/* Dark mode */
-body.dark-mode .manager-presence-pill.mp-solo { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); }
-body.dark-mode .manager-presence-pill.mp-one  { background: linear-gradient(135deg, rgba(168,115,109,0.22), rgba(110,71,67,0.18)); border: 1px solid rgba(168,115,109,0.35); }
-body.dark-mode .manager-presence-pill.mp-many { background: linear-gradient(135deg, rgba(196,112,106,0.22), rgba(164,89,83,0.18)); border: 1px solid rgba(196,112,106,0.35); }
-body.dark-mode .manager-presence-pill.mp-editing { background: linear-gradient(135deg, rgba(245,158,11,0.25), rgba(217,119,6,0.20)); border: 1px solid rgba(245,158,11,0.35); }
-body.dark-mode .manager-presence-pill.mp-conflict { background: linear-gradient(135deg, rgba(239,68,68,0.35), rgba(220,38,38,0.30)); border: 1px solid rgba(239,68,68,0.5); }
+/* Pending Updates Banner */
+.pending-updates-banner {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #1d4ed8;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.pending-updates-banner button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+body.dark-mode .pending-updates-banner {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+body.dark-mode .pending-updates-banner button {
+  background: #3b82f6;
+}
 
 /* NEW CARD STYLE */
 .shift-card-b {
@@ -5463,15 +5395,6 @@ body.dark-mode .bulkModal .mBody {
         <div class="summary-sub" id="summaryRoleDate"></div>
       </div>
     </div>
-    <!-- Meeting Coverage Card (shows when agent has a meeting role) -->
-    <div class="summary-card meeting" id="summaryMeetingCard" style="display:none;">
-      <div class="summary-icon" id="summaryMeetingIcon">📅</div>
-      <div class="summary-content">
-        <div class="summary-label">MEETING ROLE</div>
-        <div class="summary-value" id="summaryMeetingRole">--</div>
-        <div class="summary-sub" id="summaryMeetingDate"></div>
-      </div>
-    </div>
     <!-- Open Shifts Alert (shows when open shifts available) -->
     <div class="summary-card openshift" id="summaryOpenShiftsCard" style="display:none; cursor: pointer;" onclick="showOpenShiftsPanel()">
       <div class="summary-icon">🔔</div>
@@ -5492,7 +5415,7 @@ body.dark-mode .bulkModal .mBody {
         <option value="EST">Eastern (EST)</option>
       </select>
     </div>
-    <button class="compact-btn secondary" onclick="toggleAgentGoalsPanel()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border-color: #f59e0b;">🎯 My Goals</button>
+    <button class="compact-btn secondary" onclick="toggleAgentGoalsPanel()" style="background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); color: white; border-color: var(--modal-gradient-start);">🎯 My Goals</button>
     <button class="compact-btn secondary" onclick="agentLoadMoreSchedule()">📆 Load 30 Days</button>
     <button class="compact-btn secondary" onclick="openSwapShiftModal()">🔄 Swap Shift</button>
     <button class="compact-btn primary" onclick="openFutureTimeOffModal()">🏖️ Request Time Off</button>
@@ -8766,52 +8689,6 @@ body.dark-mode .timeline-item-icon.meeting { background: #4a1d96; }
           </div>
         </div>
         
-        <!-- Thursday Rotation Section (for agents covering) -->
-        <div class="profile-section" id="agentRotationSection" style="display: none;">
-          <div class="profile-section-header">
-            <span class="section-icon">📅</span>
-            <span class="section-title">Thursday Meeting Coverage</span>
-          </div>
-          <div id="agentRotationInfo" style="font-size: 13px; padding: 10px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 8px; color: #92400e;">
-            <div style="color: var(--text-secondary);">Loading...</div>
-          </div>
-        </div>
-        
-        <!-- Goals & Performance Section (NEW - Integrated) -->
-        <div class="profile-section" id="agentGoalsProfileSection">
-          <div class="profile-section-header" style="cursor: pointer;" onclick="toggleProfileGoalsSection()">
-            <span class="section-icon">🎯</span>
-            <span class="section-title">My Goals & Performance</span>
-            <span id="profileGoalsToggle" style="margin-left: auto; font-size: 12px; color: var(--text-tertiary);">▼ Expand</span>
-          </div>
-          <div id="profileGoalsContent" style="display: none; margin-top: 12px;">
-            <div id="profileGoalsLoading" style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px;">
-              Loading your goals...
-            </div>
-            <div id="profileGoalsData" style="display: none;">
-              <!-- S.M.A.R.T. Goals Summary -->
-              <div id="profileSmartGoals" style="margin-bottom: 16px;"></div>
-              
-              <!-- Tasks Summary -->
-              <div id="profileTasks" style="margin-bottom: 16px;"></div>
-              
-              <!-- Performance Metrics -->
-              <div id="profilePerformance" style="margin-bottom: 16px;"></div>
-              
-              <!-- QA'd Tickets Summary -->
-              <div id="profileQATickets" style="margin-bottom: 16px;"></div>
-              
-              <!-- 1:1 Notes Summary -->
-              <div id="profileOneOnOne" style="margin-bottom: 16px;"></div>
-              
-              <!-- Last Updated Info -->
-              <div id="profileGoalsMeta" style="font-size: 11px; color: var(--text-tertiary); text-align: right; padding-top: 8px; border-top: 1px solid var(--border-color);">
-                Last updated: Never
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <!-- Sign Out Section -->
         <div class="profile-section" style="margin-top: 8px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
           <button onclick="handleLogout()" class="sign-out-btn">
@@ -9044,7 +8921,7 @@ body.dark-mode .timeline-item-icon.meeting { background: #4a1d96; }
 // ║  [SECTION 3]  DARK MODE (initDarkMode, toggleDarkMode)           ║
 // ║  [SECTION 4]  UTILITIES (pstISODate, formatTime, escapeHtml)     ║
 // ║  [SECTION 5]  CACHE (getCachedData, setCachedData)               ║
-// ║  [SECTION 6]  PRESENCE (sendManagerHeartbeat, fetchPresence)     ║
+// ║  [SECTION 6]  EDIT LOCKS (acquireLock, renewLock, releaseLock)    ║
 // ║  [SECTION 7]  INIT & LOAD (window.onload, load, loadSystemData)  ║
 // ║  [SECTION 8]  RENDERING (renderView, renderScheduleView)         ║
 // ║  [SECTION 9]  COVERAGE (renderCoverageDashboard, loadRules)      ║
@@ -10302,295 +10179,201 @@ function clearScheduleCache() {
   console.log('🧹 Schedule cache cleared');
 }
 // ============================================
-  // MANAGER PRESENCE TRACKING - ENHANCED
-  // ============================================
+// [SECTION 6] EDIT LOCK SYSTEM
+// Replaces presence tracking with edit locking
+// ============================================
 
-  // Send heartbeat if user is a manager
-  // ============================================
-  // [SECTION 6] MANAGER PRESENCE TRACKING
-  // ============================================
-  function getPresenceContext() {
-    let view = "Daily Schedule";
-    let area = "";
-    let isEditing = false;
-    let editingTarget = null;
+// Global edit mode flags
+window.__editModeActive = false;
+window.__pendingRefresh = false;
 
-    if (_view === "metrics") {
-      view = "Metrics";
-    } else if (_view === "schedule") {
-      if (window._isMasterMode) {
-        view = _masterEditEnabled ? "Editing Master Schedule" : "Master Schedule";
-        isEditing = _masterEditEnabled;
-      } else {
-        view = _isEditingSchedule ? "Editing Daily Schedule" : "Daily Schedule";
-        area = (typeof _activeTeam !== "undefined" && _activeTeam) ? _activeTeam : "";
-        isEditing = _isEditingSchedule;
-        editingTarget = _editing ? `${_editing.person || ''} - ${_editing.dateLabel || ''}` : null;
-      }
+// Lock session ID - unique per browser tab (uses crypto for security)
+function getLockSessionId() {
+  let sessionId = sessionStorage.getItem('scheduler_lock_session_id');
+  if (!sessionId) {
+    // Use crypto.randomUUID if available, fallback to crypto.getRandomValues
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      sessionId = 'sess_' + crypto.randomUUID();
+    } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      sessionId = 'sess_' + Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+      // Fallback for very old browsers
+      sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
     }
-
-    return { view, area, isEditing, editingTarget };
+    sessionStorage.setItem('scheduler_lock_session_id', sessionId);
   }
+  return sessionId;
+}
 
-  function sendManagerHeartbeat() {
-    if (!window._isManager || !window._myName) return;
+// Current active locks and renewal timers
+let _activeLocks = new Map();
+let _currentShiftLock = null;
+let _currentMasterLock = null;
 
-    const { view, area, isEditing, editingTarget } = getPresenceContext();
-
-    console.log(`[Presence] Sending heartbeat: ${window._myName} - ${view}${isEditing ? ' (editing)' : ''}`);
-
-    fetch('./?action=manager/heartbeat', {
+async function acquireEditLock(resourceType, resourceId) {
+  const lockSessionId = getLockSessionId();
+  try {
+    const response = await fetch('./?action=locks/acquire', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        managerName: window._myName,
-        view: view,
-        area: area,
-        isEditing: isEditing,
-        editingTarget: editingTarget
+        resourceType,
+        resourceId,
+        lockedByEmail: window._myEmail || '',
+        lockedByName: window._myName || '',
+        lockSessionId
       })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.ok) {
-        console.log('[Presence] Heartbeat sent successfully');
-      } else {
-        console.error('[Presence] Heartbeat failed:', data.error);
-      }
-    })
-    .catch(err => console.error('[Presence] Heartbeat error:', err));
-  }
-
-  // Poll for active managers
-  async function fetchManagerPresence() {
-    if (!window._isManager) return;
-
-    try {
-      console.log('[Presence] Fetching active managers...');
-      const res = await fetch('./?action=manager/presence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isManager: true })
-      });
-      const data = await res.json();
-
-      console.log('[Presence] Response:', data);
-
-      if (data.ok && data.activeManagers) {
-        displayManagerPresence(data.activeManagers);
-      }
-    } catch (err) {
-      console.error('[Presence] Fetch error:', err);
-    }
-  }
-
-  // Display manager presence in UI - Modern Design with Conflict Detection
-  function displayManagerPresence(managers) {
-    // Get or create presence indicator
-    let presenceEl = document.getElementById('managerPresenceIndicator');
-
-    // Create indicator if doesn't exist
-    if (!presenceEl) {
-      presenceEl = document.createElement('div');
-      presenceEl.id = 'managerPresenceIndicator';
-      presenceEl.className = 'manager-presence-pill';
-      
-      const metaGroup = document.querySelector('.metaGroup');
-      if (metaGroup) {
-        metaGroup.appendChild(presenceEl);
-      } else {
-        console.error('[Presence] metaGroup not found');
-        return;
-      }
-    }
-
-    // Filter out current user
-    const otherManagers = (managers || []).filter(m => m.managerName !== window._myName);
-    
-    // Check for conflicts (same team being edited)
-    const myPresence = getPresenceContext();
-    const conflicts = otherManagers.filter(m => 
-      m.isEditing && myPresence.isEditing && m.area && myPresence.area && m.area === myPresence.area
-    );
-    
-    // Check who's editing
-    const editingManagers = otherManagers.filter(m => m.isEditing);
-
-    const setPresenceVariant = () => {
-      presenceEl.classList.remove("mp-solo","mp-one","mp-many","mp-conflict","mp-editing");
-      if (conflicts.length > 0) {
-        presenceEl.classList.add("mp-conflict");
-      } else if (editingManagers.length > 0) {
-        presenceEl.classList.add("mp-editing");
-      } else if (otherManagers.length === 0) {
-        presenceEl.classList.add("mp-solo");
-      } else if (otherManagers.length === 1) {
-        presenceEl.classList.add("mp-one");
-      } else {
-        presenceEl.classList.add("mp-many");
-      }
-    };
-
-    // Show conflict warning if someone else is editing same area
-    if (conflicts.length > 0) {
-      const conflictNames = conflicts.map(m => m.managerName.split(' ')[0]).join(', ');
-      presenceEl.innerHTML = `
-        <span class="presence-dot conflict"></span>
-        <span class="presence-conflict-text">⚠️ ${conflictNames} editing same area</span>
-      `;
-      presenceEl.title = `Conflict: ${conflicts.map(m => `${m.managerName} is editing ${m.area}`).join('\n')}`;
-      setPresenceVariant();
-      
-    } else if (otherManagers.length === 0) {
-      // Only you are online
-      presenceEl.innerHTML = `
-        <span class="presence-dot"></span>
-        <span class="presence-name">Online</span>
-      `;
-      presenceEl.title = `You are viewing ${myPresence.view}${myPresence.area ? ` (${myPresence.area})` : ""}`;
-      setPresenceVariant();
-
-    } else if (otherManagers.length === 1) {
-      const m = otherManagers[0];
-      const editingIndicator = m.isEditing ? '<span class="presence-editing-badge">✏️</span>' : '';
-      presenceEl.innerHTML = `
-        <span class="presence-dot${m.isEditing ? ' editing' : ''}"></span>
-        <span class="presence-name">${m.managerName.split(' ')[0]}</span>
-        ${editingIndicator}
-        <span class="presence-view">${m.view}</span>
-      `;
-      presenceEl.title = `${m.managerName} is ${m.isEditing ? 'editing' : 'viewing'} ${m.view}${m.area ? ` (${m.area})` : ''}`;
-      setPresenceVariant();
-
+    });
+    const data = await response.json();
+    if (data.ok && data.acquired) {
+      console.log(`[Lock] ✅ Acquired ${resourceType} lock for ${resourceId}`);
+      const resourceKey = `${resourceType}_${resourceId}`;
+      const renewalTimer = setInterval(() => {
+        renewEditLock(resourceType, resourceId);
+      }, 60 * 1000);
+      _activeLocks.set(resourceKey, { renewalTimer, lockData: data.lock });
+      if (resourceType === 'shift') _currentShiftLock = { resourceType, resourceId, lockData: data.lock };
+      else if (resourceType === 'master') _currentMasterLock = { resourceType, resourceId, lockData: data.lock };
+      return { acquired: true, lock: data.lock };
     } else {
-      const editingCount = editingManagers.length;
-      presenceEl.innerHTML = `
-        <span class="presence-dot${editingCount > 0 ? ' editing' : ''}"></span>
-        <span class="presence-count">${otherManagers.length + 1} online</span>
-        ${editingCount > 0 ? `<span class="presence-editing-badge">${editingCount} editing</span>` : ''}
-      `;
-      presenceEl.title = otherManagers.map(m => 
-        `${m.managerName}: ${m.isEditing ? '✏️ ' : ''}${m.view}${m.area ? ` (${m.area})` : ''}`
-      ).join('\n');
-      setPresenceVariant();
+      console.log(`[Lock] ⚠️ Failed to acquire ${resourceType} lock - held by ${data.lock?.lockedByName}`);
+      return { acquired: false, lock: data.lock };
     }
-
-    // Add click handler for details popup
-    presenceEl.onclick = function() {
-      const now = new Date();
-      const myPresence = getPresenceContext();
-      const myViewLabel = `${myPresence.view}${myPresence.area ? ` • ${myPresence.area}` : ""}`;
-      
-      let html = `
-        <div style="text-align: left; font-size: 14px; max-height: 300px; overflow-y: auto;">
-          <!-- Current user -->
-          <div style="display:flex; align-items:center; gap:12px; padding:14px; margin-bottom:10px; background:linear-gradient(135deg, #faf5f4 0%, #f0e6e4 100%); border-radius:12px; border-left:4px solid #b37e78;">
-            <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:16px;">
-              ${(window._myName || 'Y').charAt(0).toUpperCase()}
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:700; color:#1e293b; font-size:14px;">${window._myName || 'You'} <span style="font-size:11px; color:#b37e78;">(You)</span></div>
-              <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                📍 ${myViewLabel}
-              </div>
-            </div>
-            <div style="font-size:11px; color:#b37e78; background:#f0e6e4; padding:4px 8px; border-radius:6px;">
-              Active
-            </div>
-          </div>
-      `;
-      
-      if (otherManagers.length > 0) {
-        html += otherManagers.map(m => {
-          const ago = getTimeAgo(m.lastHeartbeat);
-          const editingBadge = m.isEditing 
-            ? `<span style="font-size:10px; padding:2px 6px; background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); border-radius:4px; color:#b45309; font-weight:600; margin-left:6px;">✏️ Editing</span>` 
-            : '';
-          const borderColor = m.isEditing ? '#f59e0b' : '#8f7a77';
-          const bgColor = m.isEditing 
-            ? 'linear-gradient(135deg, #fefce8 0%, #fef3c7 100%)' 
-            : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
-          return `
-            <div style="display:flex; align-items:center; gap:12px; padding:14px; margin-bottom:10px; background:${bgColor}; border-radius:12px; border-left:4px solid ${borderColor};">
-              <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, ${m.isEditing ? '#f59e0b' : '#a08885'} 0%, ${m.isEditing ? '#d97706' : '#8f7a77'} 100%); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:16px;">
-                ${m.managerName.charAt(0).toUpperCase()}
-              </div>
-              <div style="flex:1;">
-                <div style="font-weight:700; color:#1e293b; font-size:14px;">${m.managerName}${editingBadge}</div>
-                <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                  📍 ${m.view}${m.area ? ` • ${m.area}` : ''}
-                </div>
-              </div>
-              <div style="font-size:11px; color:#94a3b8; background:#e2e8f0; padding:4px 8px; border-radius:6px;">
-                ${ago}
-              </div>
-            </div>
-          `;
-        }).join('');
-      } else {
-        html += `
-          <div style="text-align:center; padding:20px; color:#94a3b8; font-size:13px;">
-            No other managers currently online
-          </div>
-        `;
-      }
-      
-      html += `
-        </div>
-        <div style="text-align:center; margin-top:16px; font-size:11px; color:#94a3b8;">
-          Last updated: ${now.toLocaleTimeString()}
-        </div>
-      `;
-      
-      // Fetch agents if manager
-      if (window._isManager) {
-        fetch('/agent/presence')
-          .then(r => r.json())
-          .then(data => {
-            if (data.ok && data.activeAgents && data.activeAgents.length > 0) {
-              let agentHtml = `
-                <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                  <div style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                    👤 Agents Online (${data.activeAgents.length})
-                  </div>
-                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-              `;
-              data.activeAgents.forEach(agent => {
-                agentHtml += `
-                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; border: 1px solid #86efac;">
-                    <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></span>
-                    <span style="font-size: 13px; font-weight: 500; color: #166534;">${agent.agentName}</span>
-                  </div>
-                `;
-              });
-              agentHtml += `</div></div>`;
-              
-              // Update the Swal content
-              const contentEl = Swal.getHtmlContainer();
-              if (contentEl) {
-                contentEl.innerHTML += agentHtml;
-              }
-            }
-          })
-          .catch(err => console.warn('Failed to fetch agent presence:', err));
-      }
-      
-      Swal.fire({
-        title: '<span style="font-size:20px;">👥 Team Online</span>',
-        html: html,
-        showConfirmButton: true,
-        confirmButtonText: 'Close',
-        confirmButtonColor: '#b37e78',
-        showClass: { popup: 'animate__animated animate__fadeIn animate__faster' },
-        hideClass: { popup: 'animate__animated animate__fadeOut animate__faster' }
-      });
-    };
-
-    presenceEl.style.display = 'inline-flex';
-    presenceEl.style.cursor = 'pointer';
+  } catch (err) {
+    console.error('[Lock] Error acquiring lock:', err);
+    return { acquired: false, error: err.message };
   }
+}
 
-  // Helper to get time ago string
+async function renewEditLock(resourceType, resourceId) {
+  const lockSessionId = getLockSessionId();
+  try {
+    const response = await fetch('./?action=locks/renew', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resourceType, resourceId, lockSessionId })
+    });
+    const data = await response.json();
+    if (data.ok && data.renewed) {
+      console.log(`[Lock] 🔄 Renewed ${resourceType} lock for ${resourceId}`);
+    } else {
+      console.warn(`[Lock] ⚠️ Failed to renew lock: ${data.reason}`);
+      const resourceKey = `${resourceType}_${resourceId}`;
+      const lockInfo = _activeLocks.get(resourceKey);
+      if (lockInfo) {
+        clearInterval(lockInfo.renewalTimer);
+        _activeLocks.delete(resourceKey);
+      }
+    }
+    return data;
+  } catch (err) {
+    console.error('[Lock] Error renewing lock:', err);
+    return { renewed: false, error: err.message };
+  }
+}
+
+async function releaseEditLock(resourceType, resourceId) {
+  const lockSessionId = getLockSessionId();
+  const resourceKey = `${resourceType}_${resourceId}`;
+  const lockInfo = _activeLocks.get(resourceKey);
+  if (lockInfo) {
+    clearInterval(lockInfo.renewalTimer);
+    _activeLocks.delete(resourceKey);
+  }
+  if (resourceType === 'shift') _currentShiftLock = null;
+  else if (resourceType === 'master') _currentMasterLock = null;
+  try {
+    const response = await fetch('./?action=locks/release', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resourceType, resourceId, lockSessionId })
+    });
+    const data = await response.json();
+    console.log(`[Lock] 🔓 Released ${resourceType} lock for ${resourceId}`);
+    return data;
+  } catch (err) {
+    console.error('[Lock] Error releasing lock:', err);
+    return { released: false, error: err.message };
+  }
+}
+
+async function checkLockStatus(resourceType, resourceId) {
+  try {
+    const response = await fetch(`./?action=locks/status&resourceType=${encodeURIComponent(resourceType)}&resourceId=${encodeURIComponent(resourceId)}`);
+    return await response.json();
+  } catch (err) {
+    console.error('[Lock] Error checking lock status:', err);
+    return { locked: false, error: err.message };
+  }
+}
+
+function formatLockExpiry(expiresAt) {
+  const remaining = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+  return `${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`;
+}
+
+function showLockBanner(container, lockData) {
+  const existing = container.querySelector('.edit-lock-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.className = 'edit-lock-banner';
+  banner.innerHTML = `<span class="lock-icon">🔒</span><span>Locked by <strong>${escapeHtml(lockData.lockedByName || 'another user')}</strong></span><span class="lock-expires">expires in ${formatLockExpiry(lockData.expiresAt)}</span>`;
+  container.insertBefore(banner, container.firstChild);
+  const expiresEl = banner.querySelector('.lock-expires');
+  const updateInterval = setInterval(() => {
+    expiresEl.textContent = `expires in ${formatLockExpiry(lockData.expiresAt)}`;
+    if (new Date(lockData.expiresAt).getTime() <= Date.now()) {
+      clearInterval(updateInterval);
+      banner.remove();
+    }
+  }, 1000);
+  return banner;
+}
+
+function showPendingUpdatesBanner() {
+  let banner = document.getElementById('pendingUpdatesBanner');
+  if (banner) return;
+  banner = document.createElement('div');
+  banner.id = 'pendingUpdatesBanner';
+  banner.className = 'pending-updates-banner';
+  banner.innerHTML = `<span>📥 Updates pending — refresh when finished editing</span><button onclick="handlePendingRefresh()">Refresh Now</button><button onclick="dismissPendingBanner()" style="background:transparent; color:inherit; border:1px solid currentColor;">Later</button>`;
+  document.body.appendChild(banner);
+}
+
+function handlePendingRefresh() {
+  window.__pendingRefresh = false;
+  const banner = document.getElementById('pendingUpdatesBanner');
+  if (banner) banner.remove();
+  if (typeof softRefreshNotifications === 'function') softRefreshNotifications();
+  toast('Notifications refreshed', 'success');
+}
+
+function dismissPendingBanner() {
+  const banner = document.getElementById('pendingUpdatesBanner');
+  if (banner) banner.remove();
+}
+
+function releaseAllLocks() {
+  _activeLocks.forEach((lockInfo, resourceKey) => {
+    clearInterval(lockInfo.renewalTimer);
+    const [resourceType, ...resourceIdParts] = resourceKey.split('_');
+    const data = JSON.stringify({
+      resourceType,
+      resourceId: resourceIdParts.join('_'),
+      lockSessionId: getLockSessionId()
+    });
+    // sendBeacon requires Blob for JSON content
+    const blob = new Blob([data], { type: 'application/json' });
+    navigator.sendBeacon('./?action=locks/release', blob);
+  });
+  _activeLocks.clear();
+}
+
+window.addEventListener('beforeunload', releaseAllLocks);
+
+  // Helper to format relative time for notifications and other UI elements
   function getTimeAgo(timestamp) {
     const now = Date.now();
     const then = new Date(timestamp).getTime();
@@ -10600,27 +10383,6 @@ function clearScheduleCache() {
     if (diff < 120) return '1 min ago';
     if (diff < 300) return `${Math.floor(diff / 60)} mins ago`;
     return 'Active';
-  }
-  
-  // Start agent heartbeat for non-managers
-  function startAgentHeartbeat() {
-    if (window._isManager) return;
-    if (!window._myName) return;
-    
-    const sendHeartbeat = () => {
-      fetch('/agent/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentName: window._myName,
-          view: 'schedule'
-        })
-      }).catch(err => console.warn('Agent heartbeat failed:', err));
-    };
-    
-    // Send immediately and then every 2 minutes
-    sendHeartbeat();
-    setInterval(sendHeartbeat, 2 * 60 * 1000);
   }
   
   // ============================================
@@ -10635,6 +10397,14 @@ function clearScheduleCache() {
   let _sseReconnectTimer = null;
   
   function startRealtimeStream() {
+    // ✅ CRITICAL: Only managers should use SSE
+    // Agents use polling to prevent excessive Firestore reads
+    // Cloud Functions timeout after 60s, causing reconnects that read ALL docs
+    if (!window._isManager) {
+      console.log("[SSE] Skipping for non-manager - using polling instead");
+      return;
+    }
+    
     // Don't start if already connected or in fallback mode
     if (_sseConnection && _sseConnection.readyState !== EventSource.CLOSED) {
       console.log("[SSE] Already connected");
@@ -10671,11 +10441,6 @@ function clearScheduleCache() {
           
           // Stop polling timers since SSE is working
           stopPollingTimers();
-          
-          // Initial UI refresh
-          if (window._isManager) {
-            fetchManagerPresence();
-          }
         } catch (err) {
           console.warn("[SSE] Connected event parse error:", err);
         }
@@ -10686,13 +10451,13 @@ function clearScheduleCache() {
         // Just acknowledge - no action needed
       });
       
-      // Agent notification event
+      // Agent notification event - NON-DESTRUCTIVE
       _sseConnection.addEventListener("notification", (e) => {
         try {
           const data = JSON.parse(e.data);
           console.log("[SSE] 🔔 Agent notification:", data);
           
-          // Update notification badge
+          // Update notification badge only - DO NOT trigger refresh
           updateNotificationBadge(data.unreadCount);
           
           // Update cached notifications
@@ -10703,19 +10468,25 @@ function clearScheduleCache() {
           // Show visual indicator if new notifications
           if (data.unreadCount > 0) {
             pulseNotificationBell();
+            
+            // If editing, show pending banner instead of refreshing
+            if (window.__editModeActive) {
+              window.__pendingRefresh = true;
+              showPendingUpdatesBanner();
+            }
           }
         } catch (err) {
           console.warn("[SSE] Notification parse error:", err);
         }
       });
       
-      // Manager notification event
+      // Manager notification event - NON-DESTRUCTIVE
       _sseConnection.addEventListener("manager_notification", (e) => {
         try {
           const data = JSON.parse(e.data);
           console.log("[SSE] 📋 Manager notification:", data);
           
-          // Update manager notification badge
+          // Update manager notification badge only
           const badge = document.getElementById("notifCount");
           if (badge) {
             badge.textContent = data.pendingCount || "";
@@ -10725,39 +10496,15 @@ function clearScheduleCache() {
           // Show pulse if new pending items
           if (data.pendingCount > 0) {
             pulseNotificationBell();
+            
+            // If editing, show pending banner instead of refreshing
+            if (window.__editModeActive) {
+              window.__pendingRefresh = true;
+              showPendingUpdatesBanner();
+            }
           }
         } catch (err) {
           console.warn("[SSE] Manager notification parse error:", err);
-        }
-      });
-      
-      // Presence event (managers online)
-      _sseConnection.addEventListener("presence", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          console.log("[SSE] 👥 Manager presence update:", data.online?.length || 0, "online");
-          
-          // Update presence UI
-          if (typeof updatePresenceUI === "function") {
-            updatePresenceUI(data.online || []);
-          }
-        } catch (err) {
-          console.warn("[SSE] Presence parse error:", err);
-        }
-      });
-      
-      // Agent presence event (for managers)
-      _sseConnection.addEventListener("agent_presence", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          console.log("[SSE] 👤 Agent presence update:", data.online?.length || 0, "online");
-          
-          // Update agent presence UI if available
-          if (typeof updateAgentPresenceUI === "function") {
-            updateAgentPresenceUI(data.online || []);
-          }
-        } catch (err) {
-          console.warn("[SSE] Agent presence parse error:", err);
         }
       });
       
@@ -10828,14 +10575,6 @@ function clearScheduleCache() {
   }
   
   function stopPollingTimers() {
-    if (_presenceHeartbeatTimer) {
-      clearInterval(_presenceHeartbeatTimer);
-      _presenceHeartbeatTimer = null;
-    }
-    if (_presencePollTimer) {
-      clearInterval(_presencePollTimer);
-      _presencePollTimer = null;
-    }
     if (_notificationPollTimer) {
       clearInterval(_notificationPollTimer);
       _notificationPollTimer = null;
@@ -10844,18 +10583,21 @@ function clearScheduleCache() {
   }
   
   function startFallbackPolling() {
+    // CRITICAL: Only managers should use fallback polling
+    // Agents have their own polling via startAgentNotificationPolling
+    if (!window._isManager) {
+      console.log("[SSE] Fallback polling skipped for non-manager");
+      return;
+    }
+    
     console.log("[SSE] Starting fallback polling mode (60s interval)");
     
-    // Less frequent polling as fallback
-    if (window._isManager) {
-      _presenceHeartbeatTimer = setInterval(sendManagerHeartbeat, 60000);
-      _presencePollTimer = setInterval(fetchManagerPresence, 60000);
-      _notificationPollTimer = setInterval(softRefreshNotifications, 60000);
-    } else {
-      _notificationPollTimer = setInterval(() => {
-        loadAgentNotifications();
-      }, 60000);
-    }
+    // Less frequent polling as fallback - managers only
+    _notificationPollTimer = setInterval(() => {
+      if (window._isManager) {
+        softRefreshNotifications();
+      }
+    }, 60000);
   }
   
   function updateNotificationBadge(count) {
@@ -10888,40 +10630,34 @@ function clearScheduleCache() {
     }
   }
   
-  // ---- Manager Presence: start once (ONLY after auth is known) ----
-let _presenceStarted = false;
-let _presenceHeartbeatTimer = null;
-let _presencePollTimer = null;
+  // ---- Start realtime notifications stream (ONLY after auth is known) ----
 let _notificationPollTimer = null;
 let _isEditingSchedule = false; // Flag to prevent refresh during edits
 
+// Start realtime notifications for managers (keeps old function name for compatibility)
 function startManagerPresenceTracking() {
-  if (_presenceStarted) return;
   if (!window._isManager) return;
   if (!window._myName || !window._myEmail) return;
 
-  _presenceStarted = true;
-
-  // Initial kick-off (keep these as-is)
-  setTimeout(sendManagerHeartbeat, 1000);
-  setTimeout(fetchManagerPresence, 2000);
-
-  // Try SSE first, fall back to polling
+  // Start SSE for real-time notifications (no presence heartbeats)
   startRealtimeStream();
-  
-  // Only start polling if SSE fails (handled by startRealtimeStream fallback)
-  // Legacy polling timers are started by startFallbackPolling() if needed
 }
 
-// ✅ Start notification polling for agents (no presence tracking for agents)
+// ✅ Start notification polling for agents - NO SSE (causes excessive Firestore reads)
 function startAgentNotificationPolling() {
   if (window._isManager) return;
   if (!window._myName) return;
   
-  // Try SSE first
-  startRealtimeStream();
+  console.log("[Agent] Starting notification polling (5-minute interval)");
   
-  // Fallback polling is handled by SSE error handler
+  // DO NOT use SSE - it causes excessive reads from Cloud Function timeouts
+  // Use simple polling instead with conservative interval
+  
+  if (!_notificationPollTimer) {
+    _notificationPollTimer = setInterval(() => {
+      loadAgentNotifications();
+    }, 300000); // 5 minutes - conservative to prevent read spikes
+  }
 }
 
 // ✅ Soft refresh - only updates notification data, not the whole UI
@@ -10984,10 +10720,17 @@ function showNewNotificationIndicator(count) {
 // ✅ Mark editing mode on/off to prevent disruption
 function setEditingMode(isEditing) {
   _isEditingSchedule = isEditing;
+  window.__editModeActive = isEditing;
+  
   if (isEditing) {
     console.log("[Edit Mode] Enabled - auto-refresh paused");
   } else {
     console.log("[Edit Mode] Disabled - auto-refresh resumed");
+    
+    // Check for pending refresh when editing ends
+    if (window.__pendingRefresh) {
+      showPendingUpdatesBanner();
+    }
   }
 }
 
@@ -11122,8 +10865,8 @@ function setEditingMode(isEditing) {
     document.body.classList.add("agent-mode");
     document.body.classList.remove("manager-mode");
     
-    // Start agent heartbeat for presence tracking
-    if (typeof startAgentHeartbeat === "function") startAgentHeartbeat();
+    // NOTE: Agents use polling for notifications, NOT SSE
+    // SSE causes excessive Firestore reads due to Cloud Function timeouts
     
     // Hide manager-only elements
     if ($("btnAdmin")) $("btnAdmin").style.display = "none";
@@ -18063,17 +17806,40 @@ async function clearNotifications() {
 }
 
 function masterStartEdit() {
-  if (!_masterOriginalData) _masterOriginalData = deepClone(_masterRawData || {});
-  if (!_masterDraftData) _masterDraftData = deepClone(_masterRawData || {});
-  _masterEditEnabled = true;
-  _masterRawData = _masterDraftData;
-  renderMasterView(_masterRawData);
+  // Acquire master schedule lock before editing
+  acquireEditLock('master', 'template').then(result => {
+    if (!result.acquired) {
+      // Show who has the lock
+      Swal.fire({
+        icon: 'warning',
+        title: 'Master Schedule Locked',
+        html: `<p>The master schedule is currently being edited by <strong>${escapeHtml(result.lock?.lockedByName || 'another manager')}</strong>.</p>
+               <p>Please wait until they finish or try again later.</p>
+               <p style="font-size:12px;color:#64748b;">Lock expires in ${formatLockExpiry(result.lock?.expiresAt)}</p>`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#b37e78'
+      });
+      return;
+    }
+    
+    // Successfully acquired lock - start editing
+    if (!_masterOriginalData) _masterOriginalData = deepClone(_masterRawData || {});
+    if (!_masterDraftData) _masterDraftData = deepClone(_masterRawData || {});
+    _masterEditEnabled = true;
+    _masterRawData = _masterDraftData;
+    setEditingMode(true);
+    renderMasterView(_masterRawData);
+  });
 }
 
-function masterCancelDraft() {
+async function masterCancelDraft() {
+  // Release the lock
+  await releaseEditLock('master', 'template');
+  
   _masterDraftData = deepClone(_masterOriginalData || {});
   _masterRawData = _masterDraftData;
   _masterEditEnabled = false;
+  setEditingMode(false);
   renderMasterView(_masterRawData);
   toast("Draft cancelled. No changes were applied.", "info");
 }
@@ -18134,6 +17900,10 @@ async function masterApplyDraft() {
     _masterDraftData = deepClone(_masterOriginalData);
     _masterRawData = _masterDraftData;
     _masterEditEnabled = false;
+    
+    // Release the master schedule lock
+    await releaseEditLock('master', 'template');
+    setEditingMode(false);
 
     renderMasterView(_masterRawData);
 
@@ -18457,11 +18227,22 @@ function formatTimeHHMM(t) {
 // ============================================
 let _agentNotifications = [];
 let _agentNotifUnreadCount = 0;
+let _lastAgentNotifFetch = 0;
+const AGENT_NOTIF_MIN_INTERVAL = 60000; // Minimum 1 minute between fetches
+
 // ============================================
 // [SECTION 15] AGENT MODE
 // ============================================
 async function loadAgentNotifications() {
   if (!window._myName) return;
+  
+  // Rate limiting - prevent fetching more than once per minute
+  const now = Date.now();
+  if (now - _lastAgentNotifFetch < AGENT_NOTIF_MIN_INTERVAL) {
+    console.log("[Agent] Notifications fetch skipped - rate limited");
+    return;
+  }
+  _lastAgentNotifFetch = now;
   
   try {
     const res = await fetch('./?action=agent/notifications', {
@@ -19381,161 +19162,97 @@ async function loadAgentWeeklyAssignments() {
   }
 }
 
-// Load rotation info if agent has a role in upcoming meeting
+// Load agent's meeting rotation info (for dashboard banner)
 async function loadAgentRotationInfo() {
-  const sectionEl = $("agentRotationSection");
-  const containerEl = $("agentRotationInfo");
-  
-  // Dashboard banner elements
-  const dashboardCard = $("agentMeetingRoleCard");
-  const dashboardIcon = $("agentMeetingRoleIcon");
-  const dashboardLabel = $("agentMeetingRoleLabel");
-  const dashboardDate = $("agentMeetingRoleDate");
-  const dashboardDesc = $("agentMeetingRoleDesc");
+  const meetingCard = $("agentMeetingRoleCard");
+  const roleLabel = $("agentMeetingRoleLabel");
+  const roleDate = $("agentMeetingRoleDate");
+  const roleDesc = $("agentMeetingRoleDesc");
+  const roleIcon = $("agentMeetingRoleIcon");
   const dashboardBanner = $("agentAssignmentsBanner");
   
+  if (!meetingCard || !window._myName) return;
+  
   try {
-    // Get upcoming meetings (next 7 days)
+    // Ensure meeting rotations are loaded
+    let rotations = window._meetingRotationsCache || {};
+    
+    // If cache is empty, try to fetch
+    if (Object.keys(rotations).length === 0) {
+      try {
+        const res = await fetch('/meeting-rotation/list');
+        const data = await res.json();
+        if (data.rotations) {
+          rotations = {};
+          data.rotations.forEach(r => {
+            rotations[r.date] = r;
+          });
+          window._meetingRotationsCache = rotations;
+        }
+      } catch (e) {
+        console.warn("Failed to fetch meeting rotations:", e);
+      }
+    }
+    
+    const myNameLower = window._myName.toLowerCase().trim();
+    let foundRole = null;
+    let foundDate = null;
+    let icon = '📅';
+    let description = '';
+    
+    // Check next 7 days for meeting roles
     const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    const todayStr = today.toISOString().split('T')[0];
-    const nextWeekStr = nextWeek.toISOString().split('T')[0];
-    
-    const res = await fetch(`/meeting-rotation/list?start=${todayStr}&end=${nextWeekStr}`);
-    const data = await res.json();
-    
-    if (data.ok && data.rotations && data.rotations.length > 0) {
-      const agentNameLower = window._myName.toLowerCase().trim();
+    for (let i = 0; i < 7; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() + i);
+      const dateKey = checkDate.toISOString().split('T')[0];
+      const meeting = rotations[dateKey];
       
-      // Find first meeting where this agent has a role
-      let foundRole = null;
-      let foundRotation = null;
+      if (!meeting) continue;
       
-      for (const rotation of data.rotations) {
-        // Check Captain
-        if ((rotation.captain || "").toLowerCase().trim() === agentNameLower) {
-          foundRole = {
-            type: "captain",
-            label: "Captain (Primary)",
-            color: "#92400e",
-            bg: "#fef3c7",
-            description: "You're the primary LC coordinator - you ATTEND the meeting and coordinate coverage.",
-            icon: "👤"
-          };
-          foundRotation = rotation;
-          break;
-        }
-        
-        // Check Backups
-        if ((rotation.backup1 || "").toLowerCase().trim() === agentNameLower) {
-          foundRole = {
-            type: "backup",
-            label: "Backup #1",
-            color: "#065f46",
-            bg: "#d1fae5",
-            description: "You ATTEND the meeting but set as 'Away' in Zendesk. Jump in if queue busy.",
-            icon: "🔄"
-          };
-          foundRotation = rotation;
-          break;
-        }
-        if ((rotation.backup2 || "").toLowerCase().trim() === agentNameLower) {
-          foundRole = {
-            type: "backup",
-            label: "Backup #2",
-            color: "#065f46",
-            bg: "#d1fae5",
-            description: "You ATTEND the meeting but set as 'Away' in Zendesk. Jump in if queue busy.",
-            icon: "🔄"
-          };
-          foundRotation = rotation;
-          break;
-        }
-        
-        // Check LC Agents
-        const lcAgents = (rotation.lcAgents || []).map(a => a.toLowerCase().trim());
-        if (lcAgents.includes(agentNameLower)) {
-          foundRole = {
-            type: "lcagent",
-            label: "Live Chat Agent",
-            color: "#1e40af",
-            bg: "#dbeafe",
-            description: "You cover Live Chat during the meeting - you will MISS the meeting this week.",
-            icon: "💬"
-          };
-          foundRotation = rotation;
-          break;
-        }
+      if ((meeting.captain || '').toLowerCase().trim() === myNameLower) {
+        foundRole = 'Captain';
+        foundDate = dateKey;
+        icon = '👤';
+        description = 'You are the Captain for this meeting. Lead the LC coverage rotation.';
+        break;
+      } else if ((meeting.backup1 || '').toLowerCase().trim() === myNameLower) {
+        foundRole = 'Backup #1';
+        foundDate = dateKey;
+        icon = '🔄';
+        description = 'You are Backup #1. Cover if the Captain is unavailable.';
+        break;
+      } else if ((meeting.backup2 || '').toLowerCase().trim() === myNameLower) {
+        foundRole = 'Backup #2';
+        foundDate = dateKey;
+        icon = '🔄';
+        description = 'You are Backup #2. Cover if Captain and Backup #1 are unavailable.';
+        break;
+      } else if ((meeting.lcAgents || []).map(a => a.toLowerCase().trim()).includes(myNameLower)) {
+        foundRole = 'LC Agent';
+        foundDate = dateKey;
+        icon = '💬';
+        description = 'You are assigned to cover Live Chat during the meeting.';
+        break;
       }
+    }
+    
+    if (foundRole && foundDate) {
+      const d = new Date(foundDate + 'T12:00:00');
+      const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       
-      if (foundRole && foundRotation) {
-        const meetingTypeLabel = foundRotation.meetingType === "allhands" ? "All Hands" : 
-                                  foundRotation.meetingType === "wednesday" ? "Wednesday Meeting" : "Thursday Meeting";
-        
-        // Format date as American style (MM/DD/YYYY)
-        const formatDateUS = (dateStr) => {
-          if (!dateStr) return '';
-          const parts = dateStr.split('-');
-          if (parts.length === 3) {
-            return `${parts[1]}/${parts[2]}/${parts[0]}`;
-          }
-          return dateStr;
-        };
-        const formattedDate = formatDateUS(foundRotation.date);
-        
-        // Update profile modal section (if exists)
-        if (sectionEl && containerEl) {
-          sectionEl.style.display = "block";
-          containerEl.style.background = `linear-gradient(135deg, ${foundRole.bg} 0%, ${foundRole.bg} 100%)`;
-          containerEl.style.color = foundRole.color;
-          containerEl.innerHTML = `
-            <div style="font-weight: 700; font-size: 15px;">${foundRole.icon} You're assigned: ${foundRole.label}</div>
-            <div style="margin-top: 8px;">
-              <strong>Meeting:</strong> ${meetingTypeLabel}<br>
-              <strong>Date:</strong> ${formattedDate}<br>
-              <strong>Time:</strong> ${foundRotation.meetingTimePST || foundRotation.meetingTimeEST || 'TBD'} PST
-            </div>
-            <div style="margin-top: 10px; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px;">
-              ${foundRole.description}
-            </div>
-            ${foundRotation.notes ? `<div style="margin-top: 8px; font-size: 12px;">📝 ${foundRotation.notes}</div>` : ''}
-          `;
-        }
-        
-        // Update dashboard banner
-        if (dashboardCard && dashboardBanner) {
-          dashboardBanner.style.display = "block";
-          dashboardCard.style.display = "block";
-          dashboardCard.style.borderLeft = `3px solid ${foundRole.color}`;
-          dashboardCard.style.background = foundRole.bg;
-          
-          if (dashboardIcon) dashboardIcon.textContent = foundRole.icon;
-          if (dashboardLabel) {
-            dashboardLabel.textContent = foundRole.label;
-            dashboardLabel.style.color = foundRole.color;
-          }
-          if (dashboardDate) {
-            dashboardDate.textContent = `${meetingTypeLabel} • ${formattedDate}`;
-            dashboardDate.style.color = foundRole.color;
-          }
-          if (dashboardDesc) {
-            dashboardDesc.textContent = foundRole.description;
-            dashboardDesc.style.color = foundRole.color;
-          }
-        }
-      } else {
-        if (sectionEl) sectionEl.style.display = "none";
-        if (dashboardCard) dashboardCard.style.display = "none";
-      }
+      meetingCard.style.display = "block";
+      if (dashboardBanner) dashboardBanner.style.display = "block";
+      if (roleIcon) roleIcon.textContent = icon;
+      if (roleLabel) roleLabel.textContent = foundRole;
+      if (roleDate) roleDate.textContent = `Thursday Meeting • ${dateStr}`;
+      if (roleDesc) roleDesc.textContent = description;
     } else {
-      if (sectionEl) sectionEl.style.display = "none";
-      if (dashboardCard) dashboardCard.style.display = "none";
+      meetingCard.style.display = "none";
     }
   } catch (err) {
     console.error("Error loading agent rotation info:", err);
-    if (sectionEl) sectionEl.style.display = "none";
-    if (dashboardCard) dashboardCard.style.display = "none";
+    meetingCard.style.display = "none";
   }
 }
 
@@ -22509,8 +22226,8 @@ body.dark-mode #agentGoalsPanel {
   justify-content: space-between;
   align-items: center;
   padding: 20px 32px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
+  box-shadow: 0 4px 12px var(--modal-btn-shadow);
 }
 .agent-goals-title {
   font-size: 22px;
@@ -22561,9 +22278,9 @@ body.dark-mode #agentGoalsPanel {
   color: var(--text-primary);
 }
 .agent-goals-tab.active {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
   color: white;
-  border-color: #f59e0b;
+  border-color: var(--modal-gradient-start);
 }
 .agent-goals-section {
   display: none;
@@ -22769,6 +22486,22 @@ body.dark-mode #agentGoalsPanel {
           </table>
         </div>
       </div>
+      
+      <!-- Bad CSAT Follow-ups Section -->
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">⚠️ Bad CSAT Follow-ups</div>
+          <span id="agentBadCsatCount" style="font-size: 12px; color: var(--text-tertiary);">0 items</span>
+        </div>
+        <div id="agentBadCsatList">
+          <div style="padding: 20px; text-align: center; color: var(--text-tertiary);">
+            <div style="font-size: 32px; margin-bottom: 8px;">✨</div>
+            <div style="font-size: 13px;">No bad CSAT follow-ups</div>
+            <div style="font-size: 12px; margin-top: 4px;">Keep up the great work!</div>
+          </div>
+        </div>
+      </div>
+      
       <div style="padding: 16px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; border: 1px solid #93c5fd;">
         <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1e40af;">
           <span>💡</span>
@@ -23782,9 +23515,43 @@ body.dark-mode .summary-card.openshift {
       } catch(e) {}
     }
     
-    // Update summary bar periodically
-    setInterval(updateCompactBar, 5000);
+    // Update summary bar periodically - 5 minutes to minimize background activity
+    // This only uses cached/local data, no network calls
+    setInterval(updateCompactBar, 300000); // 5 minutes
     setTimeout(updateCompactBar, 1000);
+    
+    // ONE-TIME INITIAL LOADS for agent cards (after auth is ready)
+    setTimeout(async () => {
+      if (!document.body.classList.contains('agent-mode')) return;
+      
+      console.log("[CompactBar] Loading initial data for agent cards...");
+      
+      // 1. Load meeting rotations for "Your Role" card
+      try {
+        if (!window._meetingRotationsCache || Object.keys(window._meetingRotationsCache).length === 0) {
+          const res = await fetch('/meeting-rotation/list');
+          const data = await res.json();
+          if (data.rotations) {
+            window._meetingRotationsCache = {};
+            data.rotations.forEach(r => {
+              window._meetingRotationsCache[r.date] = r;
+            });
+            console.log("[CompactBar] Meeting rotations loaded");
+          }
+        }
+      } catch (e) {
+        console.warn("[CompactBar] Failed to load meeting rotations:", e);
+      }
+      
+      // 2. Load open shifts for "Open Shifts" card
+      if (typeof updateAgentOpenShifts === 'function') {
+        updateAgentOpenShifts();
+      }
+      
+      // 3. Update compact bar with fresh data
+      updateCompactBar();
+      
+    }, 2000); // Wait 2 seconds for auth to be ready
     
     // Watch for agent mode changes
     const observer = new MutationObserver(() => {
@@ -23869,39 +23636,22 @@ body.dark-mode .summary-card.openshift {
       }
     }
     
-    // Update ROLE card
-    const roleCard = document.getElementById('summaryRoleCard');
-    const roleValue = document.getElementById('summaryRoleValue');
-    const roleDate = document.getElementById('summaryRoleDate');
-    const meetingLabel = document.getElementById('agentMeetingRoleLabel');
-    
-    if (roleCard && meetingLabel) {
-      const roleText = meetingLabel.textContent;
-      if (roleText && roleText !== 'Meeting Role' && roleText !== '--') {
-        roleCard.style.display = 'flex';
-        if (roleValue) roleValue.textContent = roleText;
-        const meetingDateEl = document.getElementById('agentMeetingRoleDate');
-        if (roleDate && meetingDateEl) roleDate.textContent = meetingDateEl.textContent || '';
-      } else {
-        roleCard.style.display = 'none';
-      }
-    }
-    
-    // Update Meeting Role Card (check meeting rotations)
+    // Update Meeting Role Card (updates the Your Role card with meeting rotation info)
     updateAgentMeetingRole(myName);
     
-    // Update Open Shifts Card
-    updateAgentOpenShifts();
+    // NOTE: Open Shifts Card is loaded ONCE on init, not on every interval
+    // This prevents excessive Firestore reads
+    // updateAgentOpenShifts(); // DISABLED from interval - see initCompactBar for initial load
   };
   
   // Check meeting rotations for agent's role
   async function updateAgentMeetingRole(myName) {
-    const meetingCard = document.getElementById('summaryMeetingCard');
-    const meetingRole = document.getElementById('summaryMeetingRole');
-    const meetingDate = document.getElementById('summaryMeetingDate');
-    const meetingIcon = document.getElementById('summaryMeetingIcon');
+    // Update the Your Role card (summaryRoleCard) with meeting role info
+    const roleCard = document.getElementById('summaryRoleCard');
+    const roleValue = document.getElementById('summaryRoleValue');
+    const roleDate = document.getElementById('summaryRoleDate');
     
-    if (!meetingCard || !myName) return;
+    if (!roleCard || !myName) return;
     
     try {
       // Check for upcoming meetings in the next 7 days
@@ -23909,6 +23659,7 @@ body.dark-mode .summary-card.openshift {
       const myNameLower = myName.toLowerCase().trim();
       let foundRole = null;
       let foundDate = null;
+      let roleIcon = '🎯';
       
       const today = new Date();
       for (let i = 0; i < 7; i++) {
@@ -23922,33 +23673,43 @@ body.dark-mode .summary-card.openshift {
         if ((meeting.captain || '').toLowerCase().trim() === myNameLower) {
           foundRole = 'Captain';
           foundDate = dateKey;
-          meetingIcon.textContent = '👤';
+          roleIcon = '👤';
           break;
-        } else if ((meeting.backup1 || '').toLowerCase().trim() === myNameLower || 
-                   (meeting.backup2 || '').toLowerCase().trim() === myNameLower) {
-          foundRole = 'Backup';
+        } else if ((meeting.backup1 || '').toLowerCase().trim() === myNameLower) {
+          foundRole = 'Backup #1';
           foundDate = dateKey;
-          meetingIcon.textContent = '🔄';
+          roleIcon = '🔄';
+          break;
+        } else if ((meeting.backup2 || '').toLowerCase().trim() === myNameLower) {
+          foundRole = 'Backup #2';
+          foundDate = dateKey;
+          roleIcon = '🔄';
           break;
         } else if ((meeting.lcAgents || []).map(a => a.toLowerCase().trim()).includes(myNameLower)) {
           foundRole = 'LC Agent';
           foundDate = dateKey;
-          meetingIcon.textContent = '💬';
+          roleIcon = '💬';
           break;
         }
       }
       
       if (foundRole && foundDate) {
-        meetingCard.style.display = 'flex';
-        meetingRole.textContent = foundRole;
-        const d = new Date(foundDate + 'T12:00:00');
-        meetingDate.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        roleCard.style.display = 'flex';
+        // Update the icon
+        const iconEl = roleCard.querySelector('.summary-icon');
+        if (iconEl) iconEl.textContent = roleIcon;
+        
+        if (roleValue) roleValue.textContent = foundRole;
+        if (roleDate) {
+          const d = new Date(foundDate + 'T12:00:00');
+          roleDate.textContent = `Thursday Meeting • ${d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}`;
+        }
       } else {
-        meetingCard.style.display = 'none';
+        roleCard.style.display = 'none';
       }
     } catch (e) {
       console.error('Error updating meeting role:', e);
-      meetingCard.style.display = 'none';
+      roleCard.style.display = 'none';
     }
   }
   
@@ -24077,6 +23838,9 @@ body.dark-mode .summary-card.openshift {
         // Render Metrics Table
         renderAgentMetricsTable(metrics);
         
+        // Render Bad CSAT Follow-ups
+        renderAgentBadCsatList(goals.csatFollowups || []);
+        
         // Render Tasks List
         renderAgentTasksList(tasks);
         
@@ -24167,6 +23931,78 @@ body.dark-mode .summary-card.openshift {
           <td style="padding: 10px; border-bottom: 1px solid var(--border-color); text-align: center;">${m.csat ? m.csat + '%' : '--'}</td>
           <td style="padding: 10px; border-bottom: 1px solid var(--border-color); text-align: center;">${m.lcCsat ? m.lcCsat + '%' : '--'}</td>
         </tr>
+      `;
+    }).join('');
+  }
+  
+  function renderAgentBadCsatList(csatFollowups) {
+    const container = document.getElementById('agentBadCsatList');
+    const countEl = document.getElementById('agentBadCsatCount');
+    if (!container) return;
+    
+    // Filter to show pending (not completed) follow-ups
+    const pending = (csatFollowups || []).filter(c => !c.followUpCompleted);
+    
+    if (countEl) {
+      countEl.textContent = `${csatFollowups.length} total, ${pending.length} pending`;
+    }
+    
+    if (!csatFollowups || csatFollowups.length === 0) {
+      container.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: var(--text-tertiary);">
+          <div style="font-size: 32px; margin-bottom: 8px;">✨</div>
+          <div style="font-size: 13px;">No bad CSAT follow-ups</div>
+          <div style="font-size: 12px; margin-top: 4px;">Keep up the great work!</div>
+        </div>`;
+      return;
+    }
+    
+    // Sort by date (most recent first), then by completion status (pending first)
+    const sorted = [...csatFollowups].sort((a, b) => {
+      // Pending items first
+      if (!a.followUpCompleted && b.followUpCompleted) return -1;
+      if (a.followUpCompleted && !b.followUpCompleted) return 1;
+      // Then by date
+      return (b.ticketDate || b.createdAt || '').localeCompare(a.ticketDate || a.createdAt || '');
+    });
+    
+    container.innerHTML = sorted.map(csat => {
+      const isPending = !csat.followUpCompleted;
+      const ticketDate = csat.ticketDate ? new Date(csat.ticketDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--';
+      const rating = csat.rating || csat.csatScore || 'Bad';
+      
+      return `
+        <div style="
+          padding: 14px;
+          background: ${isPending ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'var(--bg-tertiary)'};
+          border: 1px solid ${isPending ? '#fca5a5' : 'var(--border-color)'};
+          border-radius: 10px;
+          margin-bottom: 10px;
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="font-size: 16px;">${isPending ? '⚠️' : '✅'}</span>
+                <span style="font-weight: 700; font-size: 13px; color: ${isPending ? '#dc2626' : 'var(--text-primary)'};">
+                  Ticket #${csat.ticketId || 'Unknown'}
+                </span>
+                <span style="
+                  padding: 2px 8px;
+                  border-radius: 4px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  background: ${isPending ? '#fecaca' : '#dcfce7'};
+                  color: ${isPending ? '#991b1b' : '#166534'};
+                ">${isPending ? 'PENDING' : 'COMPLETED'}</span>
+              </div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                📅 ${ticketDate} • Rating: <span style="color: #dc2626; font-weight: 600;">${rating}</span>
+              </div>
+              ${csat.reason ? `<div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">💬 ${escapeHtml(csat.reason)}</div>` : ''}
+              ${csat.followUpNotes ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">📝 ${escapeHtml(csat.followUpNotes)}</div>` : ''}
+            </div>
+          </div>
+        </div>
       `;
     }).join('');
   }
