@@ -4813,6 +4813,8 @@ if (!style) {
     // Filter to only include active agents using existing _peopleMetaByName Map
     const activePeople = Array.isArray(_people)
       ? _people.filter(personName => {
+          // Ensure personName is a valid string
+          if (!personName || typeof personName !== 'string') return false;
           // Use existing _peopleMetaByName Map for O(1) lookup
           const agent = _peopleMetaByName ? _peopleMetaByName.get(personName.toLowerCase()) : null;
           // Only include if agent exists in metadata AND is active (active !== false)
