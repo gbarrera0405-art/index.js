@@ -4818,6 +4818,9 @@ if (!style) {
         })
       : (_people || []);
     
+    // Use Set for O(1) lookup performance
+    const activePeopleSet = new Set(activePeople);
+    
     // First, initialize roster with ACTIVE people from _people list
     // This ensures new agents appear even without shifts
     activePeople.forEach(personName => {
@@ -4832,7 +4835,7 @@ if (!style) {
         dayItems.forEach(item => {
             const pName = item.person;
             // Only add shifts for active agents
-            if (activePeople.includes(pName)) {
+            if (activePeopleSet.has(pName)) {
               if (!roster[pName]) roster[pName] = {};
               if (!roster[pName][day]) roster[pName][day] = [];
               roster[pName][day].push(item);
