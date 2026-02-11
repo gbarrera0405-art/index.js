@@ -4810,15 +4810,18 @@ if (!style) {
     const roster = {};
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     
-    // Filter to only include active agents
-    const activePeople = Array.isArray(_people) && Array.isArray(_peopleMeta)
+    // Filter to only include active agents using existing _peopleMetaByName Map
+    const activePeople = Array.isArray(_people)
       ? _people.filter(personName => {
-          const agent = _peopleMeta.find(p => (p.name || p.id) === personName);
-          return !agent || agent.active !== false; // Include if not found OR if active
+          // Use existing _peopleMetaByName Map for O(1) lookup
+          const agent = _peopleMetaByName ? _peopleMetaByName.get(personName.toLowerCase()) : null;
+          // Only include if agent exists in metadata AND is active (active !== false)
+          // If agent not found in metadata, exclude them for safety
+          return agent && agent.active !== false;
         })
-      : (_people || []);
+      : [];
     
-    // Use Set for O(1) lookup performance
+    // Use Set for O(1) lookup performance in nested loops
     const activePeopleSet = new Set(activePeople);
     
     // First, initialize roster with ACTIVE people from _people list
