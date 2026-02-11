@@ -4810,24 +4810,33 @@ if (!style) {
     const roster = {};
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     
-    // First, initialize roster with ALL people from _people list
-    // This ensures new agents appear even without shifts
-    if (Array.isArray(_people)) {
-      _people.forEach(personName => {
-        if (personName && !roster[personName]) {
-          roster[personName] = {};
-        }
-      });
-    }
+    // Filter to only include active agents
+    const activePeople = Array.isArray(_people) && Array.isArray(_peopleMeta)
+      ? _people.filter(personName => {
+          const agent = _peopleMeta.find(p => (p.name || p.id) === personName);
+          return !agent || agent.active !== false; // Include if not found OR if active
+        })
+      : (_people || []);
     
-    // Then add shifts from the data
+    // First, initialize roster with ACTIVE people from _people list
+    // This ensures new agents appear even without shifts
+    activePeople.forEach(personName => {
+      if (personName && !roster[personName]) {
+        roster[personName] = {};
+      }
+    });
+    
+    // Then add shifts from the data (only for active agents)
     days.forEach(day => {
         const dayItems = data[day] || [];
         dayItems.forEach(item => {
             const pName = item.person;
-            if (!roster[pName]) roster[pName] = {};
-            if (!roster[pName][day]) roster[pName][day] = [];
-            roster[pName][day].push(item);
+            // Only add shifts for active agents
+            if (activePeople.includes(pName)) {
+              if (!roster[pName]) roster[pName] = {};
+              if (!roster[pName][day]) roster[pName][day] = [];
+              roster[pName][day].push(item);
+            }
         });
     });
     list.style.display = "block"; 
