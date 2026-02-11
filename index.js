@@ -1395,6 +1395,7 @@ if (action) path = "/" + action;
       "/timeoff/resolve",
       "/admin/wipe-future",
       "/admin/regenerate-all",
+      "/admin/remove-agent-shifts",
       "/schedule/extended",
       "/schedule/past", 
       "/schedule/future",
@@ -1435,6 +1436,8 @@ if (action) path = "/" + action;
       "/goals/get",
       "/goals/save",
       "/goals/list",
+      "/goals/csat-complete",
+      "/goals/csat-remind",
       "/attendance/summary",
       "/attendance/all",
       "/events"
@@ -1870,6 +1873,90 @@ if (path === "/people/list" && req.method === "GET") {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ ok:false, error:e.message });
+  }
+}
+
+// Remove a specific agent from all future scheduled shifts
+if (path === "/admin/remove-agent-shifts" && req.method === "POST") {
+  try {
+    const body = readJsonBody(req);
+    const agentName = String(body.agentName || "").trim();
+    const fromDate = String(body.fromDate || "").trim();
+    
+    if (!agentName) {
+      return res.status(400).json({ ok: false, error: "Missing agentName" });
+    }
+    
+    // Default to today if no fromDate provided
+    const startDate = fromDate || new Date().toISOString().split("T")[0];
+    
+    console.log(`🗑️ Removing shifts for "${agentName}" from ${startDate} onwards...`);
+    
+    // Query all future schedule days
+    const docsSnap = await db.collection("scheduleDays")
+      .where("date", ">=", startDate)
+      .get();
+    
+    if (docsSnap.empty) {
+      return res.status(200).json({ ok: true, removed: 0, message: "No future schedule days found." });
+    }
+    
+    let totalRemoved = 0;
+    let docsModified = 0;
+    const batchSize = 450;
+    let batch = db.batch();
+    let batchCount = 0;
+    
+    for (const doc of docsSnap.docs) {
+      const data = doc.data() || {};
+      const assignments = Array.isArray(data.assignments) ? data.assignments : [];
+      
+      // Filter out assignments belonging to this agent (case-insensitive match)
+      const agentLower = agentName.toLowerCase();
+      const filtered = assignments.filter(a => {
+        const personName = String(a.person || "").trim().toLowerCase();
+        return personName !== agentLower;
+      });
+      
+      const removedCount = assignments.length - filtered.length;
+      
+      if (removedCount > 0) {
+        totalRemoved += removedCount;
+        docsModified++;
+        batch.update(doc.ref, { 
+          assignments: filtered, 
+          updatedAt: toIsoNow() 
+        });
+        batchCount++;
+        
+        // Commit batch if we hit the limit
+        if (batchCount >= batchSize) {
+          await batch.commit();
+          batch = db.batch();
+          batchCount = 0;
+          console.log(`  Processed ${docsModified} docs, removed ${totalRemoved} shifts so far...`);
+        }
+      }
+    }
+    
+    // Commit remaining
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+    
+    console.log(`✅ Removed ${totalRemoved} shifts for "${agentName}" across ${docsModified} schedule days`);
+    
+    return res.status(200).json({ 
+      ok: true, 
+      removed: totalRemoved, 
+      docsModified,
+      agentName,
+      fromDate: startDate,
+      message: `Removed ${totalRemoved} shift(s) for ${agentName} from ${docsModified} schedule day(s).`
+    });
+  } catch (err) {
+    console.error("Remove agent shifts error:", err);
+    return res.status(500).json({ ok: false, error: err.message });
   }
 }
 
@@ -5847,7 +5934,21 @@ function migrateGoalsDataServer(data) {
       updatedAt: t.updatedAt || new Date().toISOString()
     }));
   }
-  if (!data.csatFollowups) data.csatFollowups = [];
+  if (!data.csatFollowups) {
+    data.csatFollowups = [];
+  } else {
+    // Migrate old fields: issueSummary → coachingTips, star ratings → Bad
+    data.csatFollowups = data.csatFollowups.map(fu => {
+      if (fu.issueSummary && !fu.coachingTips) {
+        fu.coachingTips = fu.issueSummary;
+        delete fu.issueSummary;
+      }
+      if (fu.rating && !isNaN(parseInt(fu.rating))) {
+        fu.rating = 'Bad';
+      }
+      return fu;
+    });
+  }
   if (!data.meetingFollowups) data.meetingFollowups = [];
   return data;
 }
@@ -5910,7 +6011,8 @@ function migrateGoalsDataServer(data) {
             if (fu.followUpCompleted && !fu.followUpCompletedAt) {
               fu.followUpCompletedAt = new Date().toISOString().split('T')[0];
             }
-            if (fu.followUpCompleted && !fu.followUpMethod) {
+            // Only enforce method requirement if NOT completed by the agent themselves
+            if (fu.followUpCompleted && !fu.followUpMethod && !fu.completedByAgent) {
               fu.followUpCompleted = false;
               fu.followUpCompletedAt = '';
             }
@@ -5942,6 +6044,96 @@ function migrateGoalsDataServer(data) {
         return res.status(200).json({ ok: true });
       } catch (err) {
         console.error("Goals save error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // Agent marks a CSAT follow-up as completed
+    if ((path === "/goals/csat-complete" || action === "goals/csat-complete") && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { agentName, csatIndex, completedBy } = body;
+        if (!agentName || csatIndex === undefined || csatIndex === null) {
+          return res.status(400).json({ error: "agentName and csatIndex required" });
+        }
+
+        const goalsRef = db.collection("agent_goals").doc(agentName.toLowerCase().replace(/\s+/g, '_'));
+        const snap = await goalsRef.get();
+        if (!snap.exists) {
+          return res.status(404).json({ error: "Goals not found for agent" });
+        }
+
+        const data = snap.data();
+        const followups = data.csatFollowups || [];
+        const idx = parseInt(csatIndex);
+
+        if (idx < 0 || idx >= followups.length) {
+          return res.status(400).json({ error: "Invalid csatIndex" });
+        }
+
+        followups[idx].followUpCompleted = true;
+        followups[idx].followUpCompletedAt = new Date().toISOString().split('T')[0];
+        followups[idx].completedByAgent = completedBy || agentName;
+        followups[idx].updatedAt = new Date().toISOString();
+
+        await goalsRef.update({
+          csatFollowups: followups,
+          updatedAt: new Date().toISOString()
+        });
+
+        // Audit log
+        await db.collection("audit_log").add({
+          action: "csat_followup_completed_by_agent",
+          agentName,
+          completedBy: completedBy || agentName,
+          ticketNumber: followups[idx].ticketNumber || '',
+          timestamp: new Date().toISOString()
+        });
+
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("CSAT complete error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // Manager sends a CSAT follow-up reminder notification to the agent
+    if ((path === "/goals/csat-remind" || action === "goals/csat-remind") && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { agentName, ticketNumber, channel, coachingTips, sentBy } = body;
+        if (!agentName) {
+          return res.status(400).json({ error: "agentName required" });
+        }
+
+        const ticketLabel = ticketNumber ? `Ticket #${ticketNumber}` : 'a ticket';
+        const channelLabel = channel ? ` (${channel})` : '';
+
+        await db.collection("agent_notifications").add({
+          recipientName: agentName,
+          type: "csat_reminder",
+          message: `📋 Reminder: Please follow up on ${ticketLabel}${channelLabel} — ${coachingTips ? coachingTips.substring(0, 100) : 'low CSAT needs your attention'}`,
+          ticketNumber: ticketNumber || '',
+          sentBy: sentBy || 'Manager',
+          createdAt: new Date().toISOString(),
+          read: false
+        });
+
+        // Invalidate cache so agent sees it immediately
+        invalidateAgentNotificationCache(agentName);
+
+        // Audit log
+        await db.collection("audit_log").add({
+          action: "csat_reminder_sent",
+          agentName,
+          sentBy: sentBy || 'Manager',
+          ticketNumber: ticketNumber || '',
+          timestamp: new Date().toISOString()
+        });
+
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("CSAT remind error:", err);
         return res.status(500).json({ error: err.message });
       }
     }
