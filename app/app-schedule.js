@@ -4810,24 +4810,41 @@ if (!style) {
     const roster = {};
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     
-    // First, initialize roster with ALL people from _people list
-    // This ensures new agents appear even without shifts
-    if (Array.isArray(_people)) {
-      _people.forEach(personName => {
-        if (personName && !roster[personName]) {
-          roster[personName] = {};
-        }
-      });
-    }
+    // Filter to only include active agents using existing _peopleMetaByName Map
+    const activePeople = Array.isArray(_people)
+      ? _people.filter(personName => {
+          // Ensure personName is a valid string
+          if (!personName || typeof personName !== 'string') return false;
+          // Use existing _peopleMetaByName Map for O(1) lookup
+          const agent = _peopleMetaByName ? _peopleMetaByName.get(personName.toLowerCase()) : null;
+          // Only include if agent exists in metadata AND is active (active !== false)
+          // If agent not found in metadata, exclude them for safety
+          return agent && agent.active !== false;
+        })
+      : [];
     
-    // Then add shifts from the data
+    // Use Set for O(1) lookup performance in nested loops
+    const activePeopleSet = new Set(activePeople);
+    
+    // First, initialize roster with ACTIVE people from _people list
+    // This ensures new agents appear even without shifts
+    activePeople.forEach(personName => {
+      if (personName && !roster[personName]) {
+        roster[personName] = {};
+      }
+    });
+    
+    // Then add shifts from the data (only for active agents)
     days.forEach(day => {
         const dayItems = data[day] || [];
         dayItems.forEach(item => {
             const pName = item.person;
-            if (!roster[pName]) roster[pName] = {};
-            if (!roster[pName][day]) roster[pName][day] = [];
-            roster[pName][day].push(item);
+            // Only add shifts for active agents
+            if (activePeopleSet.has(pName)) {
+              if (!roster[pName]) roster[pName] = {};
+              if (!roster[pName][day]) roster[pName][day] = [];
+              roster[pName][day].push(item);
+            }
         });
     });
     list.style.display = "block"; 
