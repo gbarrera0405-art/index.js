@@ -1232,6 +1232,25 @@
           <textarea id="mNotes" placeholder="Add any notes about this change..." style="width: 100%; min-height: 84px; padding: 14px 16px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; font-size: 14px; color: var(--text-primary, #1e293b); background: var(--bg-secondary, #f8fafc); resize: vertical; font-family: inherit; transition: all 0.2s; box-sizing: border-box;"></textarea>
         </div>
         
+        <!-- Make-Up Date Section (Optional) -->
+        <div id="mMakeUpSection" style="margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="checkbox" id="mRequireMakeUp" onchange="toggleMakeUpDate()" style="width: 16px; height: 16px; accent-color: #b37e78; cursor: pointer;">
+            <label for="mRequireMakeUp" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;">Agent Needs to Make Up Hours</label>
+          </div>
+          <div id="mMakeUpDateWrap" style="display: none;">
+            <div style="padding: 12px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; margin-bottom: 8px;">
+              <div style="font-size: 11px; color: #92400e; font-weight: 600; margin-bottom: 4px;">💡 Make-Up Date Selection</div>
+              <div style="font-size: 10px; color: #78350f;">Agent will need to work these hours on another date. Choose suggested date(s):</div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <input type="date" id="mMakeUpDate" style="flex: 1; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+              <button type="button" onclick="addManagerMakeUpDate()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; font-size: 13px;">+ Add</button>
+            </div>
+            <div id="mMakeUpDatesList" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+          </div>
+        </div>
+        
         <!-- Quick Actions -->
         <div style="display: flex; gap: 10px; padding-top: 8px; border-top: 1px solid var(--border-color, #e2e8f0);">
           <button id="actionBtn" onclick="markTimeOff()" style="display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); color: #dc2626; border: 1px solid #fecaca; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 8px rgba(220,38,38,0.2)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
@@ -2320,6 +2339,42 @@
             </label>
           </div>
         </div>
+        
+        <!-- Time Duration Selection -->
+        <div id="agTimeDurationWrap" style="margin-bottom:16px;">
+          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Time Off Duration</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
+            <label class="duration-card" onclick="this.querySelector('input').checked=true; updateDurationSelection();" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; transition:all 0.2s;">
+              <input type="radio" name="timeOffDuration" value="full_shift" checked style="width:14px; height:14px; accent-color:#3b82f6;" onchange="updateDurationSelection()">
+              <div style="font-size:11px; font-weight:600; color:#1e293b; text-align:center;">Full Shift</div>
+            </label>
+            <label class="duration-card" onclick="this.querySelector('input').checked=true; updateDurationSelection();" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; transition:all 0.2s;">
+              <input type="radio" name="timeOffDuration" value="full_day" style="width:14px; height:14px; accent-color:#3b82f6;" onchange="updateDurationSelection()">
+              <div style="font-size:11px; font-weight:600; color:#1e293b; text-align:center;">Full Day</div>
+            </label>
+            <label class="duration-card" onclick="this.querySelector('input').checked=true; updateDurationSelection();" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; transition:all 0.2s;">
+              <input type="radio" name="timeOffDuration" value="partial" style="width:14px; height:14px; accent-color:#3b82f6;" onchange="updateDurationSelection()">
+              <div style="font-size:11px; font-weight:600; color:#1e293b; text-align:center;">Partial Day</div>
+            </label>
+          </div>
+          
+          <!-- Partial Time Selection (hidden by default) -->
+          <div id="agPartialTimeWrap" style="display:none; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+            <label style="display:block; font-size:10px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Specify Time Range</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <div>
+                <label style="display:block; font-size:10px; color:#64748b; margin-bottom:4px;">Start Time</label>
+                <input type="time" id="agPartialStart" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:10px; color:#64748b; margin-bottom:4px;">End Time</label>
+                <input type="time" id="agPartialEnd" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">
+              </div>
+            </div>
+            <div id="agPartialHoursDisplay" style="margin-top:8px; font-size:11px; color:#475569; font-weight:600; text-align:center;"></div>
+          </div>
+        </div>
+        
         <!-- Make Up Date(s) - supports multiple dates -->
         <div id="agMakeUpWrap" style="margin-bottom:16px;">
           <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Make Up Date(s)</label>

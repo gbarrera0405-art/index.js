@@ -574,6 +574,16 @@ async function openTimeOffQueue() {
       
       if (req.duration === 'full_day') {
           deductAmount = 8;
+      } else if (req.duration === 'partial' && req.partialStart && req.partialEnd) {
+          // NEW: Calculate from partial times
+          const parseTime = (t) => {
+            const [h, m] = t.split(':').map(Number);
+            return h + (m / 60);
+          };
+          deductAmount = parseTime(req.partialEnd) - parseTime(req.partialStart);
+          if (deductAmount < 0) deductAmount += 24;
+          deductAmount = Math.round(deductAmount * 100) / 100;
+          timeDisplay = `<div style="font-size:11px; color:#64748b; margin-top:2px;">${req.partialStart} - ${req.partialEnd} (${deductAmount} hrs)</div>`;
       } else if (req.shiftStart && req.shiftEnd) {
           deductAmount = calcHours(req.shiftStart, req.shiftEnd);
           // Only use fallback if math returns 0
@@ -585,6 +595,8 @@ async function openTimeOffQueue() {
       const bal = req.currentBalance !== undefined ? req.currentBalance : 0;
       const typeBadge = req.duration === 'full_day' 
           ? `<span style="background:#dbeafe; color:#8f5f5a; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px;">FULL DAY</span>`
+          : req.duration === 'partial'
+          ? `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px;">PARTIAL DAY</span>`
           : `<span style="background:#f3f4f6; color:#374151; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px;">SHIFT</span>`;
       const actionButtons = isMakeUp
         ? `<button onclick="resolveTimeOff('${req.id}', 'approved', { deduct: false })" 
@@ -1298,6 +1310,139 @@ function updateTypeSelection() {
       }
     }
   }
+}
+
+// NEW: Update duration selection styling and show/hide partial time fields
+function updateDurationSelection() {
+  const radios = document.querySelectorAll('input[name="timeOffDuration"]');
+  radios.forEach(radio => {
+    const label = radio.closest('label');
+    if (radio.checked) {
+      label.style.borderColor = '#3b82f6';
+      label.style.background = '#eff6ff';
+      label.style.fontWeight = '700';
+    } else {
+      label.style.borderColor = '#e2e8f0';
+      label.style.background = '#fff';
+      label.style.fontWeight = '600';
+    }
+  });
+  
+  // Toggle partial time selection
+  const selected = document.querySelector('input[name="timeOffDuration"]:checked');
+  const isPartial = selected && selected.value === 'partial';
+  const partialWrap = document.getElementById('agPartialTimeWrap');
+  if (partialWrap) {
+    partialWrap.style.display = isPartial ? 'block' : 'none';
+  }
+  
+  // Calculate hours when times change
+  if (isPartial) {
+    const startInput = document.getElementById('agPartialStart');
+    const endInput = document.getElementById('agPartialEnd');
+    if (startInput && endInput) {
+      startInput.addEventListener('change', calculatePartialHours);
+      endInput.addEventListener('change', calculatePartialHours);
+      calculatePartialHours();
+    }
+  }
+}
+
+// NEW: Calculate hours for partial day time off
+function calculatePartialHours() {
+  const startInput = document.getElementById('agPartialStart');
+  const endInput = document.getElementById('agPartialEnd');
+  const display = document.getElementById('agPartialHoursDisplay');
+  
+  if (!startInput || !endInput || !display) return;
+  
+  const start = startInput.value;
+  const end = endInput.value;
+  
+  if (!start || !end) {
+    display.textContent = '';
+    return;
+  }
+  
+  // Parse times
+  const [startHour, startMin] = start.split(':').map(Number);
+  const [endHour, endMin] = end.split(':').map(Number);
+  
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  
+  if (endMinutes <= startMinutes) {
+    display.innerHTML = '<span style="color: #ef4444;">⚠️ End time must be after start time</span>';
+    return;
+  }
+  
+  const diffMinutes = endMinutes - startMinutes;
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  
+  const hoursText = hours > 0 ? `${hours} hour${hours > 1 ? 's' : ''}` : '';
+  const minutesText = minutes > 0 ? `${minutes} minute${minutes > 1 ? 's' : ''}` : '';
+  const timeText = [hoursText, minutesText].filter(Boolean).join(' ');
+  
+  const totalHours = (diffMinutes / 60).toFixed(2);
+  
+  display.innerHTML = `📊 Duration: ${timeText} <span style="color: #b37e78; font-weight: 700;">(${totalHours} hours)</span>`;
+}
+
+// NEW: Toggle make-up date section in manager replace modal
+function toggleMakeUpDate() {
+  const checkbox = document.getElementById('mRequireMakeUp');
+  const wrap = document.getElementById('mMakeUpDateWrap');
+  if (checkbox && wrap) {
+    wrap.style.display = checkbox.checked ? 'block' : 'none';
+  }
+}
+
+// NEW: Add make-up date in manager modal
+let _managerMakeUpDates = [];
+
+function addManagerMakeUpDate() {
+  const dateInput = document.getElementById('mMakeUpDate');
+  if (!dateInput || !dateInput.value) {
+    toast('Please select a date', 'error');
+    return;
+  }
+  
+  const date = dateInput.value;
+  if (_managerMakeUpDates.includes(date)) {
+    toast('Date already added', 'warning');
+    return;
+  }
+  
+  _managerMakeUpDates.push(date);
+  renderManagerMakeUpDates();
+  dateInput.value = '';
+}
+
+function removeManagerMakeUpDate(date) {
+  _managerMakeUpDates = _managerMakeUpDates.filter(d => d !== date);
+  renderManagerMakeUpDates();
+}
+
+function renderManagerMakeUpDates() {
+  const listEl = document.getElementById('mMakeUpDatesList');
+  if (!listEl) return;
+  
+  if (_managerMakeUpDates.length === 0) {
+    listEl.innerHTML = '<div style="font-size: 11px; color: #94a3b8; padding: 8px;">No make-up dates added yet</div>';
+    return;
+  }
+  
+  listEl.innerHTML = _managerMakeUpDates.map(date => {
+    const d = new Date(date + 'T12:00:00');
+    const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return `
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 6px; font-size: 11px; font-weight: 600; color: #1e40af;">
+        <span>${formatted}</span>
+        <button onclick="removeManagerMakeUpDate('${date}')" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; font-size: 14px; line-height: 1;">×</button>
+      </div>
+    `;
+  }).join('');
 }
 
 // showToast - alias for main toast function
@@ -2248,15 +2393,58 @@ async function saveWeeklyAssignments() {
     
     // NEW: Grab duration from radio
     const durationSelected = document.querySelector('input[name="timeOffDuration"]:checked');
-    const durationVal = durationSelected ? durationSelected.value : "shift";
+    const durationVal = durationSelected ? durationSelected.value : "full_shift";
+    
+    // NEW: Get partial time if selected
+    let partialStart = "";
+    let partialEnd = "";
+    if (durationVal === "partial") {
+      partialStart = $("agPartialStart") ? $("agPartialStart").value : "";
+      partialEnd = $("agPartialEnd") ? $("agPartialEnd").value : "";
+      
+      if (!partialStart || !partialEnd) {
+        return toast("Please specify start and end times for partial day", "error");
+      }
+      
+      // Validate end time is after start time
+      const [startH, startM] = partialStart.split(':').map(Number);
+      const [endH, endM] = partialEnd.split(':').map(Number);
+      if ((endH * 60 + endM) <= (startH * 60 + startM)) {
+        return toast("End time must be after start time", "error");
+      }
+    }
 
     // ✅ VALIDATE PTO BALANCE
     if (timeOffType === "PTO") {
       const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
       const currentPto = parseFloat(balance.pto) || 0;
 
-      // Calculate hours needed (rough estimate)
-      let hoursNeeded = durationVal === "full_day" ? 8 : 4;
+      // Calculate hours needed based on duration type
+      let hoursNeeded = 4; // Default for full_shift
+      
+      if (durationVal === "full_day") {
+        hoursNeeded = 8;
+      } else if (durationVal === "partial" && partialStart && partialEnd) {
+        // Calculate actual hours for partial day
+        const [startH, startM] = partialStart.split(':').map(Number);
+        const [endH, endM] = partialEnd.split(':').map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+        hoursNeeded = Math.round((endMinutes - startMinutes) / 60 * 100) / 100;
+      } else if (sStart && sEnd) {
+        // Try to calculate from shift times
+        const parseTime = (t) => {
+          const match = t.match(/(\d+):(\d+)\s?(AM|PM)?/i);
+          if (!match) return 0;
+          let h = parseInt(match[1]);
+          const ampm = match[3] ? match[3].toUpperCase() : null;
+          if (ampm === "PM" && h < 12) h += 12;
+          if (ampm === "AM" && h === 12) h = 0;
+          return h + (parseInt(match[2]) / 60);
+        };
+        const diff = parseTime(sEnd) - parseTime(sStart);
+        if (diff > 0) hoursNeeded = Math.round(diff * 100) / 100;
+      }
 
       if (currentPto < hoursNeeded) {
         const result = await Swal.fire({
@@ -2314,10 +2502,12 @@ async function saveWeeklyAssignments() {
           makeUpDates: makeUpDates, // Array of dates
           reason: reason,
           date: dateStr,
-          shiftStart: sStart,
-          shiftEnd: sEnd,
+          shiftStart: partialStart || sStart, // Use partial times if available
+          shiftEnd: partialEnd || sEnd,
           team: teamName, // <--- Sending Team Name
           duration: durationVal,
+          partialStart: partialStart, // NEW: Send partial times separately
+          partialEnd: partialEnd,
           category: "pto"
         })
       });
@@ -2611,6 +2801,14 @@ async function claimOpenShift(shiftId) {
       $("mSub").textContent = `${it.dateLabel} • ${it.startLabel} • ${it.person}`;
       $("mNotes").value = it.notes || "";
       
+      // NEW: Reset make-up dates section
+      _managerMakeUpDates = [];
+      const makeUpCheckbox = document.getElementById('mRequireMakeUp');
+      const makeUpWrap = document.getElementById('mMakeUpDateWrap');
+      if (makeUpCheckbox) makeUpCheckbox.checked = false;
+      if (makeUpWrap) makeUpWrap.style.display = 'none';
+      renderManagerMakeUpDates();
+      
       // Check for current "OFF" status
       const isOff = it.notes && it.notes.includes("[OFF]");
       const btn = $("actionBtn");
@@ -2722,13 +2920,20 @@ async function claimOpenShift(shiftId) {
   local.notes = enhancedNotes;
   local.originalPerson = originalPerson; // Store for UI display
   renderView();
+  
+  // NEW: Collect make-up date information
+  const requireMakeUp = document.getElementById('mRequireMakeUp')?.checked || false;
+  const makeUpDates = requireMakeUp ? [..._managerMakeUpDates] : [];
+  
   const payload = {
     docId: _editing.docId,
     assignmentId: _editing.assignmentId,
     newPerson: newP,
     notes: enhancedNotes,
     notifyMode: notifyMode,
-    originalPerson: originalPerson // Send to backend for tracking
+    originalPerson: originalPerson, // Send to backend for tracking
+    requireMakeUp: requireMakeUp, // NEW: Flag indicating make-up is required
+    makeUpDates: makeUpDates // NEW: Array of suggested make-up dates
   };
   
   try {

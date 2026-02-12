@@ -2181,8 +2181,8 @@ if (path === "/base-schedule/save" && req.method === "POST") {
     if (path === "/timeoff/request" && req.method === "POST") {
       try {
         const body = readJsonBody(req);
-        // NEW: Extract 'team' from the body
-        const { person, reason, type, date, shiftStart, shiftEnd, duration, team, makeUpDate, dateRange } = body;
+        // NEW: Extract all fields including partial times
+        const { person, reason, type, date, shiftStart, shiftEnd, duration, team, makeUpDate, makeUpDates, dateRange, partialStart, partialEnd } = body;
         const typeKey = normalizeTimeOffType(type); 
         if (typeKey === "make_up" && !String(makeUpDate || "").trim()) {
         return res.status(400).json({ error: "Make Up Time requires a make-up date." });
@@ -2200,11 +2200,14 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           date: date || new Date().toISOString().split('T')[0],
           shiftStart: shiftStart || "",
           shiftEnd: shiftEnd || "",
-          duration: duration || "shift",
+          duration: duration || "full_shift",
           team: team || "",
           typeKey,                 // "make_up" or "pto" (stable for logic)
           makeUpDate: makeUpDate || "",
+          makeUpDates: makeUpDates || [], // NEW: Array of make-up dates
           dateRange: dateRange || null, // For multi-day requests
+          partialStart: partialStart || "", // NEW: Partial day start time
+          partialEnd: partialEnd || "", // NEW: Partial day end time
           createdAt: new Date().toISOString()
         };
         
@@ -2215,8 +2218,14 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           `${dateRange.start} to ${dateRange.end}` : 
           (date || new Date().toISOString().split('T')[0]);
         
-        // Build notification message with make-up date if applicable
+        // Build notification message with duration and make-up info
         let notifMessage = `${person} requested ${type || 'PTO'} for ${displayDate}`;
+        
+        // Add duration info for partial days
+        if (duration === 'partial' && partialStart && partialEnd) {
+          notifMessage += ` (${partialStart} - ${partialEnd})`;
+        }
+        
         if (typeKey === "make_up" && makeUpDate) {
           notifMessage += ` (Make-up date: ${makeUpDate})`;
         }
@@ -2231,6 +2240,10 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           dateRange: dateRange || null,
           timeOffType: type || "PTO",
           makeUpDate: makeUpDate || null,
+          makeUpDates: makeUpDates || [],
+          duration: duration,
+          partialStart: partialStart || null,
+          partialEnd: partialEnd || null,
           status: "pending",
           createdAt: new Date().toISOString(),
           read: false
@@ -2724,6 +2737,11 @@ if (path === "/audit/logs" && req.method === "GET") {
       const newPerson = String(body.newPerson || "").trim();
       const notes = String(body.notes || "").trim();
       const notifyMode = String(body.notifyMode || "defer").trim(); // "defer" | "send" | "silent"
+      
+      // NEW: Extract make-up date information
+      const requireMakeUp = body.requireMakeUp || false;
+      const makeUpDates = Array.isArray(body.makeUpDates) ? body.makeUpDates : [];
+      const originalPerson = String(body.originalPerson || "").trim();
 
       if (!docId || !assignmentId || !newPerson) {
         logWithTrace(traceId, 'error', 'assignment/replace', 'Missing required fields', { docId, assignmentId, newPerson });
@@ -2841,6 +2859,34 @@ if (notifyMode === "silent") notifyStatus = "None";
               docId,
               assignmentId,
               recipient: newPerson
+            });
+          }
+        }
+        
+        // NEW: If make-up is required, create a notification for the original person
+        if (requireMakeUp && originalPerson && makeUpDates.length > 0) {
+          const makeUpDatesStr = makeUpDates.join(', ');
+          try {
+            await db.collection("agent_notifications").add({
+              agentName: originalPerson,
+              type: "make_up_required",
+              message: `You need to make up hours for the shift on ${shiftData.date}. Suggested dates: ${makeUpDatesStr}`,
+              shiftDate: shiftData.date,
+              shiftTime: `${shiftData.start} - ${shiftData.end}`,
+              team: shiftData.team,
+              makeUpDates: makeUpDates,
+              status: "pending",
+              createdAt: toIsoNow(),
+              read: false
+            });
+            
+            logWithTrace(traceId, 'info', 'assignment/replace', 'Make-up notification created', {
+              originalPerson,
+              makeUpDates
+            });
+          } catch (notifErr) {
+            logWithTrace(traceId, 'warn', 'assignment/replace', 'Failed to create make-up notification', {
+              error: notifErr.message
             });
           }
         }
