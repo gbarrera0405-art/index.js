@@ -2191,6 +2191,18 @@ if (path === "/base-schedule/save" && req.method === "POST") {
         if (!person || !reason) return res.status(400).json({ error: "Missing fields" });
         const docRef = db.collection("time_off_requests").doc();
         
+        // Fetch current PTO balance
+        let currentBalance = 0;
+        try {
+          const balanceDoc = await db.collection("accrued_hours").doc(person).get();
+          if (balanceDoc.exists) {
+            const balanceData = balanceDoc.data();
+            currentBalance = parseFloat(balanceData.pto || 0);
+          }
+        } catch (balanceErr) {
+          console.warn(`Could not fetch balance for ${person}:`, balanceErr.message);
+        }
+        
         const requestData = {
           id: docRef.id,
           person: person,
@@ -2208,6 +2220,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           dateRange: dateRange || null, // For multi-day requests
           partialStart: partialStart || "", // NEW: Partial day start time
           partialEnd: partialEnd || "", // NEW: Partial day end time
+          currentBalance: currentBalance, // Store current balance at time of request
           createdAt: new Date().toISOString()
         };
         
