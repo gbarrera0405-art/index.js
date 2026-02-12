@@ -2544,19 +2544,58 @@ body.dark-mode .header .iconBtn:hover{
   color: var(--accent-primary) !important;
 }
 
+/* Type card styling for PTO request type selection */
+.type-card {
+  transition: all 0.2s ease;
+}
+
+.type-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.type-card:active {
+  transform: translateY(0);
+}
+
 /* Duration card styling for PTO requests */
+.duration-card {
+  transition: all 0.2s ease;
+}
+
 .duration-card:hover {
   background: #f8fafc !important;
   border-color: #cbd5e1 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.duration-card:active {
+  transform: translateY(0);
 }
 
 .duration-card input[type="radio"]:checked + div {
   color: #1e293b !important;
 }
 
+.duration-card input[type="radio"]:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 /* Partial time wrapper styling */
 #agPartialTimeWrap {
   animation: slideDown 0.2s ease;
+}
+
+#agPartialTimeWrap input[type="time"] {
+  transition: all 0.2s ease;
+}
+
+#agPartialTimeWrap input[type="time"]:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 @keyframes slideDown {
@@ -2577,6 +2616,30 @@ body.dark-mode .header .iconBtn:hover{
 
 #mMakeUpDateWrap {
   animation: fadeIn 0.3s ease;
+}
+
+#mMakeUpDateWrap input[type="date"] {
+  transition: all 0.2s ease;
+}
+
+#mMakeUpDateWrap input[type="date"]:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#mMakeUpDateWrap button {
+  transition: all 0.2s ease;
+}
+
+#mMakeUpDateWrap button:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+#mMakeUpDateWrap button:active {
+  transform: translateY(0);
 }
 
 @keyframes fadeIn {
