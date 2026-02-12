@@ -2549,3 +2549,49 @@ body.dark-mode .header .iconBtn:hover{
   border-color: var(--accent-primary) !important;
   color: var(--accent-primary) !important;
 }
+
+/* Duration card styling for PTO requests */
+.duration-card:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.duration-card input[type="radio"]:checked + div {
+  color: #1e293b !important;
+}
+
+/* Partial time wrapper styling */
+#agPartialTimeWrap {
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+/* Make-up section styling */
+#mMakeUpSection {
+  transition: all 0.2s ease;
+}
+
+#mMakeUpDateWrap {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

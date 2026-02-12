@@ -1454,6 +1454,7 @@ function showToast(message, type = 'info') {
     if (type === 'timeoff') {
         if($("agFormTimeOff")) $("agFormTimeOff").style.display = "block";
         updateTypeSelection();
+        updateDurationSelection(); // NEW: Initialize duration selection
         if($("agToReason")) {
             $("agToReason").value = "";
             $("agToReason").focus();
