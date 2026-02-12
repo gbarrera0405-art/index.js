@@ -1,7 +1,3 @@
-  color: var(--text-secondary, #64748b);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
 .agent-schedule-pill {
   font-size: 11px;
   font-weight: 700;
@@ -1496,8 +1492,6 @@ body.dark-mode .ticket-list-item {
 body.dark-mode .ticket-list-item:hover {
   background: var(--bg-secondary);
 }
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-}
 
 /* Shift Modal Hint */
 .shift-modal-hint {
@@ -2548,4 +2542,50 @@ body.dark-mode .header .iconBtn{
 body.dark-mode .header .iconBtn:hover{
   border-color: var(--accent-primary) !important;
   color: var(--accent-primary) !important;
+}
+
+/* Duration card styling for PTO requests */
+.duration-card:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.duration-card input[type="radio"]:checked + div {
+  color: #1e293b !important;
+}
+
+/* Partial time wrapper styling */
+#agPartialTimeWrap {
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+/* Make-up section styling */
+#mMakeUpSection {
+  transition: all 0.2s ease;
+}
+
+#mMakeUpDateWrap {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
