@@ -2212,7 +2212,7 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           date: date || new Date().toISOString().split('T')[0],
           shiftStart: shiftStart || "",
           shiftEnd: shiftEnd || "",
-          duration: duration || "full_shift",
+          duration: duration || "shift", // Keep "shift" as default for backward compatibility
           team: team || "",
           typeKey,                 // "make_up" or "pto" (stable for logic)
           makeUpDate: makeUpDate || "",
@@ -2879,14 +2879,15 @@ if (notifyMode === "silent") notifyStatus = "None";
         // NEW: If make-up is required, create a notification for the original person
         if (requireMakeUp && originalPerson && makeUpDates.length > 0) {
           const makeUpDatesStr = makeUpDates.join(', ');
+          const notificationDate = shiftData.date || docId.split("__")[0] || "Unknown date";
           try {
             await db.collection("agent_notifications").add({
               agentName: originalPerson,
               type: "make_up_required",
-              message: `You need to make up hours for the shift on ${shiftData.date}. Suggested dates: ${makeUpDatesStr}`,
-              shiftDate: shiftData.date,
-              shiftTime: `${shiftData.start} - ${shiftData.end}`,
-              team: shiftData.team,
+              message: `You need to make up hours for the shift on ${notificationDate}. Suggested dates: ${makeUpDatesStr}`,
+              shiftDate: notificationDate,
+              shiftTime: `${shiftData.start || 'Unknown'} - ${shiftData.end || 'Unknown'}`,
+              team: shiftData.team || "General",
               makeUpDates: makeUpDates,
               status: "pending",
               createdAt: toIsoNow(),

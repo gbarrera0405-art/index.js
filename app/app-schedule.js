@@ -1336,15 +1336,18 @@ function updateDurationSelection() {
     partialWrap.style.display = isPartial ? 'block' : 'none';
   }
   
-  // Calculate hours when times change
+  // Set up event listeners only once
+  const startInput = document.getElementById('agPartialStart');
+  const endInput = document.getElementById('agPartialEnd');
+  if (startInput && endInput && !startInput.dataset.listenerAttached) {
+    startInput.addEventListener('change', calculatePartialHours);
+    endInput.addEventListener('change', calculatePartialHours);
+    startInput.dataset.listenerAttached = 'true';
+    endInput.dataset.listenerAttached = 'true';
+  }
+  
   if (isPartial) {
-    const startInput = document.getElementById('agPartialStart');
-    const endInput = document.getElementById('agPartialEnd');
-    if (startInput && endInput) {
-      startInput.addEventListener('change', calculatePartialHours);
-      endInput.addEventListener('change', calculatePartialHours);
-      calculatePartialHours();
-    }
+    calculatePartialHours();
   }
 }
 
@@ -1371,12 +1374,17 @@ function calculatePartialHours() {
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
   
-  if (endMinutes <= startMinutes) {
-    display.innerHTML = '<span style="color: #ef4444;">⚠️ End time must be after start time</span>';
+  // Handle overnight shifts (end time is before start time)
+  let diffMinutes = endMinutes - startMinutes;
+  if (diffMinutes < 0) {
+    diffMinutes += 24 * 60; // Add 24 hours for overnight shifts
+  }
+  
+  if (diffMinutes === 0) {
+    display.innerHTML = '<span style="color: #ef4444;">⚠️ Start and end times cannot be the same</span>';
     return;
   }
   
-  const diffMinutes = endMinutes - startMinutes;
   const hours = Math.floor(diffMinutes / 60);
   const minutes = diffMinutes % 60;
   
@@ -2394,7 +2402,12 @@ async function saveWeeklyAssignments() {
     
     // NEW: Grab duration from radio
     const durationSelected = document.querySelector('input[name="timeOffDuration"]:checked');
-    const durationVal = durationSelected ? durationSelected.value : "full_shift";
+    let durationVal = durationSelected ? durationSelected.value : "full_shift";
+    
+    // Backward compatibility: map "full_shift" to "shift" for storage
+    if (durationVal === "full_shift") {
+      durationVal = "shift"; // Store as "shift" for backward compatibility
+    }
     
     // NEW: Get partial time if selected
     let partialStart = "";
@@ -2407,11 +2420,9 @@ async function saveWeeklyAssignments() {
         return toast("Please specify start and end times for partial day", "error");
       }
       
-      // Validate end time is after start time
-      const [startH, startM] = partialStart.split(':').map(Number);
-      const [endH, endM] = partialEnd.split(':').map(Number);
-      if ((endH * 60 + endM) <= (startH * 60 + startM)) {
-        return toast("End time must be after start time", "error");
+      // Validate that times are different (allow overnight shifts)
+      if (partialStart === partialEnd) {
+        return toast("Start and end times cannot be the same", "error");
       }
     }
 
@@ -2503,8 +2514,8 @@ async function saveWeeklyAssignments() {
           makeUpDates: makeUpDates, // Array of dates
           reason: reason,
           date: dateStr,
-          shiftStart: partialStart || sStart, // Use partial times if available
-          shiftEnd: partialEnd || sEnd,
+          shiftStart: sStart, // Keep original shift times
+          shiftEnd: sEnd,
           team: teamName, // <--- Sending Team Name
           duration: durationVal,
           partialStart: partialStart, // NEW: Send partial times separately
@@ -3872,6 +3883,11 @@ function updateAgentScheduleBanner() {
     
     // Clear the editing reference
     _editing = null;
+    
+    // NEW: Reset manager make-up dates to prevent data leakage
+    _managerMakeUpDates = [];
+    const makeUpCheckbox = document.getElementById('mRequireMakeUp');
+    if (makeUpCheckbox) makeUpCheckbox.checked = false;
     
     // ✅ Re-enable auto-refresh
     setEditingMode(false);
