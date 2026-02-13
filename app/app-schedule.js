@@ -380,8 +380,8 @@ async function regenerateAllSchedule() {
     title: '🔄 Regenerate Entire Schedule?',
     html: `
       <div style="text-align:left; padding:10px;">
-        <p style="font-weight:600; color:#1e293b;">This will:</p>
-        <ol style="font-size:13px; color:#64748b; margin-top:10px;">
+        <p style="font-weight:600; color:var(--text-primary);">This will:</p>
+        <ol style="font-size:13px; color:var(--text-secondary); margin-top:10px;">
           <li style="margin-bottom:8px;"><span style="color:#ef4444; font-weight:600;">DELETE</span> all scheduled shifts from today onwards</li>
           <li style="margin-bottom:8px;"><span style="color:#16a34a; font-weight:600;">GENERATE</span> fresh shifts from the Master Schedule template</li>
         </ol>
@@ -391,7 +391,7 @@ async function regenerateAllSchedule() {
         </div>
       </div>
       <div style="margin-top:15px;">
-        <label style="font-size:12px; font-weight:600; color:#64748b;">Days to Generate:</label>
+        <label style="font-size:12px; font-weight:600; color:var(--text-secondary);">Days to Generate:</label>
         <input type="number" id="regenDays" value="14" min="1" max="31" 
                style="width:80px; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-left:10px;">
       </div>
@@ -414,7 +414,7 @@ async function regenerateAllSchedule() {
     title: 'Regenerating Schedule...',
     html: `
       <div style="margin-bottom:10px;">Step 1: Wiping old schedule...</div>
-      <div style="font-size:12px; color:#64748b;">This may take a moment...</div>
+      <div style="font-size:12px; color:var(--text-secondary);">This may take a moment...</div>
     `,
     allowOutsideClick: false,
     showConfirmButton: false,
@@ -600,12 +600,12 @@ async function openTimeOffQueue() {
           deductAmount = parseTime(req.partialEnd) - parseTime(req.partialStart);
           if (deductAmount < 0) deductAmount += 24;
           deductAmount = Math.round(deductAmount * 100) / 100;
-          timeDisplay = `<div style="font-size:11px; color:#64748b; margin-top:2px;">${req.partialStart} - ${req.partialEnd} (${deductAmount} hrs)</div>`;
+          timeDisplay = `<div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">${req.partialStart} - ${req.partialEnd} (${deductAmount} hrs)</div>`;
       } else if (req.shiftStart && req.shiftEnd) {
           deductAmount = calcHours(req.shiftStart, req.shiftEnd);
           // Only use fallback if math returns 0
           if (deductAmount === 0) deductAmount = 4; 
-          timeDisplay = `<div style="font-size:11px; color:#64748b; margin-top:2px;">${req.shiftStart} - ${req.shiftEnd} (${deductAmount} hrs)</div>`;
+          timeDisplay = `<div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">${req.shiftStart} - ${req.shiftEnd} (${deductAmount} hrs)</div>`;
       } else {
           deductAmount = 4; 
       }
@@ -630,9 +630,9 @@ async function openTimeOffQueue() {
                Balance: <span id="bal-${req.id}">${bal}</span> hrs
             </div>
           </div>
-          <div style="font-size:13px; color:#334155; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:13px; color:var(--text-primary); margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
              <div style="margin-bottom:4px;">${typeBadge} <strong>${dateDisplay}</strong> ${timeDisplay}</div>
-             <div style="color:#64748b; font-style:italic;">"${req.reason || 'No reason provided'}"</div>
+             <div style="color:var(--text-secondary); font-style:italic;">"${req.reason || 'No reason provided'}"</div>
              ${makeUpLine}
           </div>
           <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -840,14 +840,14 @@ function deleteShift() {
         <div style="margin-bottom:8px;"><strong>📅 Day:</strong> ${day}</div>
         <div><strong>🕐 Time:</strong> ${toAmPm(origStart)} - ${toAmPm(origEnd)}</div>
       </div>
-      <div style="margin-top:12px; font-size:13px; color:#64748b;">
+      <div style="margin-top:12px; font-size:13px; color:var(--text-secondary);">
         This will permanently remove the shift from the live schedule.
       </div>
     `,
     icon: "warning",
     showCancelButton: true,
     confirmButtonColor: "#ef4444",
-    cancelButtonColor: "#64748b",
+    cancelButtonColor: "var(--text-secondary)",
     confirmButtonText: "🗑️ Yes, Delete It",
     cancelButtonText: "Cancel"
   }).then((result) => {
@@ -1179,14 +1179,14 @@ function deleteLiveShiftFromReplace() {
         <div style="margin-bottom:8px;"><strong>📅 Date:</strong> ${day}</div>
         <div><strong>🕐 Time:</strong> ${time}</div>
       </div>
-      <div style="margin-top:12px; font-size:13px; color:#64748b;">
+      <div style="margin-top:12px; font-size:13px; color:var(--text-secondary);">
         This will permanently remove the shift from the live schedule.
       </div>
     `,
     icon: "warning",
     showCancelButton: true,
     confirmButtonColor: "#ef4444",
-    cancelButtonColor: "#64748b",
+    cancelButtonColor: "var(--text-secondary)",
     confirmButtonText: "🗑️ Yes, Delete It",
     cancelButtonText: "Cancel"
   }).then((r) => {
@@ -1653,7 +1653,7 @@ async function executeClearEvents() {
             <ul style="margin:12px 0; padding-left:20px;">
               ${resultsHtml}
             </ul>
-            <p style="margin-top:12px; color:#64748b; font-size:14px;">
+            <p style="margin-top:12px; color:var(--text-secondary); font-size:14px;">
               Attendance scores will update automatically on next refresh.
             </p>
           </div>
@@ -1841,7 +1841,7 @@ function removeLcAgent(agent) {
 function renderLcAgentsChips() {
   const container = $("lcAgentsContainer");
   if (_currentLcAgents.length === 0) {
-    container.innerHTML = '<span style="color: #64748b; font-size: 10px; font-style: italic;">None assigned</span>';
+    container.innerHTML = '<span style="color: var(--text-secondary); font-size: 10px; font-style: italic;">None assigned</span>';
     return;
   }
   container.innerHTML = _currentLcAgents.map(agent => `

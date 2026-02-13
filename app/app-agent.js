@@ -1327,7 +1327,7 @@ async function applyBulkPto() {
     title: 'Confirm Bulk PTO',
     html: `<div style="text-align:center;">
       <p>Add <strong>${hours} hours</strong> to <strong>${activeAgents.length} agents</strong>?</p>
-      <p style="font-size:12px; color:#64748b; margin-top:8px;">${reason}</p>
+      <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">${reason}</p>
     </div>`,
     icon: 'question',
     showCancelButton: true,
@@ -3625,7 +3625,7 @@ function addMeetingFollowup() {
     html: `
       <div style="text-align: left; padding: 0 8px;">
         <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:#64748b;">Type</label>
+          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:var(--text-secondary);">Type</label>
           <select id="swal-meeting-type" style="width:100%; padding:12px; border:2px solid var(--border-color, #e2e8f0); border-radius:10px; font-size:14px; background:var(--input-bg, white); color:var(--text-primary, #1e293b);">
             <option value="meeting_missed">Meeting Missed</option>
             <option value="video_watched">Training Video Watched</option>
@@ -3634,11 +3634,11 @@ function addMeetingFollowup() {
           </select>
         </div>
         <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:#64748b;">Date</label>
+          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:var(--text-secondary);">Date</label>
           <input type="date" id="swal-meeting-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%; padding:12px; border:2px solid var(--border-color, #e2e8f0); border-radius:10px; font-size:14px; background:var(--input-bg, white); color:var(--text-primary, #1e293b); box-sizing:border-box;">
         </div>
         <div style="margin-bottom: 8px;">
-          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:#64748b;">Notes</label>
+          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:var(--text-secondary);">Notes</label>
           <textarea id="swal-meeting-notes" placeholder="Details..." style="width:100%; padding:12px; border:2px solid var(--border-color, #e2e8f0); border-radius:10px; font-size:14px; background:var(--input-bg, white); color:var(--text-primary, #1e293b); min-height:100px; resize:vertical; box-sizing:border-box;"></textarea>
         </div>
       </div>
