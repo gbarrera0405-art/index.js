@@ -233,14 +233,14 @@
         <option value="EST">Eastern (EST)</option>
       </select>
     </div>
-    <button class="compact-btn secondary" onclick="toggleAgentGoalsPanel()" style="background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); color: white; border-color: var(--modal-gradient-start);">🎯 My Goals</button>
+    <button class="compact-btn secondary" onclick="toggleAgentGoalsPanel()">🎯 My Goals</button>
     <button class="compact-btn secondary" onclick="agentLoadMoreSchedule()">📆 Load 30 Days</button>
     <button class="compact-btn secondary" onclick="openSwapShiftModal()">🔄 Swap Shift</button>
     <button class="compact-btn primary" onclick="openFutureTimeOffModal()">🏖️ Request Time Off</button>
   </div>
 </div>
 
-<!-- Agent Quick Actions (hidden, replaced by compact bar) -->
+<!-- Agent Quick Actions -->
 <div id="agentQuickActions" class="agent-toolbar">
   <!-- Schedule Range Info -->
   <div class="agent-toolbar-item range-info">
@@ -254,6 +254,16 @@
   <!-- Load More Button for Agents -->
   <button id="btnAgentLoadMore" class="agent-toolbar-btn secondary" onclick="agentLoadMoreSchedule()">
     📆 Load 30 Days
+  </button>
+  
+  <!-- Swap Shift -->
+  <button class="agent-toolbar-btn secondary" onclick="openSwapShiftModal()">
+    🔄 Swap Shift
+  </button>
+  
+  <!-- My Goals -->
+  <button class="agent-toolbar-btn secondary" onclick="toggleAgentGoalsPanel()">
+    🎯 My Goals
   </button>
   
   <!-- Future Time Off Request -->
@@ -1230,6 +1240,25 @@
         <div style="margin-bottom: 20px;">
           <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Notes</label>
           <textarea id="mNotes" placeholder="Add any notes about this change..." style="width: 100%; min-height: 84px; padding: 14px 16px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; font-size: 14px; color: var(--text-primary, #1e293b); background: var(--bg-secondary, #f8fafc); resize: vertical; font-family: inherit; transition: all 0.2s; box-sizing: border-box;"></textarea>
+        </div>
+        
+        <!-- Make-Up Date Section (Optional) -->
+        <div id="mMakeUpSection" style="margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="checkbox" id="mRequireMakeUp" onchange="toggleMakeUpDate()" style="width: 16px; height: 16px; accent-color: #b37e78; cursor: pointer;">
+            <label for="mRequireMakeUp" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;">Agent Needs to Make Up Hours</label>
+          </div>
+          <div id="mMakeUpDateWrap" style="display: none;">
+            <div style="padding: 12px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; margin-bottom: 8px;">
+              <div style="font-size: 11px; color: #92400e; font-weight: 600; margin-bottom: 4px;">💡 Make-Up Date Selection</div>
+              <div style="font-size: 10px; color: #78350f;">Agent will need to work these hours on another date. Choose suggested date(s):</div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <input type="date" id="mMakeUpDate" style="flex: 1; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+              <button type="button" onclick="addManagerMakeUpDate()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; font-size: 13px;">+ Add</button>
+            </div>
+            <div id="mMakeUpDatesList" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+          </div>
         </div>
         
         <!-- Quick Actions -->
@@ -2320,6 +2349,42 @@
             </label>
           </div>
         </div>
+        
+        <!-- Time Duration Selection -->
+        <div id="agTimeDurationWrap" style="margin-bottom:16px;">
+          <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Time Off Duration</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
+            <label class="duration-card" onclick="this.querySelector('input').checked=true; updateDurationSelection();" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; transition:all 0.2s;">
+              <input type="radio" name="timeOffDuration" value="full_shift" checked style="width:14px; height:14px; accent-color:#3b82f6;" onchange="updateDurationSelection()">
+              <div style="font-size:11px; font-weight:600; color:#1e293b; text-align:center;">Full Shift</div>
+            </label>
+            <label class="duration-card" onclick="this.querySelector('input').checked=true; updateDurationSelection();" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; transition:all 0.2s;">
+              <input type="radio" name="timeOffDuration" value="full_day" style="width:14px; height:14px; accent-color:#3b82f6;" onchange="updateDurationSelection()">
+              <div style="font-size:11px; font-weight:600; color:#1e293b; text-align:center;">Full Day</div>
+            </label>
+            <label class="duration-card" onclick="this.querySelector('input').checked=true; updateDurationSelection();" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; transition:all 0.2s;">
+              <input type="radio" name="timeOffDuration" value="partial" style="width:14px; height:14px; accent-color:#3b82f6;" onchange="updateDurationSelection()">
+              <div style="font-size:11px; font-weight:600; color:#1e293b; text-align:center;">Partial Day</div>
+            </label>
+          </div>
+          
+          <!-- Partial Time Selection (hidden by default) -->
+          <div id="agPartialTimeWrap" style="display:none; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+            <label style="display:block; font-size:10px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Specify Time Range</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <div>
+                <label style="display:block; font-size:10px; color:#64748b; margin-bottom:4px;">Start Time</label>
+                <input type="time" id="agPartialStart" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:10px; color:#64748b; margin-bottom:4px;">End Time</label>
+                <input type="time" id="agPartialEnd" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">
+              </div>
+            </div>
+            <div id="agPartialHoursDisplay" style="margin-top:8px; font-size:11px; color:#475569; font-weight:600; text-align:center;"></div>
+          </div>
+        </div>
+        
         <!-- Make Up Date(s) - supports multiple dates -->
         <div id="agMakeUpWrap" style="margin-bottom:16px;">
           <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:6px; text-transform:uppercase;">Make Up Date(s)</label>
@@ -2328,6 +2393,61 @@
             <button type="button" onclick="addMakeUpDate()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">+ Add</button>
           </div>
           <div id="makeUpDatesList" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+          
+          <!-- Make Up Time Selection -->
+          <div style="margin-top:10px; padding:12px; background:#f0fdf4; border-radius:8px; border:1px solid #bbf7d0;">
+            <label style="display:block; font-size:10px; font-weight:700; color:#15803d; margin-bottom:6px; text-transform:uppercase;">Make Up Time</label>
+            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center;">
+              <div>
+                <label style="display:block; font-size:10px; color:#64748b; margin-bottom:4px;">From</label>
+                <select id="agMakeUpTimeStart" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; box-sizing:border-box; background:white;">
+                  <option value="">Select time</option>
+                  <option value="06:00">6:00 AM</option>
+                  <option value="07:00">7:00 AM</option>
+                  <option value="08:00">8:00 AM</option>
+                  <option value="09:00">9:00 AM</option>
+                  <option value="10:00">10:00 AM</option>
+                  <option value="11:00">11:00 AM</option>
+                  <option value="12:00">12:00 PM</option>
+                  <option value="13:00">1:00 PM</option>
+                  <option value="14:00">2:00 PM</option>
+                  <option value="15:00">3:00 PM</option>
+                  <option value="16:00">4:00 PM</option>
+                  <option value="17:00">5:00 PM</option>
+                  <option value="18:00">6:00 PM</option>
+                  <option value="19:00">7:00 PM</option>
+                  <option value="20:00">8:00 PM</option>
+                  <option value="21:00">9:00 PM</option>
+                  <option value="22:00">10:00 PM</option>
+                </select>
+              </div>
+              <div style="color:#15803d; font-weight:600; padding-top:18px;">→</div>
+              <div>
+                <label style="display:block; font-size:10px; color:#64748b; margin-bottom:4px;">Until</label>
+                <select id="agMakeUpTimeEnd" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; box-sizing:border-box; background:white;">
+                  <option value="">Select time</option>
+                  <option value="07:00">7:00 AM</option>
+                  <option value="08:00">8:00 AM</option>
+                  <option value="09:00">9:00 AM</option>
+                  <option value="10:00">10:00 AM</option>
+                  <option value="11:00">11:00 AM</option>
+                  <option value="12:00">12:00 PM</option>
+                  <option value="13:00">1:00 PM</option>
+                  <option value="14:00">2:00 PM</option>
+                  <option value="15:00">3:00 PM</option>
+                  <option value="16:00">4:00 PM</option>
+                  <option value="17:00">5:00 PM</option>
+                  <option value="18:00">6:00 PM</option>
+                  <option value="19:00">7:00 PM</option>
+                  <option value="20:00">8:00 PM</option>
+                  <option value="21:00">9:00 PM</option>
+                  <option value="22:00">10:00 PM</option>
+                </select>
+              </div>
+            </div>
+            <div id="agMakeUpHoursCalc" style="text-align:center; margin-top:6px; font-size:11px; color:#15803d; font-weight:600;"></div>
+          </div>
+          
           <div style="font-size: 10px; color: #94a3b8; margin-top: 6px;">💡 Add multiple dates if you need to spread make-up time across several days</div>
         </div>
         <!-- Reason -->
@@ -2403,10 +2523,129 @@
         </div>
       </div>
       
+      <!-- Duration Toggle: Full Day vs Partial Day -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Duration</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <label id="futureDurationFull" onclick="selectFutureTimeOffDuration('full')" style="
+            display:flex; 
+            align-items:center; 
+            gap:10px; 
+            padding:12px; 
+            border:2px solid #b37e78; 
+            border-radius:12px; 
+            cursor:pointer;
+            background:#fbf6f5;
+            transition: all 0.2s;
+          ">
+            <input type="radio" name="futureToDuration" value="full_day" checked style="width:16px; height:16px; accent-color:#b37e78;">
+            <div>
+              <div style="font-size:13px; font-weight:700; color:#8f5f5a;">📅 Full Day</div>
+              <div style="font-size:10px; color:#b37e78;">Entire shift off</div>
+            </div>
+          </label>
+          <label id="futureDurationPartial" onclick="selectFutureTimeOffDuration('partial')" style="
+            display:flex; 
+            align-items:center; 
+            gap:10px; 
+            padding:12px; 
+            border:2px solid #e2e8f0; 
+            border-radius:12px; 
+            cursor:pointer;
+            background:white;
+            transition: all 0.2s;
+          ">
+            <input type="radio" name="futureToDuration" value="partial" style="width:16px; height:16px; accent-color:#7c3aed;">
+            <div>
+              <div style="font-size:13px; font-weight:700; color:#1e293b;">⏰ Partial Day</div>
+              <div style="font-size:10px; color:#64748b;">Leave early / come late</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Partial Day Time Selection (hidden by default) -->
+      <div id="futurePartialWrap" style="display:none; margin-bottom:20px;">
+        <label style="display:block; font-size:12px; font-weight:700; color:#7c3aed; margin-bottom:8px; text-transform:uppercase;">Hours Off</label>
+        <div style="
+          padding:16px;
+          background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+          border-radius:12px;
+          border:2px solid #c4b5fd;
+        ">
+          <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
+            <div>
+              <label style="font-size:10px; color:#7c3aed; display:block; margin-bottom:4px; font-weight:600;">Off From</label>
+              <select id="futurePartialStart" style="
+                width:100%; 
+                padding:10px; 
+                border:2px solid #c4b5fd; 
+                border-radius:10px; 
+                font-size:13px;
+                background:white;
+                box-sizing:border-box;
+              ">
+                <option value="">Select time</option>
+                <option value="06:00">6:00 AM</option>
+                <option value="07:00">7:00 AM</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="19:00">7:00 PM</option>
+                <option value="20:00">8:00 PM</option>
+                <option value="21:00">9:00 PM</option>
+                <option value="22:00">10:00 PM</option>
+              </select>
+            </div>
+            <div style="color:#7c3aed; font-weight:600; padding-top:20px;">→</div>
+            <div>
+              <label style="font-size:10px; color:#7c3aed; display:block; margin-bottom:4px; font-weight:600;">Off Until</label>
+              <select id="futurePartialEnd" style="
+                width:100%; 
+                padding:10px; 
+                border:2px solid #c4b5fd; 
+                border-radius:10px; 
+                font-size:13px;
+                background:white;
+                box-sizing:border-box;
+              ">
+                <option value="">Select time</option>
+                <option value="07:00">7:00 AM</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="19:00">7:00 PM</option>
+                <option value="20:00">8:00 PM</option>
+                <option value="21:00">9:00 PM</option>
+                <option value="22:00">10:00 PM</option>
+                <option value="end">End of shift</option>
+              </select>
+            </div>
+          </div>
+          <div id="futurePartialHoursCalc" style="text-align:center; margin-top:10px; font-size:12px; color:#7c3aed; font-weight:600;"></div>
+        </div>
+      </div>
+      
       <!-- Date Range Selection -->
       <div style="margin-bottom:20px;">
         <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Date Range</label>
-        <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
+        <div id="futureDateRangeGrid" style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
           <div>
             <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:4px;">Start Date</label>
             <input type="date" id="futureToDateStart" style="
@@ -2418,8 +2657,8 @@
               box-sizing:border-box;
             ">
           </div>
-          <div style="color:#94a3b8; font-weight:600; padding-top:20px;">→</div>
-          <div>
+          <div id="futureDateArrow" style="color:#94a3b8; font-weight:600; padding-top:20px;">→</div>
+          <div id="futureDateEndWrap">
             <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:4px;">End Date</label>
             <input type="date" id="futureToDateEnd" style="
               width:100%; 
@@ -2500,6 +2739,77 @@
           ">+ Add Date</button>
         </div>
         <div id="futureMakeUpDatesList" style="display:flex; flex-wrap:wrap; gap:6px; min-height:24px;"></div>
+        
+        <!-- Make Up Time Selection -->
+        <div style="margin-top:12px; padding:14px; background:linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius:12px; border:2px solid #86efac;">
+          <label style="display:block; font-size:11px; font-weight:700; color:#15803d; margin-bottom:8px; text-transform:uppercase;">Make Up Time</label>
+          <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
+            <div>
+              <label style="font-size:10px; color:#15803d; display:block; margin-bottom:4px; font-weight:600;">From</label>
+              <select id="futureToMakeUpTimeStart" style="
+                width:100%; 
+                padding:10px; 
+                border:2px solid #86efac; 
+                border-radius:10px; 
+                font-size:13px;
+                background:white;
+                box-sizing:border-box;
+              ">
+                <option value="">Select time</option>
+                <option value="06:00">6:00 AM</option>
+                <option value="07:00">7:00 AM</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="19:00">7:00 PM</option>
+                <option value="20:00">8:00 PM</option>
+                <option value="21:00">9:00 PM</option>
+                <option value="22:00">10:00 PM</option>
+              </select>
+            </div>
+            <div style="color:#15803d; font-weight:600; padding-top:20px;">→</div>
+            <div>
+              <label style="font-size:10px; color:#15803d; display:block; margin-bottom:4px; font-weight:600;">Until</label>
+              <select id="futureToMakeUpTimeEnd" style="
+                width:100%; 
+                padding:10px; 
+                border:2px solid #86efac; 
+                border-radius:10px; 
+                font-size:13px;
+                background:white;
+                box-sizing:border-box;
+              ">
+                <option value="">Select time</option>
+                <option value="07:00">7:00 AM</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="19:00">7:00 PM</option>
+                <option value="20:00">8:00 PM</option>
+                <option value="21:00">9:00 PM</option>
+                <option value="22:00">10:00 PM</option>
+              </select>
+            </div>
+          </div>
+          <div id="futureToMakeUpHoursCalc" style="text-align:center; margin-top:8px; font-size:12px; color:#15803d; font-weight:600;"></div>
+        </div>
+        
         <div style="font-size:11px; color:#64748b; margin-top:6px;">📝 Add one or more dates when you'll make up these hours</div>
       </div>
       
@@ -2816,6 +3126,57 @@
 </div>
 
 
+
+
+
+<!-- Batch Fill Coverage Modal -->
+<div id="batchFillModal" style="
+  display:none;
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.5);
+  z-index:15000;
+  justify-content:center;
+  align-items:center;
+" onclick="if(event.target===this) closeBatchFillModal()">
+  <div style="
+    background:white;
+    border-radius:20px;
+    width:600px;
+    max-width:95%;
+    max-height:85vh;
+    overflow-y:auto;
+    box-shadow:0 25px 80px rgba(0,0,0,0.35);
+  ">
+    <!-- Header -->
+    <div style="
+      padding:20px 24px;
+      background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+      border-radius:20px 20px 0 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    ">
+      <div style="font-weight:700; font-size:18px; color:white;">⚡ Quick Fill Coverage</div>
+      <button onclick="closeBatchFillModal()" style="background:rgba(255,255,255,0.2); border:none; font-size:18px; cursor:pointer; color:white; width:32px; height:32px; border-radius:8px;">&times;</button>
+    </div>
+    
+    <div style="padding:24px;">
+      <p style="font-size:13px; color:#64748b; margin:0 0 16px 0;">Assign replacements for all gaps at once. Select who should cover each open slot.</p>
+      <div id="batchFillContent">
+        <!-- Populated by JS -->
+      </div>
+      
+      <!-- Actions -->
+      <div style="display:flex; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid #e2e8f0;">
+        <button onclick="closeBatchFillModal()" style="flex:1; padding:12px; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; border-radius:10px; font-weight:600; cursor:pointer;">Cancel</button>
+        <button id="batchFillSubmitBtn" onclick="submitBatchFill()" style="flex:2; padding:12px; background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color:white; border:none; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(220,38,38,0.3);">
+          ⚡ Assign All →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 
