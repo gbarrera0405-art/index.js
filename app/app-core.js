@@ -1920,6 +1920,64 @@ function setEditingMode(isEditing) {
     try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
   };
   
+  // ============================================
+  // GLOBAL ACCESSIBILITY: ESCAPE KEY HANDLER
+  // Closes the topmost visible modal when Escape is pressed
+  // ============================================
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+      // Find all visible modals/overlays
+      const overlays = document.querySelectorAll('.overlay, .modal-overlay, #authOverlay, #editShiftModal');
+      let topmostOverlay = null;
+      let topmostZIndex = -1;
+      
+      overlays.forEach(overlay => {
+        const display = window.getComputedStyle(overlay).display;
+        if (display !== 'none') {
+          const zIndex = parseInt(window.getComputedStyle(overlay).zIndex) || 0;
+          if (zIndex > topmostZIndex) {
+            topmostZIndex = zIndex;
+            topmostOverlay = overlay;
+          }
+        }
+      });
+      
+      // Close the topmost modal by triggering its close function
+      if (topmostOverlay) {
+        const modalId = topmostOverlay.id;
+        
+        // Map of modal IDs to their close functions
+        const closeHandlers = {
+          'authOverlay': null, // Don't allow closing auth overlay with Escape
+          'modalOverlay': () => typeof closeModal === 'function' && closeModal(),
+          'editShiftModal': () => typeof closeModal === 'function' && closeModal(),
+          'holidayModal': () => typeof closeHolidayModal === 'function' && closeHolidayModal(),
+          'profileOverlay': () => typeof closeProfile === 'function' && closeProfile(),
+          'masterOverlay': () => typeof closeMasterModal === 'function' && closeMasterModal(),
+          'pickerOverlay': () => typeof closePicker === 'function' && closePicker(),
+          'adminOverlay': () => typeof closeAdminModal === 'function' && closeAdminModal(),
+          'staffingModal': () => typeof closeStaffingModal === 'function' && closeStaffingModal(),
+          'clearEventsModal': () => typeof closeClearEventsModal === 'function' && closeClearEventsModal(),
+          'auditOverlay': () => typeof closeAuditModal === 'function' && closeAuditModal(),
+          'masterContextOverlay': () => {}, // No close function, but shouldn't close anyway
+          'meetingRotationModal': () => typeof closeMeetingRotationModal === 'function' && closeMeetingRotationModal(),
+          'weeklyAssignmentsModal': () => typeof closeWeeklyAssignmentsModal === 'function' && closeWeeklyAssignmentsModal(),
+          'agentGoalsModal': () => typeof closeAgentGoalsModal === 'function' && closeAgentGoalsModal(),
+          'openShiftsModal': () => typeof closeOpenShiftsModal === 'function' && closeOpenShiftsModal(),
+          'fillShiftModal': () => typeof closeFillShiftModal === 'function' && closeFillShiftModal(),
+          'futureTimeOffModal': () => typeof closeFutureTimeOffModal === 'function' && closeFutureTimeOffModal(),
+          'meetingRotationAckModal': () => typeof closeMeetingRotationAckModal === 'function' && closeMeetingRotationAckModal(),
+          'batchFillModal': () => typeof closeBatchFillModal === 'function' && closeBatchFillModal()
+        };
+        
+        if (closeHandlers[modalId] && closeHandlers[modalId] !== null) {
+          closeHandlers[modalId]();
+          e.preventDefault();
+        }
+      }
+    }
+  });
+  
   // ✅ NEW: Track user activity to keep session alive
   function setupSessionActivityTracking() {
     const activityEvents = ['click', 'keypress', 'scroll', 'touchstart'];
