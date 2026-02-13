@@ -1431,7 +1431,23 @@ async function checkLockStatus(resourceType, resourceId) {
 }
 
 function formatLockExpiry(expiresAt) {
-  const remaining = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+  if (!expiresAt) return 'soon';
+  
+  // Handle Firestore Timestamp objects
+  let expiryMs;
+  if (typeof expiresAt === 'object' && expiresAt._seconds) {
+    expiryMs = expiresAt._seconds * 1000;
+  } else if (typeof expiresAt === 'number') {
+    // Could be seconds or milliseconds — if it's too small to be ms, treat as seconds
+    expiryMs = expiresAt < 1e12 ? expiresAt * 1000 : expiresAt;
+  } else {
+    expiryMs = new Date(expiresAt).getTime();
+  }
+  
+  if (isNaN(expiryMs)) return 'soon';
+  
+  const remaining = Math.max(0, Math.floor((expiryMs - Date.now()) / 1000));
+  if (remaining <= 0) return 'any moment';
   return `${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`;
 }
 
@@ -1445,7 +1461,16 @@ function showLockBanner(container, lockData) {
   const expiresEl = banner.querySelector('.lock-expires');
   const updateInterval = setInterval(() => {
     expiresEl.textContent = `expires in ${formatLockExpiry(lockData.expiresAt)}`;
-    if (new Date(lockData.expiresAt).getTime() <= Date.now()) {
+    // Check if lock has expired using the same logic as formatLockExpiry
+    let expiryMs;
+    if (lockData.expiresAt && typeof lockData.expiresAt === 'object' && lockData.expiresAt._seconds) {
+      expiryMs = lockData.expiresAt._seconds * 1000;
+    } else if (lockData.expiresAt && typeof lockData.expiresAt === 'number') {
+      expiryMs = lockData.expiresAt < 1e12 ? lockData.expiresAt * 1000 : lockData.expiresAt;
+    } else if (lockData.expiresAt) {
+      expiryMs = new Date(lockData.expiresAt).getTime();
+    }
+    if (expiryMs && !isNaN(expiryMs) && expiryMs <= Date.now()) {
       clearInterval(updateInterval);
       banner.remove();
     }

@@ -7219,12 +7219,14 @@ function masterStartEdit() {
   acquireEditLock('master', 'template').then(result => {
     if (!result.acquired) {
       // Show who has the lock
+      const lockHolder = result.lock?.lockedByName || 'another manager';
+      const expiryText = result.lock?.expiresAt ? `Lock expires in ${formatLockExpiry(result.lock.expiresAt)}` : '';
       Swal.fire({
         icon: 'warning',
         title: 'Master Schedule Locked',
-        html: `<p>The master schedule is currently being edited by <strong>${escapeHtml(result.lock?.lockedByName || 'another manager')}</strong>.</p>
+        html: `<p>The master schedule is currently being edited by <strong>${escapeHtml(lockHolder)}</strong>.</p>
                <p>Please wait until they finish or try again later.</p>
-               <p style="font-size:12px;color:#64748b;">Lock expires in ${formatLockExpiry(result.lock?.expiresAt)}</p>`,
+               ${expiryText ? `<p style="font-size:12px;color:var(--text-secondary, #64748b);">${expiryText}</p>` : ''}`,
         confirmButtonText: 'OK',
         confirmButtonColor: '#b37e78'
       });
