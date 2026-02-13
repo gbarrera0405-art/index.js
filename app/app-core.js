@@ -1869,16 +1869,81 @@ function showNewNotificationIndicator(count) {
 }
 
 // ✅ Mark editing mode on/off to prevent disruption
+// ✅ Idle timeout for edit mode — auto-cancels after 10 minutes of inactivity
+let _editIdleTimer = null;
+let _editIdleWarningTimer = null;
+const EDIT_IDLE_TIMEOUT = 10 * 60 * 1000;    // 10 minutes total
+const EDIT_IDLE_WARNING = 8 * 60 * 1000;     // Warn at 8 minutes
+
+function _resetEditIdleTimer() {
+  if (!_isEditingSchedule) return;
+  
+  // Clear existing timers
+  if (_editIdleWarningTimer) clearTimeout(_editIdleWarningTimer);
+  if (_editIdleTimer) clearTimeout(_editIdleTimer);
+  
+  // Warning at 8 minutes
+  _editIdleWarningTimer = setTimeout(() => {
+    if (!_isEditingSchedule) return;
+    Swal.fire({
+      icon: 'info',
+      title: 'Still editing?',
+      html: `<p>You've been idle for a while. Edit mode will <strong>auto-cancel in 2 minutes</strong> to free the lock for other managers.</p>`,
+      confirmButtonText: 'Keep Editing',
+      confirmButtonColor: '#b37e78',
+      showCancelButton: true,
+      cancelButtonText: 'Cancel Editing',
+      cancelButtonColor: '#64748b',
+      timer: 120000,
+      timerProgressBar: true
+    }).then(result => {
+      if (result.isConfirmed) {
+        _resetEditIdleTimer(); // User is active, restart timer
+      } else {
+        // Timer expired or user chose cancel — release lock
+        if (typeof masterCancelDraft === 'function') {
+          masterCancelDraft();
+          toast('Edit mode auto-cancelled due to inactivity.', 'info');
+        }
+      }
+    });
+  }, EDIT_IDLE_WARNING);
+  
+  // Hard cancel at 10 minutes
+  _editIdleTimer = setTimeout(() => {
+    if (!_isEditingSchedule) return;
+    Swal.close(); // Close any open SweetAlert (the warning)
+    if (typeof masterCancelDraft === 'function') {
+      masterCancelDraft();
+      toast('Edit mode auto-cancelled due to inactivity.', 'info');
+    }
+  }, EDIT_IDLE_TIMEOUT);
+}
+
+function _clearEditIdleTimer() {
+  if (_editIdleWarningTimer) { clearTimeout(_editIdleWarningTimer); _editIdleWarningTimer = null; }
+  if (_editIdleTimer) { clearTimeout(_editIdleTimer); _editIdleTimer = null; }
+  // Remove activity listeners
+  ['click', 'keydown', 'input', 'scroll'].forEach(evt =>
+    document.removeEventListener(evt, _resetEditIdleTimer)
+  );
+}
+
 function setEditingMode(isEditing) {
   _isEditingSchedule = isEditing;
   window.__editModeActive = isEditing;
   
   if (isEditing) {
-    console.log("[Edit Mode] Enabled - auto-refresh paused");
+    console.log("[Edit Mode] Enabled - auto-refresh paused, idle timer started");
+    // Listen for user activity to reset idle timer
+    ['click', 'keydown', 'input', 'scroll'].forEach(evt =>
+      document.addEventListener(evt, _resetEditIdleTimer)
+    );
+    _resetEditIdleTimer();
   } else {
     console.log("[Edit Mode] Disabled - auto-refresh resumed");
+    _clearEditIdleTimer();
     
-    // Check for pending refresh when editing ends
     if (window.__pendingRefresh) {
       showPendingUpdatesBanner();
     }

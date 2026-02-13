@@ -7214,33 +7214,68 @@ async function clearNotifications() {
   });
 }
 
-function masterStartEdit() {
+async function masterStartEdit() {
   // Acquire master schedule lock before editing
-  acquireEditLock('master', 'template').then(result => {
-    if (!result.acquired) {
-      // Show who has the lock
-      const lockHolder = result.lock?.lockedByName || 'another manager';
-      const expiryText = result.lock?.expiresAt ? `Lock expires in ${formatLockExpiry(result.lock.expiresAt)}` : '';
-      Swal.fire({
-        icon: 'warning',
-        title: 'Master Schedule Locked',
-        html: `<p>The master schedule is currently being edited by <strong>${escapeHtml(lockHolder)}</strong>.</p>
-               <p>Please wait until they finish or try again later.</p>
-               ${expiryText ? `<p style="font-size:12px;color:var(--text-secondary, #64748b);">${expiryText}</p>` : ''}`,
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#b37e78'
-      });
-      return;
-    }
+  const result = await acquireEditLock('master', 'template');
+  
+  if (!result.acquired) {
+    const lockHolder = result.lock?.lockedByName || 'another manager';
+    const expiryText = result.lock?.expiresAt
+      ? `Lock expires in ${formatLockExpiry(result.lock.expiresAt)}`
+      : '';
     
-    // Successfully acquired lock - start editing
-    if (!_masterOriginalData) _masterOriginalData = deepClone(_masterRawData || {});
-    if (!_masterDraftData) _masterDraftData = deepClone(_masterRawData || {});
-    _masterEditEnabled = true;
-    _masterRawData = _masterDraftData;
-    setEditingMode(true);
-    renderMasterView(_masterRawData);
-  });
+    const lockAge = result.lock?.lockedAt
+      ? Math.floor((Date.now() - new Date(result.lock.lockedAt).getTime()) / 60000)
+      : null;
+    
+    // If lock has been held for more than 5 minutes, offer force-take
+    const showForceTake = lockAge !== null && lockAge >= 5;
+    
+    const swalResult = await Swal.fire({
+      icon: 'warning',
+      title: 'Master Schedule Locked',
+      html: `<p>The master schedule is currently being edited by <strong>${escapeHtml(lockHolder)}</strong>.</p>
+             <p>Please wait until they finish or try again later.</p>
+             ${expiryText ? `<p style="font-size:12px;color:var(--text-secondary, #64748b);">${expiryText}</p>` : ''}
+             ${lockAge !== null ? `<p style="font-size:12px;color:var(--text-secondary, #64748b);">Lock held for ~${lockAge} minute${lockAge !== 1 ? 's' : ''}</p>` : ''}
+             ${showForceTake ? `<p style="font-size:11px;margin-top:8px;color:var(--text-tertiary, #94a3b8);">Lock has been held for over 5 minutes. You may take over if the other manager is idle.</p>` : ''}`,
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#b37e78',
+      showDenyButton: showForceTake,
+      denyButtonText: '🔓 Take Over Editing',
+      denyButtonColor: '#ef4444'
+    });
+    
+    if (swalResult.isDenied && showForceTake) {
+      // Force-release the stale lock, then re-acquire
+      try {
+        await fetch('./?action=locks/force-release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resourceType: 'master',
+            resourceId: 'template',
+            forcedByEmail: window._myEmail || '',
+            forcedByName: window._myName || ''
+          })
+        });
+        // Now try to acquire again
+        masterStartEdit();
+      } catch (err) {
+        console.error('[Lock] Force-take failed:', err);
+        toast('Failed to take over the lock. Try again.', 'error');
+      }
+    }
+    return;
+  }
+  
+  // Successfully acquired lock - start editing
+  if (!_masterOriginalData) _masterOriginalData = deepClone(_masterRawData || {});
+  if (!_masterDraftData) _masterDraftData = deepClone(_masterRawData || {});
+  _masterEditEnabled = true;
+  _masterRawData = _masterDraftData;
+  setEditingMode(true);
+  renderMasterView(_masterRawData);
 }
 
 async function masterCancelDraft() {

@@ -3740,6 +3740,36 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
       }
     }
 
+    // POST /locks/force-release - Force-release a lock (for stale lock takeover)
+    if (path === "/locks/force-release" && req.method === "POST") {
+      try {
+        const body = readJsonBody(req);
+        const { resourceType, resourceId, forcedByEmail, forcedByName } = body;
+        
+        if (!resourceType || !resourceId) {
+          return res.status(400).json({ error: "Missing required fields: resourceType, resourceId" });
+        }
+        
+        const lockId = getLockId(resourceType, resourceId);
+        const lockRef = db.collection("locks").doc(lockId);
+        const lockSnap = await lockRef.get();
+        
+        if (lockSnap.exists) {
+          const oldLock = lockSnap.data();
+          logWithTrace(traceId, 'info', 'locks/force-release', 
+            `Force-release by ${forcedByName} (${forcedByEmail}) — was held by ${oldLock.lockedByName} (${oldLock.lockedByEmail}) since ${oldLock.lockedAt}`
+          );
+          await lockRef.delete();
+        }
+        
+        return res.status(200).json({ ok: true, released: true, forced: true });
+        
+      } catch (err) {
+        logWithTrace(traceId, 'error', 'locks/force-release', 'Error force-releasing lock', { error: err.message });
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
     // GET /locks/status - Get current lock status
     if (path === "/locks/status" && req.method === "GET") {
       try {
