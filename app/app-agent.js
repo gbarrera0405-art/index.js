@@ -333,7 +333,8 @@ function closeFutureTimeOffModal() {
   if (modal) modal.style.display = "none";
 }
 
-async function submitFutureTimeOff() {
+async function submitFutureTimeOff(event) {
+  const button = event?.currentTarget || event?.target;
   const startDate = $("futureToDateStart")?.value;
   const endDate = $("futureToDateEnd")?.value;
   const typeRadio = document.querySelector('input[name="futureToType"]:checked');
@@ -406,108 +407,110 @@ async function submitFutureTimeOff() {
   const makeUpTimeStartVal = type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "";
   const makeUpTimeEndVal = type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "";
   
-  try {
-    Swal.fire({
-      title: 'Submitting...',
-      text: `Requesting ${dates.length} day${dates.length > 1 ? 's' : ''} off${partialDesc}`,
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      didOpen: () => Swal.showLoading()
-    });
-    
-    // Submit each date as a separate request
-    let successCount = 0;
-    let errors = [];
-    
-    for (const date of dates) {
-      try {
-        const res = await fetch('./?action=timeoff/request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            person: window._myName,
-            date: date,
-            type: type,
-            typeKey: type.toLowerCase().replace(" ", "_"),
-            duration: duration,
-            reason: reason + partialDesc,
-            makeUpDate: type === "Make Up" ? makeUpDatesStr : null,
-            makeUpDates: type === "Make Up" ? _futureMakeUpDates : [],
-            makeUpTimeStart: type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "",
-            makeUpTimeEnd: type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "",
-            shiftStart: null,
-            shiftEnd: null,
-            team: null,
-            partialStart: duration === "partial" ? partialStart : "",
-            partialEnd: duration === "partial" ? partialEnd : ""
-          })
-        });
-        
-        const data = await res.json();
-        if (data.ok) {
-          successCount++;
-        } else {
-          errors.push(`${date}: ${data.error || 'Unknown error'}`);
+  await withLoadingButton(button, async () => {
+    try {
+      Swal.fire({
+        title: 'Submitting...',
+        text: `Requesting ${dates.length} day${dates.length > 1 ? 's' : ''} off${partialDesc}`,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+      
+      // Submit each date as a separate request
+      let successCount = 0;
+      let errors = [];
+      
+      for (const date of dates) {
+        try {
+          const res = await fetch('./?action=timeoff/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              person: window._myName,
+              date: date,
+              type: type,
+              typeKey: type.toLowerCase().replace(" ", "_"),
+              duration: duration,
+              reason: reason + partialDesc,
+              makeUpDate: type === "Make Up" ? makeUpDatesStr : null,
+              makeUpDates: type === "Make Up" ? _futureMakeUpDates : [],
+              makeUpTimeStart: type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "",
+              makeUpTimeEnd: type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "",
+              shiftStart: null,
+              shiftEnd: null,
+              team: null,
+              partialStart: duration === "partial" ? partialStart : "",
+              partialEnd: duration === "partial" ? partialEnd : ""
+            })
+          });
+          
+          const data = await res.json();
+          if (data.ok) {
+            successCount++;
+          } else {
+            errors.push(`${date}: ${data.error || 'Unknown error'}`);
+          }
+        } catch (err) {
+          errors.push(`${date}: ${err.message}`);
         }
-      } catch (err) {
-        errors.push(`${date}: ${err.message}`);
       }
-    }
-    
-    closeFutureTimeOffModal();
-    
-    if (successCount === dates.length) {
-      const _fd = (d) => { try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); } catch(e){return d;} };
-      const _dateDisp = dates.length === 1 ? _fd(dates[0]) : _fd(dates[0]) + ' – ' + _fd(dates[dates.length-1]);
-      const _muDisp = _futureMakeUpDates.map(d => _fd(d)).join(', ');
-      Swal.fire({
-        icon: 'success',
-        title: 'Request Submitted!',
-        html: `<div style="text-align:left; font-size:14px; line-height:1.7;">
-          <div style="padding:14px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac; margin-bottom:12px;">
-            <div style="font-weight:700; color:#15803d; margin-bottom:4px;">📅 Time Off</div>
-            <div style="color:#166534;">${_dateDisp}</div>
-            ${isPartial ? `<div style="color:#7c3aed; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(partialStart)} – ${partialEnd === 'end' ? 'End of shift' : formatTimeAmPm(partialEnd)}</div>` : ''}
-          </div>
-          ${type === "Make Up" ? `
-          <div style="padding:14px; background:#eff6ff; border-radius:10px; border:1px solid #93c5fd; margin-bottom:12px;">
-            <div style="font-weight:700; color:#1d4ed8; margin-bottom:4px;">🔄 Make Up Schedule</div>
-            <div style="color:#1e40af;">${_muDisp}</div>
-            ${makeUpTimeStartVal && makeUpTimeEndVal ? `<div style="color:#2563eb; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(makeUpTimeStartVal)} – ${formatTimeAmPm(makeUpTimeEndVal)}</div>` : ''}
-          </div>` : ''}
-          <div style="text-align:center; font-size:13px; color:#64748b;">Your manager will review your request</div>
-        </div>`,
-        confirmButtonColor: '#b37e78',
-        confirmButtonText: 'Got it'
-      });
-    } else if (successCount > 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Partially Submitted',
-        html: `<div style="text-align:left;">
-          <p>✅ ${successCount} day${successCount > 1 ? 's' : ''} submitted</p>
-          <p>❌ ${errors.length} failed:</p>
-          <ul style="font-size:12px; color:#dc2626;">${errors.map(e => `<li>${e}</li>`).join('')}</ul>
-        </div>`,
-        confirmButtonColor: '#f59e0b'
-      });
-    } else {
+      
+      closeFutureTimeOffModal();
+      
+      if (successCount === dates.length) {
+        const _fd = (d) => { try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); } catch(e){return d;} };
+        const _dateDisp = dates.length === 1 ? _fd(dates[0]) : _fd(dates[0]) + ' – ' + _fd(dates[dates.length-1]);
+        const _muDisp = _futureMakeUpDates.map(d => _fd(d)).join(', ');
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Submitted!',
+          html: `<div style="text-align:left; font-size:14px; line-height:1.7;">
+            <div style="padding:14px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac; margin-bottom:12px;">
+              <div style="font-weight:700; color:#15803d; margin-bottom:4px;">📅 Time Off</div>
+              <div style="color:#166534;">${_dateDisp}</div>
+              ${isPartial ? `<div style="color:#7c3aed; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(partialStart)} – ${partialEnd === 'end' ? 'End of shift' : formatTimeAmPm(partialEnd)}</div>` : ''}
+            </div>
+            ${type === "Make Up" ? `
+            <div style="padding:14px; background:#eff6ff; border-radius:10px; border:1px solid #93c5fd; margin-bottom:12px;">
+              <div style="font-weight:700; color:#1d4ed8; margin-bottom:4px;">🔄 Make Up Schedule</div>
+              <div style="color:#1e40af;">${_muDisp}</div>
+              ${makeUpTimeStartVal && makeUpTimeEndVal ? `<div style="color:#2563eb; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(makeUpTimeStartVal)} – ${formatTimeAmPm(makeUpTimeEndVal)}</div>` : ''}
+            </div>` : ''}
+            <div style="text-align:center; font-size:13px; color:var(--text-secondary);">Your manager will review your request</div>
+          </div>`,
+          confirmButtonColor: '#b37e78',
+          confirmButtonText: 'Got it'
+        });
+      } else if (successCount > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Partially Submitted',
+          html: `<div style="text-align:left;">
+            <p>✅ ${successCount} day${successCount > 1 ? 's' : ''} submitted</p>
+            <p>❌ ${errors.length} failed:</p>
+            <ul style="font-size:12px; color:#dc2626;">${errors.map(e => `<li>${e}</li>`).join('')}</ul>
+          </div>`,
+          confirmButtonColor: '#f59e0b'
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Submission Failed',
+          text: errors[0] || 'Unknown error',
+          confirmButtonColor: '#ef4444'
+        });
+      }
+    } catch (err) {
+      console.error("Submit future time off error:", err);
       Swal.fire({
         icon: 'error',
-        title: 'Submission Failed',
-        text: errors[0] || 'Unknown error',
+        title: 'Error',
+        text: 'Failed to submit request: ' + err.message,
         confirmButtonColor: '#ef4444'
       });
     }
-  } catch (err) {
-    console.error("Submit future time off error:", err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Failed to submit request: ' + err.message,
-      confirmButtonColor: '#ef4444'
-    });
-  }
+  });
 }
 function openAgentNotifications() {
   const panel = $("agentNotifPanel");
@@ -1324,7 +1327,7 @@ async function applyBulkPto() {
     title: 'Confirm Bulk PTO',
     html: `<div style="text-align:center;">
       <p>Add <strong>${hours} hours</strong> to <strong>${activeAgents.length} agents</strong>?</p>
-      <p style="font-size:12px; color:#64748b; margin-top:8px;">${reason}</p>
+      <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">${reason}</p>
     </div>`,
     icon: 'question',
     showCancelButton: true,
@@ -3622,7 +3625,7 @@ function addMeetingFollowup() {
     html: `
       <div style="text-align: left; padding: 0 8px;">
         <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:#64748b;">Type</label>
+          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:var(--text-secondary);">Type</label>
           <select id="swal-meeting-type" style="width:100%; padding:12px; border:2px solid var(--border-color, #e2e8f0); border-radius:10px; font-size:14px; background:var(--input-bg, white); color:var(--text-primary, #1e293b);">
             <option value="meeting_missed">Meeting Missed</option>
             <option value="video_watched">Training Video Watched</option>
@@ -3631,11 +3634,11 @@ function addMeetingFollowup() {
           </select>
         </div>
         <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:#64748b;">Date</label>
+          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:var(--text-secondary);">Date</label>
           <input type="date" id="swal-meeting-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%; padding:12px; border:2px solid var(--border-color, #e2e8f0); border-radius:10px; font-size:14px; background:var(--input-bg, white); color:var(--text-primary, #1e293b); box-sizing:border-box;">
         </div>
         <div style="margin-bottom: 8px;">
-          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:#64748b;">Notes</label>
+          <label style="display:block; font-size:11px; font-weight:700; margin-bottom:6px; text-transform:uppercase; color:var(--text-secondary);">Notes</label>
           <textarea id="swal-meeting-notes" placeholder="Details..." style="width:100%; padding:12px; border:2px solid var(--border-color, #e2e8f0); border-radius:10px; font-size:14px; background:var(--input-bg, white); color:var(--text-primary, #1e293b); min-height:100px; resize:vertical; box-sizing:border-box;"></textarea>
         </div>
       </div>
@@ -3838,80 +3841,83 @@ function addTaskRow() { openTaskEditor(); }
 // SAVE — Updated for new data model
 // ══════════════════════════════════════════════
 
-async function saveAgentGoals() {
+async function saveAgentGoals(event) {
+  const button = event?.currentTarget || event?.target;
   if (!_currentGoalsAgent) {
     toast('No agent selected', 'error');
     return;
   }
 
-  try {
-    // Collect table data (for table-based tabs)
-    const collectTableData = (tableBodyId) => {
-      const rows = [];
-      document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
-        const row = {};
-        tr.querySelectorAll('input, select, textarea').forEach(el => {
-          if (el.dataset.field) {
-            row[el.dataset.field] = el.value;
+  await withLoadingButton(button, async () => {
+    try {
+      // Collect table data (for table-based tabs)
+      const collectTableData = (tableBodyId) => {
+        const rows = [];
+        document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
+          const row = {};
+          tr.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.dataset.field) {
+              row[el.dataset.field] = el.value;
+            }
+          });
+          if (Object.values(row).some(v => v)) {
+            rows.push(row);
           }
         });
-        if (Object.values(row).some(v => v)) {
-          rows.push(row);
-        }
+        return rows;
+      };
+
+      const goals = {
+        // B1: New goal model (already in _currentGoalsData.smartGoals)
+        smartGoals: _currentGoalsData?.smartGoals || [],
+        // C1: Tasks (already in _currentGoalsData.tasks)
+        tasks: _currentGoalsData?.tasks || [],
+        // D1: CSAT follow-ups
+        csatFollowups: _currentGoalsData?.csatFollowups || [],
+        // F1: Meeting follow-ups
+        meetingFollowups: _currentGoalsData?.meetingFollowups || [],
+        // Table-based data
+        performanceMetrics: collectTableData('metricsTableBody'),
+        qaTickets: collectTableData('qaTableBody'),
+        topicsDiscussed: collectTableData('topicsTableBody'),
+        oneOnOneNotes: collectTableData('notesTableBody')
+      };
+
+      const res = await fetch('./?action=goals/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: _currentGoalsAgent,
+          goals,
+          updatedBy: window._myName || 'Manager'
+        })
       });
-      return rows;
-    };
 
-    const goals = {
-      // B1: New goal model (already in _currentGoalsData.smartGoals)
-      smartGoals: _currentGoalsData?.smartGoals || [],
-      // C1: Tasks (already in _currentGoalsData.tasks)
-      tasks: _currentGoalsData?.tasks || [],
-      // D1: CSAT follow-ups
-      csatFollowups: _currentGoalsData?.csatFollowups || [],
-      // F1: Meeting follow-ups
-      meetingFollowups: _currentGoalsData?.meetingFollowups || [],
-      // Table-based data
-      performanceMetrics: collectTableData('metricsTableBody'),
-      qaTickets: collectTableData('qaTableBody'),
-      topicsDiscussed: collectTableData('topicsTableBody'),
-      oneOnOneNotes: collectTableData('notesTableBody')
-    };
+      const data = await res.json();
+      if (data.ok) {
+        _goalsUnsavedChanges = false;
+        toast('Goals saved successfully!', 'success');
 
-    const res = await fetch('./?action=goals/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        agentName: _currentGoalsAgent,
-        goals,
-        updatedBy: window._myName || 'Manager'
-      })
-    });
+        document.getElementById('goalsAgentMeta').textContent =
+          `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${window._myName || 'Manager'}`;
 
-    const data = await res.json();
-    if (data.ok) {
-      _goalsUnsavedChanges = false;
-      toast('Goals saved successfully!', 'success');
+        // Update the in-memory data with what was just saved
+        _currentGoalsData.performanceMetrics = goals.performanceMetrics;
+        _currentGoalsData.qaTickets = goals.qaTickets;
+        _currentGoalsData.topicsDiscussed = goals.topicsDiscussed;
+        _currentGoalsData.oneOnOneNotes = goals.oneOnOneNotes;
 
-      document.getElementById('goalsAgentMeta').textContent =
-        `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${window._myName || 'Manager'}`;
-
-      // Update the in-memory data with what was just saved
-      _currentGoalsData.performanceMetrics = goals.performanceMetrics;
-      _currentGoalsData.qaTickets = goals.qaTickets;
-      _currentGoalsData.topicsDiscussed = goals.topicsDiscussed;
-      _currentGoalsData.oneOnOneNotes = goals.oneOnOneNotes;
-
-      // Refresh summaries
-      renderPerformanceSummary();
-      updateOverviewTab();
-    } else {
-      toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
+        // Refresh summaries
+        renderPerformanceSummary();
+        updateOverviewTab();
+      } else {
+        toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
+      }
+    } catch (err) {
+      console.error('Error saving goals:', err);
+      toast('Failed to save goals', 'error');
     }
-  } catch (err) {
-    console.error('Error saving goals:', err);
-    toast('Failed to save goals', 'error');
-  }
+  });
 }
 
 
