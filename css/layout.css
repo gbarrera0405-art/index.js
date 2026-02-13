@@ -1,4 +1,4 @@
-  color: var(--text-secondary, #64748b);
+color: var(--text-secondary, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
@@ -2423,22 +2423,28 @@ button[data-action="requestTimeOff"]:hover{
 }
 #notifCount {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  transform: translate(40%, -40%);
+  top: -4px;
+  right: -4px;
 
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 5px;
 
   background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
 
-  /* makes it blend nicely with your glassy header */
+  border: 2px solid #ffffff;
   box-shadow:
-    0 0 0 2px rgba(255,255,255,0.7),
+    0 0 0 1px rgba(239, 68, 68, 0.3),
     0 2px 6px rgba(0,0,0,0.25);
 
   pointer-events: none;
+  animation: pulse-badge 2s ease infinite;
 }
 
 /* Hidden state */
