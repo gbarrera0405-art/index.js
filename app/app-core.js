@@ -1799,6 +1799,11 @@ function showNewNotificationIndicator(count) {
     badge.classList.remove("hidden");
   }
   
+  // Play alert sound for managers
+  if (window._isManager && typeof playManagerAlertSound === 'function') {
+    playManagerAlertSound();
+  }
+  
   // Show toast notification
   toast(`🔔 ${count} new notification${count > 1 ? 's' : ''} - click bell to view`, "info");
 }
@@ -1992,6 +1997,59 @@ function setEditingMode(isEditing) {
   } else {
     if ($("btnAgentNotif")) $("btnAgentNotif").style.display = "none";
     if ($("agentQuickActions")) $("agentQuickActions").style.display = "none";
+    
+    // ✅ Manager: Check for pending notifications on load and play alert sound
+    setTimeout(async () => {
+      try {
+        // Check for pending time-off requests
+        const countRes = await fetch('./?action=timeoff/count');
+        const countData = await countRes.json();
+        const toCount = (countData.ok && countData.count) ? countData.count : 0;
+        
+        // Also check shift notifications
+        const notifRes = await fetch('/?action=pendingNotifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const notifData = await notifRes.json();
+        const shiftCount = notifData.ok ? (notifData.shiftNotifications?.length || 0) : 0;
+        const mgrCount = notifData.ok ? (notifData.managerNotifications?.length || 0) : 0;
+        
+        const totalCount = toCount + shiftCount + mgrCount;
+        
+        // Update badge
+        const badge = $("notifCount");
+        if (badge) {
+          if (totalCount > 0) {
+            badge.textContent = totalCount > 99 ? "99+" : totalCount;
+            badge.classList.remove("hidden");
+          } else {
+            badge.classList.add("hidden");
+          }
+        }
+        
+        // Play alert sound if there are pending time-off or manager notifications
+        if ((toCount > 0 || mgrCount > 0) && typeof playManagerAlertSound === 'function') {
+          // Small delay so the page is visually settled
+          setTimeout(() => {
+            playManagerAlertSound();
+            // Also pulse the bell
+            const bellBtn = $("btnNotif");
+            if (bellBtn) {
+              bellBtn.style.animation = "pulse-bell 0.5s ease 3";
+              bellBtn.style.boxShadow = "0 0 12px rgba(239, 68, 68, 0.6)";
+              setTimeout(() => {
+                bellBtn.style.animation = "";
+                bellBtn.style.boxShadow = "";
+              }, 2000);
+            }
+          }, 500);
+        }
+      } catch (err) {
+        console.warn("[Init] Failed to check initial notifications:", err);
+      }
+    }, 2000); // Wait 2s after load for data to settle
   }
 }
   // If value is a pure YYYY-MM-DD (date-only), do NOT convert timezones.
