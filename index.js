@@ -2181,8 +2181,8 @@ if (path === "/base-schedule/save" && req.method === "POST") {
     if (path === "/timeoff/request" && req.method === "POST") {
       try {
         const body = readJsonBody(req);
-        // NEW: Extract 'team' from the body
-        const { person, reason, type, date, shiftStart, shiftEnd, duration, team, makeUpDate, dateRange } = body;
+        // NEW: Extract all fields including partial times
+        const { person, reason, type, date, shiftStart, shiftEnd, duration, team, makeUpDate, makeUpDates, dateRange, partialStart, partialEnd, makeUpTimeStart, makeUpTimeEnd, category, ptoHoursEarned } = body;
         const typeKey = normalizeTimeOffType(type); 
         if (typeKey === "make_up" && !String(makeUpDate || "").trim()) {
         return res.status(400).json({ error: "Make Up Time requires a make-up date." });
@@ -2190,6 +2190,18 @@ if (path === "/base-schedule/save" && req.method === "POST") {
         
         if (!person || !reason) return res.status(400).json({ error: "Missing fields" });
         const docRef = db.collection("time_off_requests").doc();
+        
+        // Fetch current PTO balance
+        let currentBalance = 0;
+        try {
+          const balanceDoc = await db.collection("accrued_hours").doc(person).get();
+          if (balanceDoc.exists) {
+            const balanceData = balanceDoc.data();
+            currentBalance = parseFloat(balanceData.pto || 0);
+          }
+        } catch (balanceErr) {
+          console.warn(`Could not fetch balance for ${person}:`, balanceErr.message);
+        }
         
         const requestData = {
           id: docRef.id,
@@ -2200,11 +2212,19 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           date: date || new Date().toISOString().split('T')[0],
           shiftStart: shiftStart || "",
           shiftEnd: shiftEnd || "",
-          duration: duration || "shift",
+          duration: duration || "shift", // Keep "shift" as default for backward compatibility
           team: team || "",
           typeKey,                 // "make_up" or "pto" (stable for logic)
           makeUpDate: makeUpDate || "",
-          dateRange: dateRange || null, // For multi-day requests
+          makeUpDates: makeUpDates || [],
+          makeUpTimeStart: makeUpTimeStart || "",
+          makeUpTimeEnd: makeUpTimeEnd || "",
+          dateRange: dateRange || null,
+          partialStart: partialStart || "",
+          partialEnd: partialEnd || "",
+          category: category || "",
+          ptoHoursEarned: ptoHoursEarned || 0,
+          currentBalance: currentBalance,
           createdAt: new Date().toISOString()
         };
         
@@ -2215,8 +2235,14 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           `${dateRange.start} to ${dateRange.end}` : 
           (date || new Date().toISOString().split('T')[0]);
         
-        // Build notification message with make-up date if applicable
+        // Build notification message with duration and make-up info
         let notifMessage = `${person} requested ${type || 'PTO'} for ${displayDate}`;
+        
+        // Add duration info for partial days
+        if (duration === 'partial' && partialStart && partialEnd) {
+          notifMessage += ` (${partialStart} - ${partialEnd})`;
+        }
+        
         if (typeKey === "make_up" && makeUpDate) {
           notifMessage += ` (Make-up date: ${makeUpDate})`;
         }
@@ -2231,6 +2257,17 @@ if (path === "/base-schedule/save" && req.method === "POST") {
           dateRange: dateRange || null,
           timeOffType: type || "PTO",
           makeUpDate: makeUpDate || null,
+          makeUpDates: makeUpDates || [],
+          makeUpTimeStart: makeUpTimeStart || null,
+          makeUpTimeEnd: makeUpTimeEnd || null,
+          duration: duration,
+          partialStart: partialStart || null,
+          partialEnd: partialEnd || null,
+          shiftStart: shiftStart || null,
+          shiftEnd: shiftEnd || null,
+          team: team || null,
+          category: category || null,
+          ptoHoursEarned: ptoHoursEarned || 0,
           status: "pending",
           createdAt: new Date().toISOString(),
           read: false
@@ -2724,6 +2761,11 @@ if (path === "/audit/logs" && req.method === "GET") {
       const newPerson = String(body.newPerson || "").trim();
       const notes = String(body.notes || "").trim();
       const notifyMode = String(body.notifyMode || "defer").trim(); // "defer" | "send" | "silent"
+      
+      // NEW: Extract make-up date information
+      const requireMakeUp = body.requireMakeUp || false;
+      const makeUpDates = Array.isArray(body.makeUpDates) ? body.makeUpDates : [];
+      const originalPerson = String(body.originalPerson || "").trim();
 
       if (!docId || !assignmentId || !newPerson) {
         logWithTrace(traceId, 'error', 'assignment/replace', 'Missing required fields', { docId, assignmentId, newPerson });
@@ -2841,6 +2883,35 @@ if (notifyMode === "silent") notifyStatus = "None";
               docId,
               assignmentId,
               recipient: newPerson
+            });
+          }
+        }
+        
+        // NEW: If make-up is required, create a notification for the original person
+        if (requireMakeUp && originalPerson && makeUpDates.length > 0) {
+          const makeUpDatesStr = makeUpDates.join(', ');
+          const notificationDate = shiftData.date || docId.split("__")[0] || "Unknown date";
+          try {
+            await db.collection("agent_notifications").add({
+              agentName: originalPerson,
+              type: "make_up_required",
+              message: `You need to make up hours for the shift on ${notificationDate}. Suggested dates: ${makeUpDatesStr}`,
+              shiftDate: notificationDate,
+              shiftTime: `${shiftData.start || 'Unknown'} - ${shiftData.end || 'Unknown'}`,
+              team: shiftData.team || "General",
+              makeUpDates: makeUpDates,
+              status: "pending",
+              createdAt: toIsoNow(),
+              read: false
+            });
+            
+            logWithTrace(traceId, 'info', 'assignment/replace', 'Make-up notification created', {
+              originalPerson,
+              makeUpDates
+            });
+          } catch (notifErr) {
+            logWithTrace(traceId, 'warn', 'assignment/replace', 'Failed to create make-up notification', {
+              error: notifErr.message
             });
           }
         }
@@ -3761,6 +3832,9 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         const requestData = requestDoc.data();
         const agentName = requestData.person || requestData.agentName;
         const requestDate = requestData.date;
+        const isPartial = requestData.duration === 'partial' && requestData.partialStart;
+        const partialStart = requestData.partialStart || '';
+        const partialEnd = requestData.partialEnd || '';
         
         // Update the request status
         await db.collection("time_off_requests").doc(requestId).update({
@@ -3779,7 +3853,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
         }
         
         // ========================================
-        // MARK AGENT'S SHIFTS AS "OPEN" FOR THE DATE
+        // MARK AGENT'S SHIFTS FOR THE DATE
         // ========================================
         let shiftsMarkedOpen = 0;
         const openShifts = [];
@@ -3794,14 +3868,136 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
             const data = doc.data();
             const assignments = data.assignments || [];
             let modified = false;
+            let newAssignments = [];
             
-            // Find assignments for this agent
-            const updatedAssignments = assignments.map(a => {
+            for (const a of assignments) {
               const personName = String(a.person || "").toLowerCase().trim();
               const targetName = String(agentName || "").toLowerCase().trim();
               
-              if (personName === targetName || personName.split(" ")[0] === targetName.split(" ")[0]) {
-                // Mark this shift as open
+              const isMatch = personName === targetName || personName.split(" ")[0] === targetName.split(" ")[0];
+              
+              if (!isMatch) {
+                newAssignments.push(a);
+                continue;
+              }
+              
+              // --- PARTIAL DAY OFF LOGIC ---
+              if (isPartial && partialStart) {
+                modified = true;
+                const shiftStart = a.start || "";
+                const shiftEnd = a.end || "";
+                
+                // Parse times to decimal for comparison
+                const parseT = (t) => {
+                  const p = String(t).split(':');
+                  return parseInt(p[0]) + (parseInt(p[1] || 0) / 60);
+                };
+                const offFrom = parseT(partialStart);
+                const offUntil = partialEnd === 'end' ? 24 : parseT(partialEnd);
+                const sStart = parseT(shiftStart);
+                const sEnd = parseT(shiftEnd);
+                
+                // Keep the portion of the shift the agent IS working
+                // Case 1: Off at the end (leaving early) → keep start portion
+                if (offFrom > sStart && offFrom < sEnd) {
+                  // Agent works from shift start to offFrom
+                  newAssignments.push({
+                    ...a,
+                    end: partialStart + (partialStart.includes(':') ? '' : ':00'),
+                    notes: (a.notes || '') + ` [PARTIAL OFF: ${partialStart}-${partialEnd === 'end' ? shiftEnd : partialEnd}]`,
+                    updatedAt: new Date().toISOString()
+                  });
+                  
+                  // Mark the off portion as open
+                  const openEnd = partialEnd === 'end' ? shiftEnd : (partialEnd + (partialEnd.includes(':') ? '' : ':00'));
+                  shiftsMarkedOpen++;
+                  const openShiftData = {
+                    docId: doc.id,
+                    assignmentId: a.id + '_partial_open',
+                    originalPerson: a.person,
+                    team: data.team || doc.id.split("__")[1] || "",
+                    date: requestDate,
+                    start: partialStart + (partialStart.includes(':') ? '' : ':00'),
+                    end: openEnd,
+                    role: a.role,
+                    reason: `Partial day off for ${a.person}`,
+                    timeOffType: requestData.type || "Partial"
+                  };
+                  openShifts.push(openShiftData);
+                  
+                  newAssignments.push({
+                    id: a.id + '_partial_open',
+                    start: partialStart + (partialStart.includes(':') ? '' : ':00'),
+                    end: openEnd,
+                    role: a.role,
+                    person: "Open",
+                    originalPerson: a.person,
+                    isOpenShift: true,
+                    openReason: `Partial day off: ${requestData.reason || 'Time off approved'}`,
+                    timeOffRequestId: requestId,
+                    status: "Active",
+                    notifyStatus: "Pending",
+                    notes: `[PARTIAL OPEN] ${a.person} off ${partialStart}-${partialEnd === 'end' ? shiftEnd : partialEnd}`,
+                    updatedAt: new Date().toISOString()
+                  });
+                }
+                // Case 2: Off at the start (coming in late) → keep end portion
+                else if (offFrom <= sStart && offUntil < sEnd) {
+                  // Mark early portion as open
+                  shiftsMarkedOpen++;
+                  newAssignments.push({
+                    id: a.id + '_partial_open',
+                    start: shiftStart,
+                    end: partialEnd + (partialEnd.includes(':') ? '' : ':00'),
+                    role: a.role,
+                    person: "Open",
+                    originalPerson: a.person,
+                    isOpenShift: true,
+                    openReason: `Partial day off: ${requestData.reason || 'Time off approved'}`,
+                    timeOffRequestId: requestId,
+                    status: "Active",
+                    notifyStatus: "Pending",
+                    notes: `[PARTIAL OPEN] ${a.person} off ${shiftStart}-${partialEnd}`,
+                    updatedAt: new Date().toISOString()
+                  });
+                  
+                  // Agent works from offUntil to shift end
+                  newAssignments.push({
+                    ...a,
+                    start: partialEnd + (partialEnd.includes(':') ? '' : ':00'),
+                    notes: (a.notes || '') + ` [PARTIAL OFF: ${shiftStart}-${partialEnd}]`,
+                    updatedAt: new Date().toISOString()
+                  });
+                }
+                // Case 3: Off the entire shift or unhandled → treat as full day
+                else {
+                  shiftsMarkedOpen++;
+                  openShifts.push({
+                    docId: doc.id,
+                    assignmentId: a.id,
+                    originalPerson: a.person,
+                    team: data.team || doc.id.split("__")[1] || "",
+                    date: requestDate,
+                    start: a.start,
+                    end: a.end,
+                    role: a.role,
+                    reason: `PTO approved for ${a.person}`,
+                    timeOffType: requestData.type || "PTO"
+                  });
+                  
+                  newAssignments.push({
+                    ...a,
+                    person: "Open",
+                    originalPerson: a.person,
+                    isOpenShift: true,
+                    openReason: `PTO: ${requestData.reason || 'Time off approved'}`,
+                    timeOffRequestId: requestId,
+                    updatedAt: new Date().toISOString()
+                  });
+                }
+              }
+              // --- FULL DAY OFF LOGIC (original) ---
+              else {
                 modified = true;
                 shiftsMarkedOpen++;
                 
@@ -3819,7 +4015,7 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
                 };
                 openShifts.push(openShiftData);
                 
-                return {
+                newAssignments.push({
                   ...a,
                   person: "Open",
                   originalPerson: a.person,
@@ -3827,20 +4023,19 @@ if (path === "/agent/notifications/clear" && req.method === "POST") {
                   openReason: `PTO: ${requestData.reason || 'Time off approved'}`,
                   timeOffRequestId: requestId,
                   updatedAt: new Date().toISOString()
-                };
+                });
               }
-              return a;
-            });
+            }
             
             if (modified) {
               await doc.ref.update({ 
-                assignments: updatedAssignments, 
+                assignments: newAssignments, 
                 updatedAt: new Date().toISOString() 
               });
             }
           }
           
-          console.log(`📋 Marked ${shiftsMarkedOpen} shifts as Open for ${agentName} on ${requestDate}`);
+          console.log(`📋 ${isPartial ? 'Partial' : 'Full'}: Marked ${shiftsMarkedOpen} shifts as Open for ${agentName} on ${requestDate}`);
           
         } catch (scheduleErr) {
           console.warn("Could not update schedule (non-fatal):", scheduleErr.message);
