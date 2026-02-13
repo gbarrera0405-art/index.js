@@ -3841,80 +3841,83 @@ function addTaskRow() { openTaskEditor(); }
 // SAVE — Updated for new data model
 // ══════════════════════════════════════════════
 
-async function saveAgentGoals() {
+async function saveAgentGoals(event) {
+  const button = event?.target;
   if (!_currentGoalsAgent) {
     toast('No agent selected', 'error');
     return;
   }
 
-  try {
-    // Collect table data (for table-based tabs)
-    const collectTableData = (tableBodyId) => {
-      const rows = [];
-      document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
-        const row = {};
-        tr.querySelectorAll('input, select, textarea').forEach(el => {
-          if (el.dataset.field) {
-            row[el.dataset.field] = el.value;
+  await withLoadingButton(button, async () => {
+    try {
+      // Collect table data (for table-based tabs)
+      const collectTableData = (tableBodyId) => {
+        const rows = [];
+        document.querySelectorAll(`#${tableBodyId} tr`).forEach(tr => {
+          const row = {};
+          tr.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.dataset.field) {
+              row[el.dataset.field] = el.value;
+            }
+          });
+          if (Object.values(row).some(v => v)) {
+            rows.push(row);
           }
         });
-        if (Object.values(row).some(v => v)) {
-          rows.push(row);
-        }
+        return rows;
+      };
+
+      const goals = {
+        // B1: New goal model (already in _currentGoalsData.smartGoals)
+        smartGoals: _currentGoalsData?.smartGoals || [],
+        // C1: Tasks (already in _currentGoalsData.tasks)
+        tasks: _currentGoalsData?.tasks || [],
+        // D1: CSAT follow-ups
+        csatFollowups: _currentGoalsData?.csatFollowups || [],
+        // F1: Meeting follow-ups
+        meetingFollowups: _currentGoalsData?.meetingFollowups || [],
+        // Table-based data
+        performanceMetrics: collectTableData('metricsTableBody'),
+        qaTickets: collectTableData('qaTableBody'),
+        topicsDiscussed: collectTableData('topicsTableBody'),
+        oneOnOneNotes: collectTableData('notesTableBody')
+      };
+
+      const res = await fetch('./?action=goals/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: _currentGoalsAgent,
+          goals,
+          updatedBy: window._myName || 'Manager'
+        })
       });
-      return rows;
-    };
 
-    const goals = {
-      // B1: New goal model (already in _currentGoalsData.smartGoals)
-      smartGoals: _currentGoalsData?.smartGoals || [],
-      // C1: Tasks (already in _currentGoalsData.tasks)
-      tasks: _currentGoalsData?.tasks || [],
-      // D1: CSAT follow-ups
-      csatFollowups: _currentGoalsData?.csatFollowups || [],
-      // F1: Meeting follow-ups
-      meetingFollowups: _currentGoalsData?.meetingFollowups || [],
-      // Table-based data
-      performanceMetrics: collectTableData('metricsTableBody'),
-      qaTickets: collectTableData('qaTableBody'),
-      topicsDiscussed: collectTableData('topicsTableBody'),
-      oneOnOneNotes: collectTableData('notesTableBody')
-    };
+      const data = await res.json();
+      if (data.ok) {
+        _goalsUnsavedChanges = false;
+        toast('Goals saved successfully!', 'success');
 
-    const res = await fetch('./?action=goals/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        agentName: _currentGoalsAgent,
-        goals,
-        updatedBy: window._myName || 'Manager'
-      })
-    });
+        document.getElementById('goalsAgentMeta').textContent =
+          `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${window._myName || 'Manager'}`;
 
-    const data = await res.json();
-    if (data.ok) {
-      _goalsUnsavedChanges = false;
-      toast('Goals saved successfully!', 'success');
+        // Update the in-memory data with what was just saved
+        _currentGoalsData.performanceMetrics = goals.performanceMetrics;
+        _currentGoalsData.qaTickets = goals.qaTickets;
+        _currentGoalsData.topicsDiscussed = goals.topicsDiscussed;
+        _currentGoalsData.oneOnOneNotes = goals.oneOnOneNotes;
 
-      document.getElementById('goalsAgentMeta').textContent =
-        `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} by ${window._myName || 'Manager'}`;
-
-      // Update the in-memory data with what was just saved
-      _currentGoalsData.performanceMetrics = goals.performanceMetrics;
-      _currentGoalsData.qaTickets = goals.qaTickets;
-      _currentGoalsData.topicsDiscussed = goals.topicsDiscussed;
-      _currentGoalsData.oneOnOneNotes = goals.oneOnOneNotes;
-
-      // Refresh summaries
-      renderPerformanceSummary();
-      updateOverviewTab();
-    } else {
-      toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
+        // Refresh summaries
+        renderPerformanceSummary();
+        updateOverviewTab();
+      } else {
+        toast('Failed to save goals: ' + (data.error || 'Unknown error'), 'error');
+      }
+    } catch (err) {
+      console.error('Error saving goals:', err);
+      toast('Failed to save goals', 'error');
     }
-  } catch (err) {
-    console.error('Error saving goals:', err);
-    toast('Failed to save goals', 'error');
-  }
+  });
 }
 
 

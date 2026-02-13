@@ -351,7 +351,7 @@ function showSessionExpiredNotification() {
     left: 50%;
     transform: translate(-50%, -50%);
     padding: 24px 32px;
-    background: white;
+    background: var(--card-bg);
     border-radius: 16px;
     font-size: 14px;
     z-index: 10000;
@@ -361,8 +361,8 @@ function showSessionExpiredNotification() {
   `;
   notification.innerHTML = `
     <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
-    <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1a1a;">Session Expired</div>
-    <div style="color: #666; margin-bottom: 20px;">Your session has expired due to inactivity. Please sign in again to continue.</div>
+    <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Session Expired</div>
+    <div style="color: var(--text-secondary); margin-bottom: 20px;">Your session has expired due to inactivity. Please sign in again to continue.</div>
     <button onclick="this.parentElement.remove(); location.reload();" 
       style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); 
              color: white; border: none; padding: 12px 24px; border-radius: 10px; 
@@ -583,21 +583,45 @@ function setUserTimezone(tz) {
   }
 }
 
-// Convert PST time to user's timezone
-function convertTimeToUserTz(pstHour) {
+// IANA timezone map for DST-aware conversions
+const TZ_MAP = {
+  'PST': 'America/Los_Angeles',
+  'MST': 'America/Denver',
+  'CST': 'America/Chicago',
+  'EST': 'America/New_York'
+};
+
+// Convert PST time to user's timezone (DST-aware)
+function convertTimeToUserTz(pstHour, dateISO) {
   const prefs = getUserPrefs();
   if (prefs.timezone === 'PST') return pstHour;
   
-  // Timezone offsets from PST (positive = ahead)
-  const offsets = { 'PST': 0, 'MST': 1, 'CST': 2, 'EST': 3 };
-  const offset = offsets[prefs.timezone] || 0;
-  return pstHour + offset;
+  // Build a real Date object in PST for the given date and hour
+  const hour = Math.floor(pstHour);
+  const minutes = Math.round((pstHour - hour) * 60);
+  const dateStr = dateISO || pstISODate();
+  
+  // Create date string that we can parse in LA timezone
+  const pstDate = new Date(`${dateStr}T${String(hour).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`);
+  
+  // Format in user's timezone
+  const targetTz = TZ_MAP[prefs.timezone] || 'America/Los_Angeles';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: targetTz,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(pstDate);
+  
+  const h = parseInt(parts.find(p => p.type === 'hour')?.value || hour);
+  const m = parseInt(parts.find(p => p.type === 'minute')?.value || minutes);
+  return h + (m / 60);
 }
 
 // Format time with both user TZ and PST reference
-function formatTimeWithTz(pstHour) {
+function formatTimeWithTz(pstHour, dateISO) {
   const prefs = getUserPrefs();
-  const userHour = convertTimeToUserTz(pstHour);
+  const userHour = convertTimeToUserTz(pstHour, dateISO);
   
   // Format as 12-hour time
   const formatHour = (h) => {
@@ -2472,7 +2496,7 @@ function updateCacheIndicator(fromCache) {
           <input type="radio" name="wipeScope" value="future" checked style="width:18px; height:18px;">
           <div>
             <div style="font-weight:600; color:#dc2626;">Future Only</div>
-            <div style="font-size:12px; color:#64748b;">Delete from today onwards</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Delete from today onwards</div>
           </div>
         </label>
         
@@ -2480,7 +2504,7 @@ function updateCacheIndicator(fromCache) {
           <input type="radio" name="wipeScope" value="all" style="width:18px; height:18px;">
           <div>
             <div style="font-weight:600; color:#c2410c;">Everything</div>
-            <div style="font-size:12px; color:#64748b;">Delete ALL schedule data (past + future)</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Delete ALL schedule data (past + future)</div>
           </div>
         </label>
         
@@ -2528,7 +2552,7 @@ function updateCacheIndicator(fromCache) {
         icon: 'success',
         title: 'Schedule Wiped!',
         html: `<div>Deleted <strong>${data.deleted}</strong> schedule days.</div>
-               <div style="margin-top:10px; font-size:13px; color:#64748b;">
+               <div style="margin-top:10px; font-size:13px; color:var(--text-secondary);">
                  Use "Regenerate" to create the new schedule.
                </div>`,
         confirmButtonColor: '#16a34a'
@@ -2751,8 +2775,8 @@ async function openAddAgentModal() {
       title:"Agent Added!", 
       html:`<div style="text-align:left;">
         <p><strong>${formValues.name}</strong> has been added to the system.</p>
-        <p style="font-size:12px; color:#64748b; margin-top:8px;">Document ID: <code>${data.docId}</code></p>
-        <p style="font-size:12px; color:#64748b;">Role: ${formValues.role}</p>
+        <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">Document ID: <code>${data.docId}</code></p>
+        <p style="font-size:12px; color:var(--text-secondary);">Role: ${formValues.role}</p>
         <p style="font-size:12px; color:#16a34a; margin-top:8px;">✓ Agent will appear in Master Schedule</p>
       </div>`,
       confirmButtonColor:"#16a34a" 
@@ -2855,7 +2879,7 @@ async function removeAgentConfirm(docId, agentName) {
     const confirm = await Swal.fire({
       title: 'Restore Agent?',
       html: `<p>Reactivate <strong>${agentName}</strong>?</p>
-             <p style="font-size:12px; color:#64748b; margin-top:8px;">They will appear in the Master Schedule again.</p>`,
+             <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">They will appear in the Master Schedule again.</p>`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Restore',
@@ -2965,8 +2989,8 @@ async function removeAgentConfirm(docId, agentName) {
       title: "Agent Removed",
       html: `<div style="text-align:left;">
         <p><strong>${agentName}</strong> has been deactivated.</p>
-        ${cleanedCount > 0 ? `<p style="font-size:12px; color:#64748b; margin-top:8px;">${cleanedCount} future shift(s) cleared.</p>` : ''}
-        <p style="font-size:12px; color:#64748b; margin-top:8px;">You can restore them anytime from Manage Agents.</p>
+        ${cleanedCount > 0 ? `<p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">${cleanedCount} future shift(s) cleared.</p>` : ''}
+        <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">You can restore them anytime from Manage Agents.</p>
       </div>`,
       confirmButtonColor: "#b37e78",
       didClose: () => openManageAgentsModal()
@@ -3014,7 +3038,7 @@ async function editAgentModal(docId) {
             <option value="false" ${agent.active === false ? 'selected' : ''}>Inactive</option>
           </select>
           
-          <div style="margin-top:12px; padding:8px; background:#f8fafc; border-radius:6px; font-size:11px; color:#64748b;">
+          <div style="margin-top:12px; padding:8px; background:var(--bg-tertiary); border-radius:6px; font-size:11px; color:var(--text-secondary);">
             Document ID: <code>${docId}</code>
           </div>
         </div>
