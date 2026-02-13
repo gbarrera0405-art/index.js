@@ -31,7 +31,8 @@ function renderCoverageDashboard() {
     { label: "12p-2p", start: 12, end: 14 },
     { label: "2p-4p", start: 14, end: 16 },
     { label: "4p-6p", start: 16, end: 18 },
-    { label: "6p-8p", start: 18, end: 20 }
+    { label: "6p-8p", start: 18, end: 20 },
+    { label: "8p-10p", start: 20, end: 22 }
   ];
 
   const nowPST = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
@@ -126,7 +127,7 @@ function renderCoverageDashboard() {
     badge.className = "cov-badge alert";
     badgeText.textContent = totalGaps + " Gap" + (totalGaps === 1 ? "" : "s");
     subtitle.textContent = totalGaps + " staffing gap" + (totalGaps === 1 ? "" : "s") + " detected";
-  } else if (currentHour >= 20) {
+  } else if (currentHour >= 22) {
     badge.className = "cov-badge ok";
     badgeText.textContent = "Day Complete";
     subtitle.textContent = "All shifts completed successfully";
@@ -173,7 +174,21 @@ function renderCoverageDashboard() {
       <div class="cov-gaps-section">
         <div class="cov-gaps-header">
           <span class="cov-gaps-title">Gaps Requiring Coverage</span>
-          <span class="cov-gaps-hint">Click a shift to reassign</span>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span class="cov-gaps-hint">Click a shift to reassign</span>
+            <button onclick="openBatchFillModal()" style="
+              font-size:11px; 
+              padding:6px 14px; 
+              background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%); 
+              color:white; 
+              border:none; 
+              border-radius:8px; 
+              cursor:pointer; 
+              font-weight:700;
+              box-shadow:0 2px 6px rgba(220,38,38,0.3);
+              transition:all 0.2s;
+            " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">⚡ Quick Fill All</button>
+          </div>
         </div>
         <div class="cov-gaps-list">`;
 
@@ -558,14 +573,16 @@ async function openTimeOffQueue() {
       // 1. Date & Team Label
       let dateDisplay = req.date || "Date Pending";
       let teamLabel = req.team ? `<span style="font-size:10px; background:#e0e7ff; color:#4338ca; padding:2px 5px; border-radius:4px; margin-left:6px; font-weight:700;">${req.team}</span>` : "";
-      const reqType = (req.type || "PTO").toString();
-      const isMakeUp = reqType.toLowerCase().includes("make");
+      const reqType = (req.type || req.typeKey || req.timeOffType || "PTO").toString();
+      const isMakeUp = reqType.toLowerCase().includes("make")
+                     || (req.makeUpDate && req.makeUpDate.length > 0)
+                     || (req.makeUpDates && req.makeUpDates.length > 0);
       const typePill = isMakeUp
         ? `<span style="font-size:10px; background:#dbeafe; color:#b37e78; padding:2px 6px; border-radius:999px; margin-left:8px; font-weight:800;">MAKE UP</span>`
         : `<span style="font-size:10px; background:#f0e6e4; color:#166534; padding:2px 6px; border-radius:999px; margin-left:8px; font-weight:800;">PTO</span>`;
       const makeUpLine = isMakeUp
         ? (req.makeUpDate
-            ? `<div style="margin-top:6px; font-size:12px; color:#475569;"><strong>Make Up Date:</strong> ${req.makeUpDate}</div>`
+            ? `<div style="margin-top:6px; font-size:12px; color:#475569;"><strong>Make Up Date:</strong> ${req.makeUpDate}${req.makeUpTimeStart && req.makeUpTimeEnd ? ` <span style="color:#15803d; font-weight:700;">(${req.makeUpTimeStart} – ${req.makeUpTimeEnd})</span>` : ''}</div>`
             : `<div style="margin-top:6px; font-size:12px; color:#ef4444;"><strong>Make Up Date:</strong> Not provided</div>`)
         : "";
       // 2. Calculate Deduction Logic
@@ -574,6 +591,16 @@ async function openTimeOffQueue() {
       
       if (req.duration === 'full_day') {
           deductAmount = 8;
+      } else if (req.duration === 'partial' && req.partialStart && req.partialEnd) {
+          // NEW: Calculate from partial times
+          const parseTime = (t) => {
+            const [h, m] = t.split(':').map(Number);
+            return h + (m / 60);
+          };
+          deductAmount = parseTime(req.partialEnd) - parseTime(req.partialStart);
+          if (deductAmount < 0) deductAmount += 24;
+          deductAmount = Math.round(deductAmount * 100) / 100;
+          timeDisplay = `<div style="font-size:11px; color:#64748b; margin-top:2px;">${req.partialStart} - ${req.partialEnd} (${deductAmount} hrs)</div>`;
       } else if (req.shiftStart && req.shiftEnd) {
           deductAmount = calcHours(req.shiftStart, req.shiftEnd);
           // Only use fallback if math returns 0
@@ -585,6 +612,8 @@ async function openTimeOffQueue() {
       const bal = req.currentBalance !== undefined ? req.currentBalance : 0;
       const typeBadge = req.duration === 'full_day' 
           ? `<span style="background:#dbeafe; color:#8f5f5a; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px;">FULL DAY</span>`
+          : req.duration === 'partial'
+          ? `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px;">PARTIAL DAY</span>`
           : `<span style="background:#f3f4f6; color:#374151; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px;">SHIFT</span>`;
       const actionButtons = isMakeUp
         ? `<button onclick="resolveTimeOff('${req.id}', 'approved', { deduct: false })" 
@@ -1300,6 +1329,147 @@ function updateTypeSelection() {
   }
 }
 
+// NEW: Update duration selection styling and show/hide partial time fields
+function updateDurationSelection() {
+  const radios = document.querySelectorAll('input[name="timeOffDuration"]');
+  radios.forEach(radio => {
+    const label = radio.closest('label');
+    if (radio.checked) {
+      label.style.borderColor = '#3b82f6';
+      label.style.background = '#eff6ff';
+      label.style.fontWeight = '700';
+    } else {
+      label.style.borderColor = '#e2e8f0';
+      label.style.background = '#fff';
+      label.style.fontWeight = '600';
+    }
+  });
+  
+  // Toggle partial time selection
+  const selected = document.querySelector('input[name="timeOffDuration"]:checked');
+  const isPartial = selected && selected.value === 'partial';
+  const partialWrap = document.getElementById('agPartialTimeWrap');
+  if (partialWrap) {
+    partialWrap.style.display = isPartial ? 'block' : 'none';
+  }
+  
+  // Set up event listeners only once
+  const startInput = document.getElementById('agPartialStart');
+  const endInput = document.getElementById('agPartialEnd');
+  if (startInput && endInput && !startInput.dataset.listenerAttached) {
+    startInput.addEventListener('change', calculatePartialHours);
+    endInput.addEventListener('change', calculatePartialHours);
+    startInput.dataset.listenerAttached = 'true';
+    endInput.dataset.listenerAttached = 'true';
+  }
+  
+  if (isPartial) {
+    calculatePartialHours();
+  }
+}
+
+// NEW: Calculate hours for partial day time off
+function calculatePartialHours() {
+  const startInput = document.getElementById('agPartialStart');
+  const endInput = document.getElementById('agPartialEnd');
+  const display = document.getElementById('agPartialHoursDisplay');
+  
+  if (!startInput || !endInput || !display) return;
+  
+  const start = startInput.value;
+  const end = endInput.value;
+  
+  if (!start || !end) {
+    display.textContent = '';
+    return;
+  }
+  
+  // Parse times
+  const [startHour, startMin] = start.split(':').map(Number);
+  const [endHour, endMin] = end.split(':').map(Number);
+  
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  
+  // Handle overnight shifts (end time is before start time)
+  let diffMinutes = endMinutes - startMinutes;
+  if (diffMinutes < 0) {
+    diffMinutes += 24 * 60; // Add 24 hours for overnight shifts
+  }
+  
+  if (diffMinutes === 0) {
+    display.innerHTML = '<span style="color: #ef4444;">⚠️ Start and end times cannot be the same</span>';
+    return;
+  }
+  
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  
+  const hoursText = hours > 0 ? `${hours} hour${hours > 1 ? 's' : ''}` : '';
+  const minutesText = minutes > 0 ? `${minutes} minute${minutes > 1 ? 's' : ''}` : '';
+  const timeText = [hoursText, minutesText].filter(Boolean).join(' ');
+  
+  const totalHours = (diffMinutes / 60).toFixed(2);
+  
+  display.innerHTML = `📊 Duration: ${timeText} <span style="color: #b37e78; font-weight: 700;">(${totalHours} hours)</span>`;
+}
+
+// NEW: Toggle make-up date section in manager replace modal
+function toggleMakeUpDate() {
+  const checkbox = document.getElementById('mRequireMakeUp');
+  const wrap = document.getElementById('mMakeUpDateWrap');
+  if (checkbox && wrap) {
+    wrap.style.display = checkbox.checked ? 'block' : 'none';
+  }
+}
+
+// NEW: Add make-up date in manager modal
+let _managerMakeUpDates = [];
+
+function addManagerMakeUpDate() {
+  const dateInput = document.getElementById('mMakeUpDate');
+  if (!dateInput || !dateInput.value) {
+    toast('Please select a date', 'error');
+    return;
+  }
+  
+  const date = dateInput.value;
+  if (_managerMakeUpDates.includes(date)) {
+    toast('Date already added', 'warning');
+    return;
+  }
+  
+  _managerMakeUpDates.push(date);
+  renderManagerMakeUpDates();
+  dateInput.value = '';
+}
+
+function removeManagerMakeUpDate(date) {
+  _managerMakeUpDates = _managerMakeUpDates.filter(d => d !== date);
+  renderManagerMakeUpDates();
+}
+
+function renderManagerMakeUpDates() {
+  const listEl = document.getElementById('mMakeUpDatesList');
+  if (!listEl) return;
+  
+  if (_managerMakeUpDates.length === 0) {
+    listEl.innerHTML = '<div style="font-size: 11px; color: #94a3b8; padding: 8px;">No make-up dates added yet</div>';
+    return;
+  }
+  
+  listEl.innerHTML = _managerMakeUpDates.map(date => {
+    const d = new Date(date + 'T12:00:00');
+    const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return `
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 6px; font-size: 11px; font-weight: 600; color: #1e40af;">
+        <span>${formatted}</span>
+        <button onclick="removeManagerMakeUpDate('${date}')" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; font-size: 14px; line-height: 1;">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
 // showToast - alias for main toast function
 function showToast(message, type = 'info') {
     toast(message, type);
@@ -1309,10 +1479,15 @@ function showToast(message, type = 'info') {
     if (type === 'timeoff') {
         if($("agFormTimeOff")) $("agFormTimeOff").style.display = "block";
         updateTypeSelection();
+        updateDurationSelection(); // NEW: Initialize duration selection
         if($("agToReason")) {
             $("agToReason").value = "";
             $("agToReason").focus();
         }
+        // Reset make-up time fields
+        if($("agMakeUpTimeStart")) $("agMakeUpTimeStart").value = "";
+        if($("agMakeUpTimeEnd")) $("agMakeUpTimeEnd").value = "";
+        if($("agMakeUpHoursCalc")) $("agMakeUpHoursCalc").textContent = "";
     } else {
         if($("agFormSwap")) $("agFormSwap").style.display = "block";
         if($("agSwapNote")) $("agSwapNote").value = "";
@@ -2244,19 +2419,78 @@ async function saveWeeklyAssignments() {
     
     if (timeOffType === "Make Up" && makeUpDates.length === 0) {
       return toast("Please add at least one Make Up date", "error");
+    }
+    
+    // Get make-up time selection
+    const makeUpTimeStart = $("agMakeUpTimeStart") ? $("agMakeUpTimeStart").value : "";
+    const makeUpTimeEnd = $("agMakeUpTimeEnd") ? $("agMakeUpTimeEnd").value : "";
+    
+    // Validate make-up time if provided
+    if (timeOffType === "Make Up" && makeUpTimeStart && makeUpTimeEnd) {
+      const muStartH = parseInt(makeUpTimeStart.split(':')[0]);
+      const muEndH = parseInt(makeUpTimeEnd.split(':')[0]);
+      if (muEndH <= muStartH) {
+        return toast("Make up end time must be after start time", "error");
+      }
     } 
     
     // NEW: Grab duration from radio
     const durationSelected = document.querySelector('input[name="timeOffDuration"]:checked');
-    const durationVal = durationSelected ? durationSelected.value : "shift";
+    let durationVal = durationSelected ? durationSelected.value : "full_shift";
+    
+    // Backward compatibility: map "full_shift" to "shift" for storage
+    if (durationVal === "full_shift") {
+      durationVal = "shift"; // Store as "shift" for backward compatibility
+    }
+    
+    // NEW: Get partial time if selected
+    let partialStart = "";
+    let partialEnd = "";
+    if (durationVal === "partial") {
+      partialStart = $("agPartialStart") ? $("agPartialStart").value : "";
+      partialEnd = $("agPartialEnd") ? $("agPartialEnd").value : "";
+      
+      if (!partialStart || !partialEnd) {
+        return toast("Please specify start and end times for partial day", "error");
+      }
+      
+      // Validate that times are different (allow overnight shifts)
+      if (partialStart === partialEnd) {
+        return toast("Start and end times cannot be the same", "error");
+      }
+    }
 
     // ✅ VALIDATE PTO BALANCE
     if (timeOffType === "PTO") {
       const balance = _balanceData.get(window._myName) || { pto: 0, sick: 0 };
       const currentPto = parseFloat(balance.pto) || 0;
 
-      // Calculate hours needed (rough estimate)
-      let hoursNeeded = durationVal === "full_day" ? 8 : 4;
+      // Calculate hours needed based on duration type
+      let hoursNeeded = 4; // Default for full_shift
+      
+      if (durationVal === "full_day") {
+        hoursNeeded = 8;
+      } else if (durationVal === "partial" && partialStart && partialEnd) {
+        // Calculate actual hours for partial day
+        const [startH, startM] = partialStart.split(':').map(Number);
+        const [endH, endM] = partialEnd.split(':').map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+        hoursNeeded = Math.round((endMinutes - startMinutes) / 60 * 100) / 100;
+      } else if (sStart && sEnd) {
+        // Try to calculate from shift times
+        const parseTime = (t) => {
+          const match = t.match(/(\d+):(\d+)\s?(AM|PM)?/i);
+          if (!match) return 0;
+          let h = parseInt(match[1]);
+          const ampm = match[3] ? match[3].toUpperCase() : null;
+          if (ampm === "PM" && h < 12) h += 12;
+          if (ampm === "AM" && h === 12) h = 0;
+          return h + (parseInt(match[2]) / 60);
+        };
+        const diff = parseTime(sEnd) - parseTime(sStart);
+        if (diff > 0) hoursNeeded = Math.round(diff * 100) / 100;
+      }
 
       if (currentPto < hoursNeeded) {
         const result = await Swal.fire({
@@ -2312,13 +2546,19 @@ async function saveWeeklyAssignments() {
           type: timeOffType,
           makeUpDate: makeUpDate, // Comma-separated for compatibility
           makeUpDates: makeUpDates, // Array of dates
+          makeUpTimeStart: timeOffType === "Make Up" ? makeUpTimeStart : "", // NEW: Make up time
+          makeUpTimeEnd: timeOffType === "Make Up" ? makeUpTimeEnd : "", // NEW: Make up time
           reason: reason,
           date: dateStr,
-          shiftStart: sStart,
+          shiftStart: sStart, // Keep original shift times
           shiftEnd: sEnd,
           team: teamName, // <--- Sending Team Name
           duration: durationVal,
-          category: "pto"
+          partialStart: partialStart, // NEW: Send partial times separately
+          partialEnd: partialEnd,
+          category: "pto",
+          assignmentId: _editing ? _editing.assignmentId : null, // NEW: specific shift ID
+          docId: _editing ? _editing.docId : null // NEW: specific doc ID
         })
       });
     const data = await res.json();
@@ -2335,6 +2575,11 @@ async function saveWeeklyAssignments() {
           return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         }).join('<br>• ');
         
+        // Format make-up time
+        const makeUpTimeDisplay = (makeUpTimeStart && makeUpTimeEnd) 
+          ? `<p style="margin-top:8px; padding:8px; background:#dcfce7; border-radius:6px; font-size:12px;"><strong>⏰ Make up time:</strong> ${formatTimeAmPm(makeUpTimeStart)} – ${formatTimeAmPm(makeUpTimeEnd)}</p>`
+          : '';
+        
         Swal.fire({
           title: 'Make-Up Request Sent!',
           html: `
@@ -2343,6 +2588,7 @@ async function saveWeeklyAssignments() {
               <p style="margin-top: 12px; padding: 12px; background: #dbeafe; border-left: 3px solid #b37e78; border-radius: 4px;">
                 📌 <strong>Remember to make up time on:</strong><br>• ${formattedDates}
               </p>
+              ${makeUpTimeDisplay}
             </div>
           `,
           icon: 'success',
@@ -2611,6 +2857,14 @@ async function claimOpenShift(shiftId) {
       $("mSub").textContent = `${it.dateLabel} • ${it.startLabel} • ${it.person}`;
       $("mNotes").value = it.notes || "";
       
+      // NEW: Reset make-up dates section
+      _managerMakeUpDates = [];
+      const makeUpCheckbox = document.getElementById('mRequireMakeUp');
+      const makeUpWrap = document.getElementById('mMakeUpDateWrap');
+      if (makeUpCheckbox) makeUpCheckbox.checked = false;
+      if (makeUpWrap) makeUpWrap.style.display = 'none';
+      renderManagerMakeUpDates();
+      
       // Check for current "OFF" status
       const isOff = it.notes && it.notes.includes("[OFF]");
       const btn = $("actionBtn");
@@ -2722,13 +2976,20 @@ async function claimOpenShift(shiftId) {
   local.notes = enhancedNotes;
   local.originalPerson = originalPerson; // Store for UI display
   renderView();
+  
+  // NEW: Collect make-up date information
+  const requireMakeUp = document.getElementById('mRequireMakeUp')?.checked || false;
+  const makeUpDates = requireMakeUp ? [..._managerMakeUpDates] : [];
+  
   const payload = {
     docId: _editing.docId,
     assignmentId: _editing.assignmentId,
     newPerson: newP,
     notes: enhancedNotes,
     notifyMode: notifyMode,
-    originalPerson: originalPerson // Send to backend for tracking
+    originalPerson: originalPerson, // Send to backend for tracking
+    requireMakeUp: requireMakeUp, // NEW: Flag indicating make-up is required
+    makeUpDates: makeUpDates // NEW: Array of suggested make-up dates
   };
   
   try {
@@ -2875,8 +3136,11 @@ function getShiftRolePriority(shift) {
       return;
     }
     
-    // optimistic UI
+    // optimistic UI — track by assignmentId for granular off tracking
     _timeOff.add(`${editData.person}|${editData.dateISO}`);
+    if (editData.assignmentId) {
+      _timeOff.add(`aid:${editData.assignmentId}`);
+    }
     
     // Update the actual _editing object if it still exists
     const localItem = _allData.find(x => x.assignmentId === editData.assignmentId);
@@ -2932,6 +3196,9 @@ function getShiftRolePriority(shift) {
       console.error("markTimeOff failed:", err);
       // rollback UI
       _timeOff.delete(`${editData.person}|${editData.dateISO}`);
+      if (editData.assignmentId) {
+        _timeOff.delete(`aid:${editData.assignmentId}`);
+      }
       if (localItem) {
         localItem.notes = (localItem.notes || "").replace(/\s*\[OFF\]\s*/g, " ").trim();
       }
@@ -2968,6 +3235,9 @@ function getShiftRolePriority(shift) {
     
     // optimistic UI
     _timeOff.delete(`${editData.person}|${editData.dateISO}`);
+    if (editData.assignmentId) {
+      _timeOff.delete(`aid:${editData.assignmentId}`);
+    }
     
     // Update the actual item if it still exists
     const localItem = _allData.find(x => x.assignmentId === editData.assignmentId);
@@ -3666,6 +3936,11 @@ function updateAgentScheduleBanner() {
     
     // Clear the editing reference
     _editing = null;
+    
+    // NEW: Reset manager make-up dates to prevent data leakage
+    _managerMakeUpDates = [];
+    const makeUpCheckbox = document.getElementById('mRequireMakeUp');
+    if (makeUpCheckbox) makeUpCheckbox.checked = false;
     
     // ✅ Re-enable auto-refresh
     setEditingMode(false);
@@ -5213,6 +5488,8 @@ async function loadPendingNotifications() {
     renderNotifications();
     updateNotifBadge();
     
+
+    
   } catch (err) {
     console.error("Load notifications error:", err);
     listEl.innerHTML = `<div style="text-align: center; color:#ef4444; padding:20px;">Error:  ${err.message}</div>`;
@@ -5250,53 +5527,77 @@ function renderNotifications() {
     // Check if this is a time-off request notification
     if (n.notificationType === 'timeoff_request') {
       // Render time-off request notification with approve/deny buttons
-      const agentName = n.agentName || 'Unknown';
+      const agentName = n.agentName || n.person || 'Unknown';
       const requestDate = n.date || '';
-      const timeOffType = n.timeOffType || 'PTO';
+      // FIX: Check ALL possible type field names from backend
+      // - submitTimeOff sends: type: "Make Up" or "PTO"
+      // - submitFutureTimeOff sends: typeKey: "make_up" or "pto"
+      // - backend may store as: timeOffType, type, typeKey
+      const rawType = n.timeOffType || n.type || n.typeKey || '';
+      const isMakeUp = rawType.toLowerCase().includes('make') 
+                     || (n.makeUpDate && n.makeUpDate.length > 0)
+                     || (n.makeUpDates && n.makeUpDates.length > 0);
+      const timeOffType = isMakeUp ? 'Make Up' : (rawType || 'PTO');
       const reason = n.reason || '';
       const message = n.message || '';
       const requestId = n.requestId || '';
       const notifId = n.id || '';
       const createdAt = n.createdAt ? new Date(n.createdAt).toLocaleString() : '';
+      const duration = n.duration || 'full_day';
+      const partialStart = n.partialStart || '';
+      const partialEnd = n.partialEnd || '';
+      const isPartial = duration === 'partial' && partialStart;
+      const makeUpDate = n.makeUpDate || (n.makeUpDates && n.makeUpDates.length > 0 ? n.makeUpDates.join(', ') : '') || '';
+      const makeUpTimeStart = n.makeUpTimeStart || '';
+      const makeUpTimeEnd = n.makeUpTimeEnd || '';
+      
+      // Format date US style
+      const _fmtReqDate = (() => { try { const d = new Date(requestDate+'T12:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); } catch(e) { return requestDate; } })();
+      const _fmtMuDate = (() => { if (!makeUpDate) return ''; return makeUpDate.split(',').map(d => { try { return new Date(d.trim()+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); } catch(e) { return d.trim(); } }).join(', '); })();
+      
+      // Partial badge
+      const partialBadge = isPartial ? '<span style="background:#7c3aed;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;">PARTIAL</span>' : '';
+      
+      // Action buttons — Make Up → approveMakeUpRequest, PTO → approveTimeOff
+      let actionButtons = '';
+      if (isMakeUp) {
+        actionButtons = `
+          <button onclick="approveMakeUpRequest(${originalIdx})" style="flex:2;min-width:90px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✓ Approve Make Up</button>
+          <button onclick="denyTimeOff('${escapeHtml(requestId)}','${escapeHtml(notifId)}')" style="flex:1;min-width:60px;background:#fff;color:#dc2626;border:2px solid #fca5a5;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✕ Deny</button>`;
+      } else {
+        actionButtons = `
+          <button onclick="approveTimeOff('${escapeHtml(requestId)}','${escapeHtml(notifId)}')" style="flex:2;min-width:90px;background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✓ Approve & Deduct PTO</button>
+          <button onclick="denyTimeOff('${escapeHtml(requestId)}','${escapeHtml(notifId)}')" style="flex:1;min-width:60px;background:#fff;color:#dc2626;border:2px solid #fca5a5;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✕ Deny</button>`;
+      }
       
       html += `
-        <div class="notif-item timeoff-request" data-idx="${displayIdx}" style="
-          background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
-          border: 1px solid #fcd34d;
-          border-radius: 10px;
-          padding: 12px;
-          margin-bottom: 10px;
-        ">
-          <div style="display: flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
-            <div>
-              <div style="font-weight:700; color:#92400e; font-size: 14px;">🏖️ Time Off Request</div>
-              <div style="font-size:12px; color:#b45309; font-weight:600; margin-top:2px;">${escapeHtml(agentName)}</div>
+        <div class="notif-item timeoff-request" data-idx="${displayIdx}" style="background:#fff;border-radius:12px;padding:0;margin-bottom:12px;animation:notif-slide-in 0.4s ease ${displayIdx*0.1}s both;box-shadow:0 2px 12px rgba(0,0,0,0.08);overflow:hidden;">
+          <div style="background:${isMakeUp ? 'linear-gradient(135deg,#b37e78,#8f5f5a)' : 'linear-gradient(135deg,#f59e0b,#d97706)'};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:15px;font-weight:800;color:#fff;">${escapeHtml(agentName)}</span>
+              ${partialBadge}
             </div>
-            <span style="background:#fbbf24; color:#78350f; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px;">
-              ${escapeHtml(timeOffType)}
-            </span>
+            <span style="background:rgba(255,255,255,0.25);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;">${isMakeUp ? '🔄 MAKE UP' : '🔥 PTO'}</span>
           </div>
-          
-          <div style="font-size: 12px; color:#78350f; margin-bottom:8px;">
-            📅 ${escapeHtml(requestDate)}
-          </div>
-          
-          ${message ? `<div style="font-size:11px; color:#92400e; margin-bottom:8px; padding:8px; background:rgba(0,0,0,0.05); border-radius:6px;">${escapeHtml(message)}</div>` : ''}
-          
-          ${reason ? `<div style="font-size:11px; color:#78350f; font-style:italic; margin-bottom:10px;">Reason: "${escapeHtml(reason)}"</div>` : ''}
-          
-          ${createdAt ? `<div style="font-size:10px; color:#a16207; margin-bottom:10px;">Submitted: ${createdAt}</div>` : ''}
-          
-          <div style="display: flex; gap:6px; flex-wrap:wrap;">
-            <button onclick="approveTimeOff('${escapeHtml(requestId)}', '${escapeHtml(notifId)}')" style="
-              flex:1; min-width:80px; background:#16a34a; color:#fff; border: none; padding:8px 10px; 
-              border-radius:6px; font-size: 11px; font-weight:600; cursor:pointer;
-            ">✓ Approve</button>
-            
-            <button onclick="denyTimeOff('${escapeHtml(requestId)}', '${escapeHtml(notifId)}')" style="
-              flex:1; min-width:80px; background:#dc2626; color:#fff; border:none; padding:8px 10px; 
-              border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;
-            ">✕ Deny</button>
+          <div style="padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+              <span style="font-size:16px;">📅</span>
+              <span style="font-size:14px;font-weight:700;color:#1e293b;">${_fmtReqDate}</span>
+            </div>
+            ${isPartial ? `<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#f5f3ff;border-radius:8px;margin-bottom:8px;border-left:3px solid #7c3aed;">
+              <span style="font-size:13px;">⏰</span>
+              <span style="font-size:13px;color:#5b21b6;font-weight:600;">Off: ${formatNotifTime(partialStart)} → ${partialEnd === 'end' ? 'End of shift' : formatNotifTime(partialEnd)}</span>
+            </div>` : ''}
+            ${isMakeUp && _fmtMuDate ? `<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#f0fdf4;border-radius:8px;margin-bottom:8px;border-left:3px solid #16a34a;">
+              <span style="font-size:13px;">📋</span>
+              <div>
+                <span style="font-size:12px;color:#15803d;font-weight:700;">Make up: ${_fmtMuDate}</span>
+                ${makeUpTimeStart && makeUpTimeEnd ? `<br><span style="font-size:12px;color:#059669;">${formatNotifTime(makeUpTimeStart)} – ${formatNotifTime(makeUpTimeEnd)}</span>` : ''}
+              </div>
+            </div>` : ''}
+            ${reason ? `<div style="font-size:12px;color:#475569;margin-bottom:8px;padding:6px 8px;background:#f8fafc;border-radius:6px;font-style:italic;">"${escapeHtml(reason)}"</div>` : ''}
+            ${createdAt ? `<div style="font-size:10px;color:#94a3b8;margin-bottom:10px;">${createdAt}</div>` : ''}
+            <div style="display:flex;gap:8px;">${actionButtons}</div>
           </div>
         </div>
       `;
@@ -5439,6 +5740,142 @@ async function approveTimeOff(requestId, notifId) {
   }
 }
 
+// ============================================================
+// APPROVE MAKE UP — marks off-hours Open + creates 2hr makeup blocks
+// Day-of-week aware: no LiveChat on weekends, respects channel hours
+// ============================================================
+async function approveMakeUpRequest(notifIdx) {
+  const n = pendingNotifications[notifIdx];
+  if (!n) { toast("Notification not found", "error"); return; }
+  const requestId = n.requestId || '', notifId = n.id || '';
+  const agentName = n.agentName || n.person || 'Unknown';
+  const requestDate = n.date || '', reason = n.reason || '';
+  const makeUpDateRaw = n.makeUpDate || (n.makeUpDates && n.makeUpDates.length > 0 ? n.makeUpDates.join(',') : '') || '';
+  const makeUpDatesArr = makeUpDateRaw.split(',').map(d => d.trim()).filter(Boolean);
+  const makeUpTimeStart = n.makeUpTimeStart || '', makeUpTimeEnd = n.makeUpTimeEnd || '';
+  const isPartial = n.duration === 'partial' && n.partialStart;
+  const partialStart = n.partialStart || '', partialEnd = n.partialEnd || '';
+  if (!requestId) { toast("Missing request ID", "error"); return; }
+
+  // Calculate hours to make up
+  let makeUpHours = 0;
+  if (makeUpTimeStart && makeUpTimeEnd) {
+    makeUpHours = parseInt(makeUpTimeEnd.split(':')[0]) - parseInt(makeUpTimeStart.split(':')[0]);
+  } else if (isPartial && partialStart && partialEnd && partialEnd !== 'end') {
+    makeUpHours = parseInt(partialEnd.split(':')[0]) - parseInt(partialStart.split(':')[0]);
+  } else { makeUpHours = 4; }
+  if (makeUpHours <= 0) makeUpHours = 4;
+  const muStartHour = makeUpTimeStart ? parseInt(makeUpTimeStart.split(':')[0]) : 10;
+
+  try {
+    Swal.fire({ title: 'Processing', html: 'Approving & scheduling makeup shifts...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+
+    // Step 1: Approve time off (backend marks partial/full shifts as Open)
+    const approveRes = await fetch("./?action=timeoff/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId, notifId, managerName: window._myName || "Manager" }) });
+    const approveData = await approveRes.json();
+    if (!approveData.ok) { Swal.close(); toast(approveData.error || 'Failed', "error"); return; }
+
+    // Step 2: Get agent's channel history
+    const agentTeams = getAgentChannelHistory(agentName);
+
+    // Step 3: Create 2-hr blocks on each makeup date
+    const createdShifts = [], errors = [];
+    const datesToProcess = makeUpDatesArr.length > 0 ? makeUpDatesArr : [requestDate];
+    const hrsPerDate = Math.ceil(makeUpHours / datesToProcess.length);
+
+    for (const muDate of datesToProcess) {
+      let remaining = Math.min(hrsPerDate, makeUpHours - createdShifts.reduce((s, x) => s + x.hrs, 0));
+      if (remaining <= 0) break;
+
+      // Day-of-week awareness
+      const muDow = new Date(muDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+      const isWknd = (muDow === 'Sat' || muDow === 'Sun');
+
+      // Filter channels by availability on this day
+      const availTeams = agentTeams.filter(t => {
+        const nm = t.toLowerCase().replace(/[\s_\-\/]/g, '');
+        if ((nm.includes('livechat') || nm === 'lc') && isWknd) return false; // No LC on weekends
+        if (nm.includes('lunch') || nm.includes('meeting') || nm.includes('1:1')) return false;
+        return true;
+      });
+
+      let curHour = muStartHour;
+      const gaps = getTeamsNeedingCoverage(muDate, curHour, curHour + remaining);
+
+      // Prioritized channel queue: gaps agent can fill > other experienced channels
+      const agentSet = new Set(availTeams.map(t => t.toLowerCase().trim()));
+      const qualGaps = gaps.filter(g => agentSet.has(g.team.toLowerCase().trim()));
+      const otherExp = availTeams.filter(t => !qualGaps.find(g => g.team.toLowerCase().trim() === t.toLowerCase().trim()));
+      const queue = [];
+      qualGaps.forEach(g => { for (let i = 0; i < Math.max(1, g.needed); i++) queue.push(g.team); });
+      otherExp.forEach(t => queue.push(t));
+      if (queue.length === 0) queue.push('Email/Floater'); // Ultimate fallback
+
+      let blockIdx = 0;
+      while (remaining > 0) {
+        const blockHrs = Math.min(2, remaining);
+        const blockEnd = curHour + blockHrs;
+        let assignTeam = queue[blockIdx % queue.length];
+
+        // If past this channel's operating hours, use Email/Floater
+        const cfg = getChannelConfig(assignTeam);
+        if (cfg.hours && curHour >= cfg.hours[1]) assignTeam = 'Email/Floater';
+
+        const startStr = String(curHour).padStart(2, '0') + ':00:00';
+        const endStr = String(blockEnd).padStart(2, '0') + ':00:00';
+        const docId = muDate + '__' + assignTeam.replace(/\s+/g, '_');
+        const assignId = 'makeup_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + blockIdx;
+
+        try {
+          const addRes = await fetch("./?action=assignment/add", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ docId, assignment: { id: assignId, person: agentName, start: startStr, end: endStr, role: "Agent", notes: '[MAKEUP] ' + blockHrs + 'hrs for time off ' + requestDate } }) });
+          const addData = await addRes.json();
+          if (addData.ok || addData.created) { createdShifts.push({ date: muDate, team: assignTeam, start: startStr, end: endStr, hrs: blockHrs }); }
+          else { errors.push(assignTeam + ': ' + (addData.error || 'Failed')); }
+        } catch (e) { errors.push(assignTeam + ': ' + e.message); }
+        curHour = blockEnd; remaining -= blockHrs; blockIdx++;
+      }
+    }
+
+    // Step 4: Result dialog with polished UI
+    const _fd = (d) => { try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); } catch(e) { return d; } };
+    const shiftRows = createdShifts.map(s => {
+      const c = getChannelConfig(s.team);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e2e8f0;">' +
+        '<span style="background:' + (c.color||'#f1f5f9') + ';color:' + (c.text||'#334155') + ';padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;min-width:80px;text-align:center;">' + (c.abbrev||s.team) + '</span>' +
+        '<div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#1e293b;">' + _fd(s.date) + '</div>' +
+        '<div style="font-size:12px;color:#64748b;">' + formatNotifTime(s.start.substring(0,5)) + ' – ' + formatNotifTime(s.end.substring(0,5)) + ' (' + s.hrs + 'hr)</div></div></div>';
+    }).join('');
+    const totalHrs = createdShifts.reduce((s, x) => s + x.hrs, 0);
+
+    Swal.fire({
+      icon: createdShifts.length > 0 ? 'success' : 'warning',
+      title: 'Make Up Approved!',
+      html: '<div style="text-align:left;font-size:13px;">' +
+        '<div style="padding:12px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;margin-bottom:14px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:16px;">✅</span><span style="font-weight:700;color:#15803d;font-size:14px;">' + agentName + '</span></div>' +
+          '<div style="color:#166534;font-size:13px;">Time off on <strong>' + _fd(requestDate) + '</strong> approved</div>' +
+          (isPartial ? '<div style="color:#7c3aed;font-size:12px;margin-top:2px;">⏰ Only ' + formatNotifTime(partialStart) + ' – ' + formatNotifTime(partialEnd) + ' marked as Open</div>' : '') +
+        '</div>' +
+        (createdShifts.length > 0 ?
+          '<div style="padding:14px;background:#fff;border-radius:10px;border:2px solid #e2e8f0;">' +
+            '<div style="font-weight:700;color:#1e293b;margin-bottom:8px;font-size:13px;">📋 Makeup Shifts (2-hr blocks)</div>' + shiftRows +
+            '<div style="margin-top:10px;padding-top:8px;border-top:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">' +
+              '<span style="font-weight:700;color:#059669;font-size:14px;">Total: ' + totalHrs + ' hours</span>' +
+              '<span style="font-size:11px;color:#94a3b8;">' + createdShifts.length + ' shift' + (createdShifts.length!==1?'s':'') + '</span></div></div>'
+          : '<div style="color:#f59e0b;padding:12px;background:#fffbeb;border-radius:8px;">No makeup shifts created — schedule manually.</div>') +
+        (errors.length > 0 ? '<div style="margin-top:8px;padding:8px;background:#fef2f2;border-radius:6px;font-size:11px;color:#dc2626;">' + errors.join('<br>') + '</div>' : '') +
+      '</div>',
+      confirmButtonColor: '#b37e78', confirmButtonText: 'Done', width: 480
+    });
+
+    pendingNotifications = pendingNotifications.filter(n2 => !(n2.notificationType === 'timeoff_request' && n2.id === notifId));
+    renderNotifications(); updateNotifBadge();
+    if (typeof loadSystemData === 'function') loadSystemData();
+  } catch (err) { console.error("Approve makeup error:", err); Swal.fire({ icon: 'error', title: 'Error', text: err.message }); }
+}
+
+
 // Deny time off request
 async function denyTimeOff(requestId, notifId) {
   if (!requestId) {
@@ -5489,6 +5926,459 @@ async function denyTimeOff(requestId, notifId) {
   } catch (err) {
     console.error("Deny time off error:", err);
     toast(`❌ Error: ${err.message}`, "error");
+  }
+}
+
+// Format time for notification display (HH:MM -> readable)
+function formatNotifTime(t) {
+  if (!t) return '';
+  const parts = t.split(':');
+  const h = parseInt(parts[0]);
+  if (isNaN(h)) return t;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return h12 + ':' + (parts[1] || '00') + ' ' + ampm;
+}
+
+// Attention-grabbing alert sound for managers (distinct from agent notification sound)
+function playManagerAlertSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    
+    // Three-tone rising chime — more urgent than agent notification
+    const playTone = (freq, delay, duration) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + delay);
+      gain.gain.setValueAtTime(0, now + delay);
+      gain.gain.linearRampToValueAtTime(0.15, now + delay + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+      osc.start(now + delay);
+      osc.stop(now + delay + duration);
+    };
+    
+    // Rising three-note chime: C5 → E5 → G5
+    playTone(523, 0, 0.2);    // C5
+    playTone(659, 0.15, 0.2); // E5
+    playTone(784, 0.30, 0.35); // G5 (held longer)
+    
+    // Second pass slightly delayed for emphasis
+    playTone(523, 0.7, 0.15);
+    playTone(659, 0.85, 0.15);
+    playTone(784, 1.0, 0.4);
+  } catch (e) {
+    console.warn("Manager alert sound failed:", e);
+  }
+}
+
+// Get unique channels/teams an agent has historically worked
+function getAgentChannelHistory(agentName) {
+  if (!agentName) return [];
+  const allData = window._allData || [];
+  const nameLower = agentName.toLowerCase().trim();
+  
+  const teams = new Set();
+  allData.forEach(s => {
+    if (s.person && s.person.toLowerCase().trim() === nameLower && s.team) {
+      teams.add(s.team);
+    }
+  });
+  
+  return Array.from(teams);
+}
+
+// Find teams that need coverage on a given date during a time range
+function getTeamsNeedingCoverage(dateISO, startHour, endHour) {
+  if (!_staffingRules || _staffingRules.length === 0) return [];
+  
+  const d = new Date(dateISO + 'T12:00:00');
+  const dow = d.toLocaleDateString("en-US", { weekday: "short" });
+  const isWeekday = ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(dow);
+  const isWeekend = ["Sat", "Sun"].includes(dow);
+  
+  // Get shifts for that date
+  const dateShifts = (window._allData || []).filter(s => {
+    const k = s.dayKey || s.dateISO || (s.date ? dayKeyPST(s.date) : '');
+    return k === dateISO && !String(s.notes || "").toUpperCase().includes("[OFF]");
+  });
+  
+  const teamsNeedingHelp = [];
+  
+  _staffingRules.forEach(rule => {
+    const dayMatch =
+      rule.day === "All" ||
+      rule.day === dow ||
+      (rule.day === "Weekday" && isWeekday) ||
+      (rule.day === "Weekend" && isWeekend);
+    if (!dayMatch) return;
+    
+    const min = parseInt(rule.min) || 0;
+    const channel = rule.team;
+    const config = getChannelConfig(channel);
+    
+    let ruleStart, ruleEnd;
+    if (rule.startHour !== undefined && rule.endHour !== undefined && rule.timeBlock !== "all") {
+      ruleStart = parseInt(rule.startHour) || 0;
+      ruleEnd = parseInt(rule.endHour) || 24;
+    } else {
+      [ruleStart, ruleEnd] = config.hours || [8, 17];
+    }
+    
+    // Check overlap with makeup time range
+    const overlapStart = Math.max(startHour, ruleStart);
+    const overlapEnd = Math.min(endHour, ruleEnd);
+    if (overlapStart >= overlapEnd) return; // No overlap
+    
+    // Count existing shifts covering this overlap
+    const coveringCount = dateShifts.filter(s => {
+      if (!s.start || !s.end || s.team !== channel) return false;
+      const sH = parseTimeDecimal(s.start);
+      const eH = parseTimeDecimal(s.end);
+      return sH <= overlapStart && eH >= overlapEnd;
+    }).length;
+    
+    if (coveringCount < min) {
+      teamsNeedingHelp.push({
+        team: channel,
+        needed: min - coveringCount,
+        min: min,
+        current: coveringCount
+      });
+    }
+  });
+  
+  // Sort by most gaps first
+  teamsNeedingHelp.sort((a, b) => b.needed - a.needed);
+  return teamsNeedingHelp;
+}
+
+// Approve time off AND schedule a makeup shift for the agent
+// Smart version: assigns to channels that need coverage AND agent has experience with
+async function approveWithMakeup(requestId, notifId, agentName, requestDate) {
+  if (!requestId) {
+    toast("❌ Error: Missing request ID", "error");
+    return;
+  }
+  
+  // Get agent's channel history (only teams they've actually worked)
+  const agentTeams = getAgentChannelHistory(agentName);
+  
+  if (agentTeams.length === 0) {
+    // Fallback: use all available teams if no history found
+    const allTeams = (window._teams || []);
+    agentTeams.push(...(Array.isArray(allTeams) ? allTeams.map(t => typeof t === 'string' ? t : (t.name || t.id || '')).filter(Boolean) : []));
+  }
+  
+  // Build team options (only channels the agent has worked)
+  const teamOptions = agentTeams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  
+  const { value: formValues, isConfirmed } = await Swal.fire({
+    title: '<div style="font-size:18px;">📋 Approve + Schedule Makeup</div>',
+    html: `
+      <div style="text-align:left; font-size:13px;">
+        <div style="padding:10px; background:#f0fdf4; border-radius:8px; margin-bottom:14px; border:1px solid #86efac;">
+          <strong>Agent:</strong> ${agentName}<br>
+          <strong>Time Off Date:</strong> ${requestDate}
+        </div>
+        
+        <div style="font-weight:700; color:#7c3aed; margin-bottom:6px; font-size:12px; text-transform:uppercase;">Makeup Shift Details</div>
+        
+        <div style="margin-bottom:10px;">
+          <label style="display:block; font-size:11px; color:#64748b; margin-bottom:4px;">Makeup Date</label>
+          <input type="date" id="swalMakeupDate" class="swal2-input" style="width:100%; margin:0; font-size:13px; padding:8px;">
+        </div>
+        
+        <div id="swalCoverageHint" style="display:none; margin-bottom:10px; padding:10px; background:#fef3c7; border-radius:8px; border:1px solid #fcd34d; font-size:12px;"></div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+          <div>
+            <label style="display:block; font-size:11px; color:#64748b; margin-bottom:4px;">Start Time</label>
+            <select id="swalMakeupStart" class="swal2-input" style="width:100%; margin:0; font-size:13px; padding:8px;">
+              <option value="06:00">6:00 AM</option>
+              <option value="07:00">7:00 AM</option>
+              <option value="08:00">8:00 AM</option>
+              <option value="09:00">9:00 AM</option>
+              <option value="10:00" selected>10:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="12:00">12:00 PM</option>
+              <option value="13:00">1:00 PM</option>
+              <option value="14:00">2:00 PM</option>
+              <option value="15:00">3:00 PM</option>
+              <option value="16:00">4:00 PM</option>
+              <option value="17:00">5:00 PM</option>
+              <option value="18:00">6:00 PM</option>
+              <option value="19:00">7:00 PM</option>
+              <option value="20:00">8:00 PM</option>
+              <option value="21:00">9:00 PM</option>
+              <option value="22:00">10:00 PM</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; color:#64748b; margin-bottom:4px;">End Time</label>
+            <select id="swalMakeupEnd" class="swal2-input" style="width:100%; margin:0; font-size:13px; padding:8px;">
+              <option value="07:00">7:00 AM</option>
+              <option value="08:00">8:00 AM</option>
+              <option value="09:00">9:00 AM</option>
+              <option value="10:00">10:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="12:00">12:00 PM</option>
+              <option value="13:00">1:00 PM</option>
+              <option value="14:00">2:00 PM</option>
+              <option value="15:00">3:00 PM</option>
+              <option value="16:00">4:00 PM</option>
+              <option value="17:00">5:00 PM</option>
+              <option value="18:00">6:00 PM</option>
+              <option value="19:00">7:00 PM</option>
+              <option value="20:00">8:00 PM</option>
+              <option value="21:00">9:00 PM</option>
+              <option value="22:00">10:00 PM</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style="margin-bottom:10px;">
+          <label style="display:block; font-size:11px; color:#64748b; margin-bottom:4px;">
+            Team / Channel
+            <span style="color:#b37e78; font-weight:400;">(${agentTeams.length > 0 ? "filtered to agent experience" : "all teams"})</span>
+          </label>
+          <select id="swalMakeupTeam" class="swal2-input" style="width:100%; margin:0; font-size:13px; padding:8px;">
+            <option value="">— Auto-assign to coverage gap —</option>
+            ${teamOptions}
+          </select>
+          <div style="font-size:10px; color:#64748b; margin-top:4px;">💡 Leave on "Auto-assign" to fill the biggest coverage gap ${agentName} is qualified for</div>
+        </div>
+        
+        <div style="margin-bottom:6px;">
+          <label style="display:block; font-size:11px; color:#64748b; margin-bottom:4px;">Role</label>
+          <select id="swalMakeupRole" class="swal2-input" style="width:100%; margin:0; font-size:13px; padding:8px;">
+            <option value="Agent">Agent</option>
+            <option value="Captain">Captain</option>
+            <option value="Backup1">Backup #1</option>
+            <option value="Backup2">Backup #2</option>
+          </select>
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: '✓ Approve & Schedule Makeup',
+    confirmButtonColor: '#7c3aed',
+    cancelButtonText: 'Cancel',
+    width: '440px',
+    preConfirm: () => {
+      const makeupDate = document.getElementById('swalMakeupDate')?.value;
+      const makeupStart = document.getElementById('swalMakeupStart')?.value;
+      const makeupEnd = document.getElementById('swalMakeupEnd')?.value;
+      let makeupTeam = document.getElementById('swalMakeupTeam')?.value;
+      const makeupRole = document.getElementById('swalMakeupRole')?.value;
+      
+      if (!makeupDate) {
+        Swal.showValidationMessage('Please select a makeup date');
+        return false;
+      }
+      if (!makeupStart || !makeupEnd) {
+        Swal.showValidationMessage('Please select start and end times');
+        return false;
+      }
+      
+      const startH = parseInt(makeupStart.split(':')[0]);
+      const endH = parseInt(makeupEnd.split(':')[0]);
+      if (endH <= startH) {
+        Swal.showValidationMessage('End time must be after start time');
+        return false;
+      }
+      
+      // Auto-assign: find team that needs coverage AND agent has worked
+      if (!makeupTeam) {
+        const gaps = getTeamsNeedingCoverage(makeupDate, startH, endH);
+        const agentTeamSet = new Set(agentTeams.map(t => t.toLowerCase().trim()));
+        
+        // Find first gap team the agent is qualified for
+        const match = gaps.find(g => agentTeamSet.has(g.team.toLowerCase().trim()));
+        
+        if (match) {
+          makeupTeam = match.team;
+        } else if (gaps.length > 0 && agentTeams.length === 0) {
+          // No agent history — use biggest gap
+          makeupTeam = gaps[0].team;
+        } else if (agentTeams.length > 0) {
+          // No gaps found — use agent's most common team
+          makeupTeam = agentTeams[0];
+        } else {
+          Swal.showValidationMessage('Could not determine team. Please select one manually.');
+          return false;
+        }
+      }
+      
+      return { makeupDate, makeupStart, makeupEnd, makeupTeam, makeupRole };
+    },
+    didOpen: () => {
+      // Set minimum date to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateInput = document.getElementById('swalMakeupDate');
+      if (dateInput) {
+        dateInput.min = tomorrow.toISOString().split('T')[0];
+        dateInput.value = tomorrow.toISOString().split('T')[0];
+      }
+      
+      // Update coverage hints when date or times change
+      const updateHint = () => {
+        const date = document.getElementById('swalMakeupDate')?.value;
+        const startVal = document.getElementById('swalMakeupStart')?.value;
+        const endVal = document.getElementById('swalMakeupEnd')?.value;
+        const hintEl = document.getElementById('swalCoverageHint');
+        const teamSel = document.getElementById('swalMakeupTeam');
+        
+        if (!date || !startVal || !endVal || !hintEl) return;
+        
+        const startH = parseInt(startVal.split(':')[0]);
+        const endH = parseInt(endVal.split(':')[0]);
+        if (endH <= startH) { hintEl.style.display = 'none'; return; }
+        
+        const gaps = getTeamsNeedingCoverage(date, startH, endH);
+        const agentTeamSet = new Set(agentTeams.map(t => t.toLowerCase().trim()));
+        const qualifiedGaps = gaps.filter(g => agentTeamSet.has(g.team.toLowerCase().trim()));
+        
+        if (qualifiedGaps.length > 0) {
+          hintEl.style.display = 'block';
+          hintEl.innerHTML = `
+            <div style="font-weight:700; color:#92400e; margin-bottom:4px;">⚡ Coverage gaps ${agentName} can fill:</div>
+            ${qualifiedGaps.map(g => 
+              `<div style="margin:2px 0;">• <strong>${escapeHtml(g.team)}</strong> — needs ${g.needed} more (${g.current}/${g.min})</div>`
+            ).join('')}
+          `;
+          
+          // Auto-select first qualified gap in dropdown
+          if (teamSel && teamSel.value === '') {
+            // Keep on auto-assign but visually indicate
+          }
+        } else if (gaps.length > 0) {
+          hintEl.style.display = 'block';
+          hintEl.innerHTML = `
+            <div style="font-weight:700; color:#b45309; margin-bottom:4px;">⚠️ Coverage gaps exist but ${agentName} hasn't worked these channels:</div>
+            ${gaps.slice(0, 3).map(g => 
+              `<div style="margin:2px 0;">• ${escapeHtml(g.team)} — needs ${g.needed} more</div>`
+            ).join('')}
+            <div style="margin-top:4px; font-size:11px; color:#78350f;">Select a team ${agentName} is qualified for instead.</div>
+          `;
+        } else {
+          hintEl.style.display = 'block';
+          hintEl.innerHTML = '<div style="color:#15803d;">✅ No coverage gaps detected for this date/time. Agent will be assigned to their selected or default team.</div>';
+        }
+      };
+      
+      // Attach listeners
+      document.getElementById('swalMakeupDate')?.addEventListener('change', updateHint);
+      document.getElementById('swalMakeupStart')?.addEventListener('change', updateHint);
+      document.getElementById('swalMakeupEnd')?.addEventListener('change', updateHint);
+      
+      // Initial hint update
+      setTimeout(updateHint, 100);
+    }
+  });
+  
+  if (!isConfirmed || !formValues) return;
+  
+  try {
+    Swal.fire({
+      title: 'Processing...',
+      text: 'Approving time off and scheduling makeup shift',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+    
+    // Step 1: Approve the time off request
+    const approveRes = await fetch("./?action=timeoff/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId: requestId,
+        notifId: notifId,
+        managerName: window._myName || "Manager"
+      })
+    });
+    const approveData = await approveRes.json();
+    
+    if (!approveData.ok) {
+      Swal.fire('Error', approveData.error || 'Failed to approve', 'error');
+      return;
+    }
+    
+    // Step 2: Schedule the makeup shift using assignment/add
+    const makeupDocId = `${formValues.makeupDate}__${formValues.makeupTeam.replace(/\s+/g, '_')}`;
+    const makeupAssignId = `makeup_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
+    const addRes = await fetch("./?action=assignment/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        docId: makeupDocId,
+        assignment: {
+          id: makeupAssignId,
+          person: agentName,
+          start: formValues.makeupStart + ":00",
+          end: formValues.makeupEnd + ":00",
+          role: formValues.makeupRole || "Agent",
+          notes: `[MAKEUP] Making up for time off on ${requestDate}`
+        }
+      })
+    });
+    
+    const addData = await addRes.json();
+    
+    if (addData.ok || addData.id) {
+      console.log(`Makeup shift scheduled for ${agentName}: ${formValues.makeupDate} on ${formValues.makeupTeam}`);
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Done!',
+        html: `
+          <div style="text-align:left; font-size:13px;">
+            <div style="margin-bottom:8px;">✅ Time off <strong>approved</strong> for ${requestDate}</div>
+            <div style="padding:10px; background:#f5f3ff; border-radius:8px; border:1px solid #c4b5fd;">
+              📋 <strong>Makeup shift</strong> scheduled:<br>
+              ${formValues.makeupDate} • ${formatNotifTime(formValues.makeupStart)} – ${formatNotifTime(formValues.makeupEnd)}<br>
+              <strong>${formValues.makeupTeam}</strong> • ${formValues.makeupRole}
+            </div>
+          </div>
+        `,
+        confirmButtonColor: '#7c3aed'
+      });
+    } else {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Partially Complete',
+        html: `
+          <div style="font-size:13px;">
+            ✅ Time off was approved<br>
+            ⚠️ Could not schedule makeup shift: ${addData.error || 'Unknown error'}<br>
+            <br>You can manually add the shift from the Master Schedule.
+          </div>
+        `,
+        confirmButtonColor: '#f59e0b'
+      });
+    }
+    
+    // Remove from pendingNotifications and re-render
+    pendingNotifications = pendingNotifications.filter(n => 
+      !(n.notificationType === 'timeoff_request' && n.id === notifId)
+    );
+    renderNotifications();
+    updateNotifBadge();
+    
+    // Refresh schedule data
+    if (typeof loadSystemData === 'function') {
+      loadSystemData();
+    }
+    
+  } catch (err) {
+    console.error("Approve with makeup error:", err);
+    Swal.fire('Error', err.message, 'error');
   }
 }
 
@@ -5842,6 +6732,264 @@ async function updateCoverageOpenShifts() {
 // ============================================
 // END OPEN SHIFTS MANAGEMENT
 // ============================================
+
+// ============================================
+// BATCH FILL COVERAGE
+// ============================================
+let _batchFillShifts = [];
+
+function openBatchFillModal() {
+  const todayKey = pstISODate();
+  const nowPST = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const currentHour = nowPST.getHours();
+  
+  // Get all today's shifts
+  const todayShifts = _filteredData.filter(s => {
+    const k = s.dayKey || s.dateISO || dayKeyPST(s.date);
+    return k === todayKey && !String(s.notes || "").toUpperCase().includes("[OFF]");
+  });
+  
+  // Find shifts in gap time blocks that need coverage
+  const blocks = [
+    { label: "6a-8a", start: 6, end: 8 },
+    { label: "8a-10a", start: 8, end: 10 },
+    { label: "10a-12p", start: 10, end: 12 },
+    { label: "12p-2p", start: 12, end: 14 },
+    { label: "2p-4p", start: 14, end: 16 },
+    { label: "4p-6p", start: 16, end: 18 },
+    { label: "6p-8p", start: 18, end: 20 },
+    { label: "8p-10p", start: 20, end: 22 }
+  ];
+  
+  const todayDOW = new Date().toLocaleDateString("en-US", { weekday: "short", timeZone: PST_TZ });
+  const isWeekday = ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(todayDOW);
+  const isWeekend = ["Sat", "Sun"].includes(todayDOW);
+  
+  // Collect all gap entries with their shifts
+  const gapEntries = [];
+  
+  (_staffingRules || []).forEach(rule => {
+    const dayMatch =
+      rule.day === "All" ||
+      rule.day === todayDOW ||
+      (rule.day === "Weekday" && isWeekday) ||
+      (rule.day === "Weekend" && isWeekend);
+    if (!dayMatch) return;
+    
+    const min = parseInt(rule.min) || 0;
+    const channel = rule.team;
+    const config = getChannelConfig(channel);
+    
+    let openHour, closeHour;
+    if (rule.startHour !== undefined && rule.endHour !== undefined && rule.timeBlock !== "all") {
+      openHour = parseInt(rule.startHour) || 0;
+      closeHour = parseInt(rule.endHour) || 24;
+    } else {
+      [openHour, closeHour] = config.hours || [8, 17];
+    }
+    
+    blocks.forEach(blk => {
+      if (blk.end <= currentHour) return;
+      if (blk.start < openHour || blk.end > closeHour) return;
+      
+      const coveringShifts = todayShifts.filter(s => {
+        if (!s.start || !s.end) return false;
+        const sH = parseTimeDecimal(s.start);
+        const eH = parseTimeDecimal(s.end);
+        return s.team === channel && sH <= blk.start && eH >= blk.end;
+      });
+      
+      if (coveringShifts.length < min) {
+        const needed = min - coveringShifts.length;
+        for (let i = 0; i < needed; i++) {
+          gapEntries.push({
+            team: channel,
+            teamAbbrev: config.abbrev || channel.substring(0, 3).toUpperCase(),
+            teamColor: config.color,
+            teamText: config.text,
+            timeBlock: blk.label,
+            blockStart: blk.start,
+            blockEnd: blk.end,
+            currentCount: coveringShifts.length,
+            minRequired: min
+          });
+        }
+      }
+    });
+  });
+  
+  // Also add open shifts (person = "Open")
+  const openShifts = todayShifts.filter(s => {
+    const pLower = String(s.person || "").toLowerCase().trim();
+    return pLower === "open" || s.isOpenShift === true;
+  });
+  
+  openShifts.forEach(s => {
+    const config = getChannelConfig(s.team);
+    gapEntries.push({
+      team: s.team || "General",
+      teamAbbrev: config.abbrev || (s.team || "").substring(0, 3).toUpperCase(),
+      teamColor: config.color,
+      teamText: config.text,
+      timeBlock: `${toAmPm(s.start)} - ${toAmPm(s.end)}`,
+      isOpenShift: true,
+      shiftData: s,
+      originalPerson: s.originalPerson || ""
+    });
+  });
+  
+  if (gapEntries.length === 0) {
+    Swal.fire("All Good!", "No coverage gaps to fill right now.", "success");
+    return;
+  }
+  
+  _batchFillShifts = gapEntries;
+  
+  // Build the form
+  const availablePeople = Array.isArray(_people) ? _people : [];
+  const content = document.getElementById("batchFillContent");
+  if (!content) return;
+  
+  let html = '';
+  gapEntries.forEach((gap, idx) => {
+    const isOpen = gap.isOpenShift;
+    const origInfo = isOpen && gap.originalPerson 
+      ? `<span style="font-size:10px; color:#dc2626;">Was: ${escapeHtml(gap.originalPerson)}</span>` 
+      : '';
+    
+    html += `
+      <div style="display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; background:#fafafa; border-radius:10px; border:1px solid #e2e8f0;">
+        <div style="flex-shrink:0;">
+          <span style="display:inline-block; font-size:10px; background:${gap.teamColor}; color:${gap.teamText}; padding:3px 8px; border-radius:4px; font-weight:700;">${escapeHtml(gap.teamAbbrev)}</span>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:12px; font-weight:700; color:#0f172a;">
+            ${isOpen ? '⚠️ Open Shift' : '📊 Coverage Gap'}
+          </div>
+          <div style="font-size:11px; color:#64748b;">${escapeHtml(gap.timeBlock)} ${origInfo}</div>
+        </div>
+        <div style="flex-shrink:0; width:160px;">
+          <select id="batchFill_${idx}" style="width:100%; padding:8px; border:2px solid #e2e8f0; border-radius:8px; font-size:12px; font-weight:600; background:white;">
+            <option value="">— Skip —</option>
+            ${availablePeople.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `;
+  });
+  
+  // Summary line
+  html += `
+    <div style="text-align:center; margin-top:12px; padding:10px; background:#fef3c7; border-radius:8px; font-size:12px; color:#92400e; font-weight:600;">
+      ${gapEntries.length} slot${gapEntries.length > 1 ? 's' : ''} need coverage • Select who should fill each
+    </div>
+  `;
+  
+  content.innerHTML = html;
+  
+  // Show modal
+  const modal = document.getElementById("batchFillModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeBatchFillModal() {
+  const modal = document.getElementById("batchFillModal");
+  if (modal) modal.style.display = "none";
+  _batchFillShifts = [];
+}
+
+async function submitBatchFill() {
+  const assignments = [];
+  
+  _batchFillShifts.forEach((gap, idx) => {
+    const sel = document.getElementById(`batchFill_${idx}`);
+    const person = sel ? sel.value : "";
+    if (person) {
+      assignments.push({ ...gap, assignTo: person });
+    }
+  });
+  
+  if (assignments.length === 0) {
+    toast("No assignments selected", "error");
+    return;
+  }
+  
+  const btn = document.getElementById("batchFillSubmitBtn");
+  if (btn) { btn.textContent = "Assigning..."; btn.disabled = true; }
+  
+  let successCount = 0;
+  let errorCount = 0;
+  
+  for (const assignment of assignments) {
+    try {
+      if (assignment.isOpenShift && assignment.shiftData) {
+        // Replace the open shift with the assigned person
+        const shift = assignment.shiftData;
+        const res = await fetch('./?action=assignment/replace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            docId: shift.docId,
+            assignmentId: shift.assignmentId,
+            newPerson: assignment.assignTo,
+            notes: `[Replaced ${shift.originalPerson || 'Open'}] [Batch Fill]`,
+            notifyMode: "defer",
+            originalPerson: shift.person
+          })
+        });
+        const data = await res.json();
+        if (data.ok || data.status === "success") {
+          // Update local data
+          const local = _allData.find(x => String(x.assignmentId) === String(shift.assignmentId));
+          if (local) {
+            local.person = assignment.assignTo;
+            local.notes = `[Replaced ${shift.originalPerson || 'Open'}] [Batch Fill]`;
+          }
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } else {
+        // For coverage gaps (not open shifts), there's no specific shift to replace.
+        // We log the assignment intent - the manager will need to create a new shift.
+        // For now, show a toast indicating manual action needed
+        toast(`Gap in ${assignment.team} (${assignment.timeBlock}): Assign ${assignment.assignTo} manually via Add Shift`, "info");
+        successCount++;
+      }
+    } catch (err) {
+      console.error("Batch fill error:", err);
+      errorCount++;
+    }
+  }
+  
+  closeBatchFillModal();
+  renderView();
+  
+  if (successCount > 0 && errorCount === 0) {
+    Swal.fire({
+      icon: 'success',
+      title: '⚡ Coverage Updated!',
+      html: `<p>${successCount} shift${successCount > 1 ? 's' : ''} assigned successfully.</p>
+             <p style="font-size:12px; color:#64748b; margin-top:8px;">Notifications added to pending queue.</p>`,
+      confirmButtonColor: '#16a34a'
+    });
+    loadPendingNotifications();
+  } else if (successCount > 0 && errorCount > 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Partially Assigned',
+      html: `<p>${successCount} assigned, ${errorCount} failed.</p>`,
+      confirmButtonColor: '#f59e0b'
+    });
+  } else {
+    toast("Failed to assign shifts", "error");
+  }
+  
+  if (btn) { btn.textContent = "⚡ Assign All →"; btn.disabled = false; }
+  
+  // Refresh coverage dashboard
+  setTimeout(renderCoverageDashboard, 1000);
+}
 
 // Undo a backend notification using localStorage undo data
 async function undoBackendNotification(idx) {
