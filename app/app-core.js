@@ -49,34 +49,12 @@ const CHANNEL_CONFIG = {
   "Custom":          { abbrev: "CUST",  color: "#99f6e4", border: "#5eead4", text: "#8f5f5a", hours: [8, 17], minStaff: 0, statusInterval: 0 },
   "Other":           { abbrev: "Other", color: "#e2e8f0", border: "#cbd5e1", text: "#475569", hours: [8, 17], minStaff: 0, statusInterval: 0 }
 };
-const CHANNEL_ABBREV = {
-  "Live Chat": "LC",
-  "LiveChat": "LC",
-  "Phone": "Phone",
-  "Phone Support": "Phone",
-  "PhoneSupport": "Phone",
-  "Socials": "SS",
-  "MD Support": "MD",
-  "MDSupport": "MD",
-  "Disputes": "Dis",
-  "Floater": "Float",
-  "EmailFloater": "Float",
-  "Email/Floater": "Float",
-  "Lunch": "Lunch",
-  "Projects": "Proj",
-  "ReportingProjects": "Proj",
-  "1: 1 Meetings": "1:1",
-  "1:1s Meetings": "1:1",
-  "11Meetings": "1:1",
-  "Meeting": "MTG",
-  "Meetings": "MTG",
-  "Custom": "CUST",
-  "Other": "Other"
-};
-  const $ = (id) => document.getElementById(id);
-  // ============================================
-  // [SECTION 2] AUTHENTICATION
-  // ============================================
+
+const $ = (id) => document.getElementById(id);
+  
+// ============================================
+// [SECTION 2] AUTHENTICATION
+// ============================================
   async function handleSignIn(response) {
   console.log("Sign-in response received");
   
@@ -1103,7 +1081,6 @@ runGenerate: async function() {
   
   function fatal_(title, detail) {
     console.error("FATAL:", title, detail);
-    if ($("skeletonView")) $("skeletonView").style.display = "none";
     if ($("loader")) $("loader").classList.add("hidden");
     const host = $("listView") || document.body;
     host.innerHTML = `<div style="padding:20px; color:red; font-weight:bold;">${title}<br><span style="font-weight:normal; font-size:12px; color:#333;">${detail}</span></div>`;
@@ -1142,14 +1119,6 @@ runGenerate: async function() {
   let _masterSelected=new Set(), _masterRawData=[]; // Moved here for safety
   let _lastSelectedPerson = null;
   // --- 3. HELPERS (FORMATTING) ---
-  function formatCsatDisplay(val) {
-    if (val === null || val === undefined || val === "" || val === "--") return "--";
-    if (String(val).includes("%")) return val;
-    const n = Number(val);
-    if (isNaN(n)) return "--";
-    if (n <= 1 && n !== 0) return Math.round(n * 100) + "%";
-    return Math.round(n) + "%";
-  }
   function getTeamClass(t) { 
     const l = (t || "").toLowerCase().replace(/[\s\/]+/g, ''); 
     
