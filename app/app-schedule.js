@@ -6615,7 +6615,8 @@ function closeFillShiftModal() {
 }
 
 // Submit fill shift
-async function submitFillShift() {
+async function submitFillShift(event) {
+  const button = event?.target;
   if (!_currentFillShiftData) {
     toast("No shift selected", "error");
     return;
@@ -6632,37 +6633,39 @@ async function submitFillShift() {
     return;
   }
   
-  try {
-    const res = await fetch("./?action=open-shifts/fill", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        docId: _currentFillShiftData.docId,
-        assignmentId: _currentFillShiftData.assignmentId,
-        agentName: agentName,
-        notifyAgent: notifyAgent
-      })
-    });
-    
-    const data = await res.json();
-    
-    if (data.ok) {
-      toast(`✅ Shift assigned to ${agentName}!`, "success");
-      closeFillShiftModal();
-      await loadOpenShifts(); // Refresh the list
+  await withLoadingButton(button, async () => {
+    try {
+      const res = await fetch("./?action=open-shifts/fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          docId: _currentFillShiftData.docId,
+          assignmentId: _currentFillShiftData.assignmentId,
+          agentName: agentName,
+          notifyAgent: notifyAgent
+        })
+      });
       
-      // Also refresh the main schedule view
-      if (typeof forceRefresh === 'function') {
-        forceRefresh();
+      const data = await res.json();
+      
+      if (data.ok) {
+        toast(`✅ Shift assigned to ${agentName}!`, "success");
+        closeFillShiftModal();
+        await loadOpenShifts(); // Refresh the list
+        
+        // Also refresh the main schedule view
+        if (typeof forceRefresh === 'function') {
+          forceRefresh();
+        }
+      } else {
+        toast(`❌ Error: ${data.error || "Failed to assign"}`, "error");
       }
-    } else {
-      toast(`❌ Error: ${data.error || "Failed to assign"}`, "error");
+      
+    } catch (err) {
+      console.error("Fill shift error:", err);
+      toast(`❌ Error: ${err.message}`, "error");
     }
-    
-  } catch (err) {
-    console.error("Fill shift error:", err);
-    toast(`❌ Error: ${err.message}`, "error");
-  }
+  });
 }
 
 // Update coverage dashboard to show open shifts
@@ -6898,7 +6901,8 @@ function closeBatchFillModal() {
   _batchFillShifts = [];
 }
 
-async function submitBatchFill() {
+async function submitBatchFill(event) {
+  const button = event?.target;
   const assignments = [];
   
   _batchFillShifts.forEach((gap, idx) => {
@@ -6914,81 +6918,78 @@ async function submitBatchFill() {
     return;
   }
   
-  const btn = document.getElementById("batchFillSubmitBtn");
-  if (btn) { btn.textContent = "Assigning..."; btn.disabled = true; }
-  
-  let successCount = 0;
-  let errorCount = 0;
-  
-  for (const assignment of assignments) {
-    try {
-      if (assignment.isOpenShift && assignment.shiftData) {
-        // Replace the open shift with the assigned person
-        const shift = assignment.shiftData;
-        const res = await fetch('./?action=assignment/replace', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            docId: shift.docId,
-            assignmentId: shift.assignmentId,
-            newPerson: assignment.assignTo,
-            notes: `[Replaced ${shift.originalPerson || 'Open'}] [Batch Fill]`,
-            notifyMode: "defer",
-            originalPerson: shift.person
-          })
-        });
-        const data = await res.json();
-        if (data.ok || data.status === "success") {
-          // Update local data
-          const local = _allData.find(x => String(x.assignmentId) === String(shift.assignmentId));
-          if (local) {
-            local.person = assignment.assignTo;
-            local.notes = `[Replaced ${shift.originalPerson || 'Open'}] [Batch Fill]`;
+  await withLoadingButton(button, async () => {
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const assignment of assignments) {
+      try {
+        if (assignment.isOpenShift && assignment.shiftData) {
+          // Replace the open shift with the assigned person
+          const shift = assignment.shiftData;
+          const res = await fetch('./?action=assignment/replace', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              docId: shift.docId,
+              assignmentId: shift.assignmentId,
+              newPerson: assignment.assignTo,
+              notes: `[Replaced ${shift.originalPerson || 'Open'}] [Batch Fill]`,
+              notifyMode: "defer",
+              originalPerson: shift.person
+            })
+          });
+          const data = await res.json();
+          if (data.ok || data.status === "success") {
+            // Update local data
+            const local = _allData.find(x => String(x.assignmentId) === String(shift.assignmentId));
+            if (local) {
+              local.person = assignment.assignTo;
+              local.notes = `[Replaced ${shift.originalPerson || 'Open'}] [Batch Fill]`;
+            }
+            successCount++;
+          } else {
+            errorCount++;
           }
-          successCount++;
         } else {
-          errorCount++;
+          // For coverage gaps (not open shifts), there's no specific shift to replace.
+          // We log the assignment intent - the manager will need to create a new shift.
+          // For now, show a toast indicating manual action needed
+          toast(`Gap in ${assignment.team} (${assignment.timeBlock}): Assign ${assignment.assignTo} manually via Add Shift`, "info");
+          successCount++;
         }
-      } else {
-        // For coverage gaps (not open shifts), there's no specific shift to replace.
-        // We log the assignment intent - the manager will need to create a new shift.
-        // For now, show a toast indicating manual action needed
-        toast(`Gap in ${assignment.team} (${assignment.timeBlock}): Assign ${assignment.assignTo} manually via Add Shift`, "info");
-        successCount++;
+      } catch (err) {
+        console.error("Batch fill error:", err);
+        errorCount++;
       }
-    } catch (err) {
-      console.error("Batch fill error:", err);
-      errorCount++;
     }
-  }
-  
-  closeBatchFillModal();
-  renderView();
-  
-  if (successCount > 0 && errorCount === 0) {
-    Swal.fire({
-      icon: 'success',
-      title: '⚡ Coverage Updated!',
-      html: `<p>${successCount} shift${successCount > 1 ? 's' : ''} assigned successfully.</p>
-             <p style="font-size:12px; color:#64748b; margin-top:8px;">Notifications added to pending queue.</p>`,
-      confirmButtonColor: '#16a34a'
-    });
-    loadPendingNotifications();
-  } else if (successCount > 0 && errorCount > 0) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Partially Assigned',
-      html: `<p>${successCount} assigned, ${errorCount} failed.</p>`,
-      confirmButtonColor: '#f59e0b'
-    });
-  } else {
-    toast("Failed to assign shifts", "error");
-  }
-  
-  if (btn) { btn.textContent = "⚡ Assign All →"; btn.disabled = false; }
-  
-  // Refresh coverage dashboard
-  setTimeout(renderCoverageDashboard, 1000);
+    
+    closeBatchFillModal();
+    renderView();
+    
+    if (successCount > 0 && errorCount === 0) {
+      Swal.fire({
+        icon: 'success',
+        title: '⚡ Coverage Updated!',
+        html: `<p>${successCount} shift${successCount > 1 ? 's' : ''} assigned successfully.</p>
+               <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">Notifications added to pending queue.</p>`,
+        confirmButtonColor: '#16a34a'
+      });
+      loadPendingNotifications();
+    } else if (successCount > 0 && errorCount > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Partially Assigned',
+        html: `<p>${successCount} assigned, ${errorCount} failed.</p>`,
+        confirmButtonColor: '#f59e0b'
+      });
+    } else {
+      toast("Failed to assign shifts", "error");
+    }
+    
+    // Refresh coverage dashboard
+    setTimeout(renderCoverageDashboard, 1000);
+  });
 }
 
 // Undo a backend notification using localStorage undo data

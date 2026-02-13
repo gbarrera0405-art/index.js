@@ -644,13 +644,13 @@ function exportToGoogleCalendar() {
     title: '📅 Export to Google Calendar',
     html: `
       <div style="text-align: left; font-size: 14px; line-height: 1.6;">
-        <p>Export <strong>${shifts.length} shift(s)</strong> to your Google Calendar?</p>
-        <p style="font-size: 12px; color: #64748b; margin-top: 8px;">Each shift will open in a new tab for you to add.</p>
+        <p>Download .ics file with <strong>${shifts.length} shift(s)</strong>?</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">You can import this file into Google Calendar, Outlook, or Apple Calendar.</p>
       </div>
     `,
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'Export All',
+    confirmButtonText: 'Download',
     cancelButtonText: 'Cancel',
     confirmButtonColor: '#4285f4'
   }).then(result => {
@@ -662,32 +662,51 @@ function exportToGoogleCalendar() {
 
 function exportShiftsToGCal(shifts) {
   const sorted = [...shifts].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  let exported = 0;
   
-  sorted.forEach((shift, idx) => {
-    setTimeout(() => {
-      const title = encodeURIComponent(`${shift.team || 'Work'} Shift`);
-      const date = (shift.date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-      
-      // Parse shift times
-      let startHour = 9, endHour = 17;
-      if (shift.start) startHour = Math.floor(parseFloat(shift.start));
-      if (shift.end) endHour = Math.floor(parseFloat(shift.end));
-      
-      const startDT = `${date}T${String(startHour).padStart(2, '0')}0000`;
-      const endDT = `${date}T${String(endHour).padStart(2, '0')}0000`;
-      const details = encodeURIComponent(shift.notes || 'Scheduled shift');
-      
-      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDT}/${endDT}&details=${details}&ctz=America/Los_Angeles`;
-      
-      window.open(gcalUrl, '_blank');
-      exported++;
-      
-      if (exported === sorted.length) {
-        toast(`✅ Opened ${exported} shift(s) for calendar export`, 'success');
-      }
-    }, idx * 600); // Stagger to avoid popup blocker
+  // Build iCalendar string
+  let icsContent = 'BEGIN:VCALENDAR\r\n';
+  icsContent += 'VERSION:2.0\r\n';
+  icsContent += 'PRODID:-//Musely Scheduler//EN\r\n';
+  icsContent += 'CALSCALE:GREGORIAN\r\n';
+  icsContent += 'METHOD:PUBLISH\r\n';
+  
+  sorted.forEach(shift => {
+    const date = (shift.date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+    
+    // Parse shift times
+    let startHour = 9, endHour = 17;
+    if (shift.start) startHour = Math.floor(parseFloat(shift.start));
+    if (shift.end) endHour = Math.floor(parseFloat(shift.end));
+    
+    const startDT = `${date}T${String(startHour).padStart(2, '0')}0000`;
+    const endDT = `${date}T${String(endHour).padStart(2, '0')}0000`;
+    const summary = `${shift.team || 'Work'} Shift`;
+    const description = shift.notes || 'Scheduled shift';
+    
+    icsContent += 'BEGIN:VEVENT\r\n';
+    icsContent += `DTSTART;TZID=America/Los_Angeles:${startDT}\r\n`;
+    icsContent += `DTEND;TZID=America/Los_Angeles:${endDT}\r\n`;
+    icsContent += `SUMMARY:${summary}\r\n`;
+    icsContent += `DESCRIPTION:${description}\r\n`;
+    icsContent += `UID:${Date.now()}-${Math.random().toString(36).substr(2, 9)}@musely-scheduler\r\n`;
+    icsContent += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z\r\n`;
+    icsContent += 'END:VEVENT\r\n';
   });
+  
+  icsContent += 'END:VCALENDAR\r\n';
+  
+  // Create blob and download
+  const blob = new Blob([icsContent], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'my-schedule.ics';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  toast(`✅ Downloaded ${sorted.length} shift(s) to calendar file`, 'success');
 }
 
 // ============================================
@@ -801,6 +820,24 @@ if (typeof window !== 'undefined') {
     return pstISODate(d);
   }
   
+  // Utility to prevent double-click on buttons during async operations
+  function withLoadingButton(buttonElement, asyncFn) {
+    if (!buttonElement || buttonElement.disabled) return;
+    const originalText = buttonElement.textContent;
+    const originalHtml = buttonElement.innerHTML;
+    buttonElement.disabled = true;
+    buttonElement.style.opacity = '0.7';
+    buttonElement.style.pointerEvents = 'none';
+    buttonElement.innerHTML = '⏳ ' + originalText;
+    
+    return asyncFn().finally(() => {
+      buttonElement.disabled = false;
+      buttonElement.style.opacity = '';
+      buttonElement.style.pointerEvents = '';
+      buttonElement.innerHTML = originalHtml;
+    });
+  }
+  
   // --- CLOUD RUN BRIDGE START ---
   // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
   
@@ -884,9 +921,9 @@ if (typeof window !== 'undefined') {
                  console.log(`Bridge: Loaded ${peopleList.length} people.`);
                  if(this._success) this._success({ people: peopleList, teams: teams, timeOff: [] });
                } catch(e) {
-                 console.error("Bridge Error (System Data):", e);
-                 const fallback = ["Adam", "Baylie", "Brandi", "Elizabeth", "Gisenia", "Kelsey"];
-                 if(this._success) this._success({ people: fallback, teams: [], timeOff: [] });
+                 console.error("Failed to load people/teams:", e);
+                 if(this._success) this._success({ people: [], teams: [], timeOff: [] });
+                 toast("Could not load team data. Please refresh the page.", "error");
                }
             },
             // --- 6. ZENDESK ---

@@ -333,7 +333,8 @@ function closeFutureTimeOffModal() {
   if (modal) modal.style.display = "none";
 }
 
-async function submitFutureTimeOff() {
+async function submitFutureTimeOff(event) {
+  const button = event?.target;
   const startDate = $("futureToDateStart")?.value;
   const endDate = $("futureToDateEnd")?.value;
   const typeRadio = document.querySelector('input[name="futureToType"]:checked');
@@ -406,108 +407,110 @@ async function submitFutureTimeOff() {
   const makeUpTimeStartVal = type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "";
   const makeUpTimeEndVal = type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "";
   
-  try {
-    Swal.fire({
-      title: 'Submitting...',
-      text: `Requesting ${dates.length} day${dates.length > 1 ? 's' : ''} off${partialDesc}`,
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      didOpen: () => Swal.showLoading()
-    });
-    
-    // Submit each date as a separate request
-    let successCount = 0;
-    let errors = [];
-    
-    for (const date of dates) {
-      try {
-        const res = await fetch('./?action=timeoff/request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            person: window._myName,
-            date: date,
-            type: type,
-            typeKey: type.toLowerCase().replace(" ", "_"),
-            duration: duration,
-            reason: reason + partialDesc,
-            makeUpDate: type === "Make Up" ? makeUpDatesStr : null,
-            makeUpDates: type === "Make Up" ? _futureMakeUpDates : [],
-            makeUpTimeStart: type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "",
-            makeUpTimeEnd: type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "",
-            shiftStart: null,
-            shiftEnd: null,
-            team: null,
-            partialStart: duration === "partial" ? partialStart : "",
-            partialEnd: duration === "partial" ? partialEnd : ""
-          })
-        });
-        
-        const data = await res.json();
-        if (data.ok) {
-          successCount++;
-        } else {
-          errors.push(`${date}: ${data.error || 'Unknown error'}`);
+  await withLoadingButton(button, async () => {
+    try {
+      Swal.fire({
+        title: 'Submitting...',
+        text: `Requesting ${dates.length} day${dates.length > 1 ? 's' : ''} off${partialDesc}`,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+      
+      // Submit each date as a separate request
+      let successCount = 0;
+      let errors = [];
+      
+      for (const date of dates) {
+        try {
+          const res = await fetch('./?action=timeoff/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              person: window._myName,
+              date: date,
+              type: type,
+              typeKey: type.toLowerCase().replace(" ", "_"),
+              duration: duration,
+              reason: reason + partialDesc,
+              makeUpDate: type === "Make Up" ? makeUpDatesStr : null,
+              makeUpDates: type === "Make Up" ? _futureMakeUpDates : [],
+              makeUpTimeStart: type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "",
+              makeUpTimeEnd: type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "",
+              shiftStart: null,
+              shiftEnd: null,
+              team: null,
+              partialStart: duration === "partial" ? partialStart : "",
+              partialEnd: duration === "partial" ? partialEnd : ""
+            })
+          });
+          
+          const data = await res.json();
+          if (data.ok) {
+            successCount++;
+          } else {
+            errors.push(`${date}: ${data.error || 'Unknown error'}`);
+          }
+        } catch (err) {
+          errors.push(`${date}: ${err.message}`);
         }
-      } catch (err) {
-        errors.push(`${date}: ${err.message}`);
       }
-    }
-    
-    closeFutureTimeOffModal();
-    
-    if (successCount === dates.length) {
-      const _fd = (d) => { try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); } catch(e){return d;} };
-      const _dateDisp = dates.length === 1 ? _fd(dates[0]) : _fd(dates[0]) + ' – ' + _fd(dates[dates.length-1]);
-      const _muDisp = _futureMakeUpDates.map(d => _fd(d)).join(', ');
-      Swal.fire({
-        icon: 'success',
-        title: 'Request Submitted!',
-        html: `<div style="text-align:left; font-size:14px; line-height:1.7;">
-          <div style="padding:14px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac; margin-bottom:12px;">
-            <div style="font-weight:700; color:#15803d; margin-bottom:4px;">📅 Time Off</div>
-            <div style="color:#166534;">${_dateDisp}</div>
-            ${isPartial ? `<div style="color:#7c3aed; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(partialStart)} – ${partialEnd === 'end' ? 'End of shift' : formatTimeAmPm(partialEnd)}</div>` : ''}
-          </div>
-          ${type === "Make Up" ? `
-          <div style="padding:14px; background:#eff6ff; border-radius:10px; border:1px solid #93c5fd; margin-bottom:12px;">
-            <div style="font-weight:700; color:#1d4ed8; margin-bottom:4px;">🔄 Make Up Schedule</div>
-            <div style="color:#1e40af;">${_muDisp}</div>
-            ${makeUpTimeStartVal && makeUpTimeEndVal ? `<div style="color:#2563eb; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(makeUpTimeStartVal)} – ${formatTimeAmPm(makeUpTimeEndVal)}</div>` : ''}
-          </div>` : ''}
-          <div style="text-align:center; font-size:13px; color:#64748b;">Your manager will review your request</div>
-        </div>`,
-        confirmButtonColor: '#b37e78',
-        confirmButtonText: 'Got it'
-      });
-    } else if (successCount > 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Partially Submitted',
-        html: `<div style="text-align:left;">
-          <p>✅ ${successCount} day${successCount > 1 ? 's' : ''} submitted</p>
-          <p>❌ ${errors.length} failed:</p>
-          <ul style="font-size:12px; color:#dc2626;">${errors.map(e => `<li>${e}</li>`).join('')}</ul>
-        </div>`,
-        confirmButtonColor: '#f59e0b'
-      });
-    } else {
+      
+      closeFutureTimeOffModal();
+      
+      if (successCount === dates.length) {
+        const _fd = (d) => { try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); } catch(e){return d;} };
+        const _dateDisp = dates.length === 1 ? _fd(dates[0]) : _fd(dates[0]) + ' – ' + _fd(dates[dates.length-1]);
+        const _muDisp = _futureMakeUpDates.map(d => _fd(d)).join(', ');
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Submitted!',
+          html: `<div style="text-align:left; font-size:14px; line-height:1.7;">
+            <div style="padding:14px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac; margin-bottom:12px;">
+              <div style="font-weight:700; color:#15803d; margin-bottom:4px;">📅 Time Off</div>
+              <div style="color:#166534;">${_dateDisp}</div>
+              ${isPartial ? `<div style="color:#7c3aed; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(partialStart)} – ${partialEnd === 'end' ? 'End of shift' : formatTimeAmPm(partialEnd)}</div>` : ''}
+            </div>
+            ${type === "Make Up" ? `
+            <div style="padding:14px; background:#eff6ff; border-radius:10px; border:1px solid #93c5fd; margin-bottom:12px;">
+              <div style="font-weight:700; color:#1d4ed8; margin-bottom:4px;">🔄 Make Up Schedule</div>
+              <div style="color:#1e40af;">${_muDisp}</div>
+              ${makeUpTimeStartVal && makeUpTimeEndVal ? `<div style="color:#2563eb; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(makeUpTimeStartVal)} – ${formatTimeAmPm(makeUpTimeEndVal)}</div>` : ''}
+            </div>` : ''}
+            <div style="text-align:center; font-size:13px; color:var(--text-secondary);">Your manager will review your request</div>
+          </div>`,
+          confirmButtonColor: '#b37e78',
+          confirmButtonText: 'Got it'
+        });
+      } else if (successCount > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Partially Submitted',
+          html: `<div style="text-align:left;">
+            <p>✅ ${successCount} day${successCount > 1 ? 's' : ''} submitted</p>
+            <p>❌ ${errors.length} failed:</p>
+            <ul style="font-size:12px; color:#dc2626;">${errors.map(e => `<li>${e}</li>`).join('')}</ul>
+          </div>`,
+          confirmButtonColor: '#f59e0b'
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Submission Failed',
+          text: errors[0] || 'Unknown error',
+          confirmButtonColor: '#ef4444'
+        });
+      }
+    } catch (err) {
+      console.error("Submit future time off error:", err);
       Swal.fire({
         icon: 'error',
-        title: 'Submission Failed',
-        text: errors[0] || 'Unknown error',
+        title: 'Error',
+        text: 'Failed to submit request: ' + err.message,
         confirmButtonColor: '#ef4444'
       });
     }
-  } catch (err) {
-    console.error("Submit future time off error:", err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Failed to submit request: ' + err.message,
-      confirmButtonColor: '#ef4444'
-    });
-  }
+  });
 }
 function openAgentNotifications() {
   const panel = $("agentNotifPanel");
