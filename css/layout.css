@@ -907,25 +907,32 @@ body.dark-mode .covBlock.bad{ color:#fca5a5; }
   margin-bottom: 16px;
 }
 .cov-stat {
-  background: var(--bg-secondary, #f8fafc);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 10px;
-  padding: 14px;
+  padding: 14px 12px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   text-align: center;
+  transition: all var(--transition-fast);
+}
+.cov-stat:hover {
+  border-color: color-mix(in srgb, var(--border-color) 50%, var(--text-tertiary) 50%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 .cov-stat-num {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
-  color: var(--text-primary, #1e293b);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  margin-bottom: 4px;
 }
 .cov-stat-label {
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-secondary, #64748b);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
 }
 .cov-stat.gap-stat {
   border-color: rgba(239, 68, 68, 0.3);
