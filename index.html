@@ -1008,11 +1008,11 @@
 
 
 <!-- Agent Goals Modal (read-only view for agents) -->
-<div id="agentGoalsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentGoalsModal()">
+<div id="agentGoalsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentGoalsModal()" role="dialog" aria-modal="true" aria-labelledby="agentGoalsModalTitle">
   <div class="modal" style="width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
-    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
-      <span class="mTitle" style="color: white;">📋 My Goals & Progress</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeAgentGoalsModal()">✕</button>
+    <div class="mHead" style="background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom: none; flex-shrink: 0;">
+      <span id="agentGoalsModalTitle" class="mTitle" style="color: white;">📋 My Goals & Progress</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeAgentGoalsModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody" style="flex: 1; overflow-y: auto; max-height: calc(90vh - 60px); padding: 20px;">
       <div class="agent-goals-meta" id="agentGoalsMeta" style="font-size: 12px; color: var(--text-tertiary); margin-bottom: 16px;">Last updated: Never</div>
@@ -1424,13 +1424,13 @@
       </div>
     </div>
   </div>
-  <div id="pickerOverlay" class="overlay" onclick="if(event.target===this) closePicker()">
+  <div id="pickerOverlay" class="overlay" onclick="if(event.target===this) closePicker()" role="dialog" aria-modal="true" aria-labelledby="pickerModalTitle">
     <div class="modal" style="width: 500px; height: 600px; display:flex; flex-direction:column;">
       <div class="mHead">
-        <span class="mTitle">Filter People</span>
-        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closePicker()">✕</button>
+        <span id="pickerModalTitle" class="mTitle">Filter People</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closePicker()" aria-label="Close modal">✕</button>
       </div>
-      <div style="padding:16px; border-bottom:1px solid #e2e8f0; display:flex; gap:12px;">
+      <div style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; gap:12px;">
         <input id="pickerSearch" placeholder="Search..." oninput="renderPickerList()" style="flex:1;">
         <button class="btn ghost" onclick="pickerToggleAll(true)">All</button>
         <button class="btn ghost" onclick="pickerToggleAll(false)">None</button>
@@ -1757,16 +1757,16 @@
     </div>
   </div>
   <!-- Master Context -->
-  <div id="masterContextOverlay" class="overlay" style="display:none; z-index:200;">
+  <div id="masterContextOverlay" class="overlay" style="display:none; z-index:200;" role="dialog" aria-modal="true" aria-labelledby="masterContextModalTitle">
     <div class="modal" style="width: 400px;">
-      <div class="mHead"><span class="mTitle">Select Manager Context</span></div>
+      <div class="mHead"><span id="masterContextModalTitle" class="mTitle">Select Manager Context</span></div>
       <div class="mBody">
-        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
           You are logged in as <b>Master Admin</b>.<br>
           Please select which Manager's schedule you wish to view/manage.
         </p>
         <label>Available Managers</label>
-        <select id="masterManagerDropdown" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+        <select id="masterManagerDropdown" style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:6px; background:var(--input-bg); color:var(--text-primary);">
           <option value="" disabled selected>Loading...</option>
         </select>
       </div>
@@ -3070,11 +3070,11 @@
 
 
 <!-- Open Shifts Modal -->
-<div id="openShiftsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeOpenShiftsModal()">
+<div id="openShiftsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeOpenShiftsModal()" role="dialog" aria-modal="true" aria-labelledby="openShiftsModalTitle">
   <div class="modal" style="width:520px; max-width:95%; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
     <div class="mHead" style="background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom:none; flex-shrink:0;">
-      <span class="mTitle" style="color:white;">📋 Open Shifts</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeOpenShiftsModal()">✕</button>
+      <span id="openShiftsModalTitle" class="mTitle" style="color:white;">📋 Open Shifts</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeOpenShiftsModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody" style="flex:1; overflow-y:auto; padding:20px;">
       <div id="openShiftsList" style="min-height:100px;">
@@ -3085,11 +3085,11 @@
 </div>
 
 <!-- Fill Open Shift Modal -->
-<div id="fillShiftModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeFillShiftModal()">
+<div id="fillShiftModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeFillShiftModal()" role="dialog" aria-modal="true" aria-labelledby="fillShiftModalTitle">
   <div class="modal" style="width:400px; max-width:95%;">
     <div class="mHead" style="background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom:none;">
-      <span class="mTitle" style="color:white;">👤 Assign Agent</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeFillShiftModal()">✕</button>
+      <span id="fillShiftModalTitle" class="mTitle" style="color:white;">👤 Assign Agent to Shift</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeFillShiftModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody" style="padding:20px;">
       <div id="fillShiftInfo" style="background:var(--bg-tertiary); border-radius:10px; padding:14px; margin-bottom:16px;">
@@ -3097,8 +3097,8 @@
       </div>
       
       <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Select Agent</label>
-        <select id="fillShiftAgent" style="width:100%; padding:12px; border:2px solid var(--border-color); border-radius:10px; font-size:14px; background:var(--input-bg); color:var(--text-primary);">
+        <label class="modal-label">Select Agent</label>
+        <select id="fillShiftAgent" class="modal-select">
           <option value="">-- Select an agent --</option>
         </select>
       </div>
@@ -3110,21 +3110,8 @@
         </label>
       </div>
       
-      <button onclick="submitFillShift(event)" style="
-        width:100%;
-        padding:14px;
-        background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
-        color:white;
-        border:none;
-        border-radius:10px;
-        font-size:14px;
-        font-weight:700;
-        cursor:pointer;
-        box-shadow:0 4px 12px var(--modal-btn-shadow);
-        transition:all 0.2s;
-      " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px var(--modal-btn-hover-shadow)';"
-         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px var(--modal-btn-shadow)';">
-        Assign Agent →
+      <button onclick="submitFillShift(event)" class="modal-btn-primary" style="width:100%;">
+        Assign Agent to Shift
       </button>
     </div>
   </div>
