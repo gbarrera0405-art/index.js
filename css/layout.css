@@ -915,6 +915,7 @@ body.dark-mode .covBlock.bad{ color:#fca5a5; }
   transition: all var(--transition-fast);
 }
 .cov-stat:hover {
+  border-color: var(--text-tertiary);
   border-color: color-mix(in srgb, var(--border-color) 50%, var(--text-tertiary) 50%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
