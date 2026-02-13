@@ -19,38 +19,11 @@
 <body>
   
   <!-- AUTH OVERLAY - Blocks all interaction until signed in -->
-  <div id="authOverlay" style="
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(160deg, #faf5f4 0%, #f0e6e4 40%, #e8dbd8 100%);
-    z-index: 99999;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-  ">
-    <div style="
-      background: rgba(255,255,255,0.7);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.8);
-      border-radius: 24px;
-      padding: 48px 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      box-shadow: 0 24px 80px -16px rgba(179,126,120,0.2), 0 0 0 1px rgba(0,0,0,0.03);
-      max-width: 380px;
-      width: 90%;
-    ">
-      <img src="https://i.imgur.com/ndsvLxn.png" alt="Company Logo" style="
-        width: 56px; height: 56px; border-radius: 14px; object-fit: contain;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      "/>
-      <div style="font-size: 22px; font-weight: 800; color: #1a0e0d; letter-spacing: -0.5px;">Scheduling Manager</div>
-      <div style="font-size: 13px; color: #6f5a57;">Sign in with your work account to continue</div>
+  <div id="authOverlay" role="dialog" aria-modal="true" aria-label="Sign in to Musely Scheduler">
+    <div class="auth-card">
+      <img src="https://i.imgur.com/ndsvLxn.png" alt="Company Logo" class="auth-logo" />
+      <div class="auth-title">Scheduling Manager</div>
+      <div class="auth-subtitle">Sign in with your work account to continue</div>
       <div id="authLoginContainer" style="margin-top: 4px;">
         <div id="g_id_onload"
              data-client_id="63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com"
@@ -59,7 +32,7 @@
         <div class="g_id_signin" data-type="standard" data-size="large"></div>
       </div>
     </div>
-    <div style="font-size: 11px; color: #a38b87; margin-top: 12px;">Musely Support Team</div>
+    <div class="auth-footer">Musely Support Team</div>
   </div>
   <!-- HEADER -->
   <div class="header">
@@ -1285,27 +1258,27 @@
     </div>
   </div>
 <!-- Holiday Management Modal -->
-<div id="holidayModal" class="overlay overlay-sub" style="display:none;" onclick="if(event.target===this) closeHolidayModal()">
+<div id="holidayModal" class="overlay overlay-sub" style="display:none;" onclick="if(event.target===this) closeHolidayModal()" role="dialog" aria-modal="true" aria-labelledby="holidayModalTitle">
   <div class="modal" style="width: 500px;">
     <div class="mHead">
-      <span class="mTitle">🎄 Manage Holidays</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeHolidayModal()">✕</button>
+      <span id="holidayModalTitle" class="mTitle">🎄 Manage Holidays</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeHolidayModal()" aria-label="Close modal">✕</button>
     </div>
     
     <div class="mBody">
       <!-- Add Holiday Form -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; background:#f8fafc; border-radius:10px; margin-bottom:20px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px; margin-bottom:20px;">
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:4px;">DATE</label>
-          <input type="date" id="holidayDate" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:14px;" />
+          <label class="modal-label">Date</label>
+          <input type="date" id="holidayDate" class="modal-input" />
         </div>
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:4px;">HOLIDAY NAME</label>
-          <input type="text" id="holidayName" placeholder="e.g., Christmas Day" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius: 6px; font-size:14px;" />
+          <label class="modal-label">Holiday Name</label>
+          <input type="text" id="holidayName" placeholder="e.g., Christmas Day" class="modal-input" />
         </div>
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display: block; margin-bottom:4px;">THEME</label>
-          <select id="holidayTheme" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:14px;">
+          <label class="modal-label">Theme</label>
+          <select id="holidayTheme" class="modal-select">
             <option value="christmas">🎄 Christmas</option>
             <option value="newyear">🎆 New Year</option>
             <option value="july4th">🇺🇸 July 4th</option>
@@ -1318,8 +1291,8 @@
           </select>
         </div>
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:4px;">EMOJI</label>
-          <select id="holidayEmoji" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:14px;">
+          <label class="modal-label">Emoji</label>
+          <select id="holidayEmoji" class="modal-select">
             <option value="🎄">🎄</option>
             <option value="🎆">🎆</option>
             <option value="🇺🇸">🇺🇸</option>
@@ -1331,63 +1304,55 @@
             <option value="⭐">⭐</option>
           </select>
         </div>
-        <button onclick="addHoliday()" style="grid-column: 1 / -1; background:#b37e78; color: white; border:none; border-radius:8px; padding:12px; font-weight:600; cursor: pointer; font-size:14px;">
+        <button onclick="addHoliday()" class="modal-btn-primary" style="grid-column: 1 / -1;">
           + Add Holiday
         </button>
       </div>
       
       <!-- Holiday List -->
-      <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:12px;">SCHEDULED HOLIDAYS</label>
+      <label class="modal-label">Scheduled Holidays</label>
       <div id="holidayList" style="max-height:250px; overflow-y:auto;">
-        <div style="text-align:center; color:#94a3b8; padding:20px;">Loading... </div>
+        <div style="text-align:center; color:var(--text-tertiary); padding:20px;">Loading...</div>
       </div>
     </div>
   </div>
 </div>
-  <div id="profileOverlay" class="overlay" onclick="if(event.target===this) closeProfile()">
+  <div id="profileOverlay" class="overlay" onclick="if(event.target===this) closeProfile()" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
     <div class="modal" style="width: 400px;">
-      <div class="mHead" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-        <span class="mTitle">Agent Profile</span>
-        <button type="button" class="btn ghost" style="padding:4px 8px;" onclick="closeProfile()">✕</button>
+      <div class="mHead" style="background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom: none;">
+        <span id="profileModalTitle" class="mTitle" style="color: white;">Agent Profile</span>
+        <button type="button" class="btn ghost" style="padding:4px 8px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeProfile()" aria-label="Close modal">✕</button>
       </div>
       <div class="mBody" style="text-align: center; padding: 30px;">
-        <div id="profLoader" style="color: #64748b; font-size: 13px;"><div>Fetching live metrics from Zendesk...</div></div>
+        <div id="profLoader" style="color: var(--text-secondary); font-size: 13px;"><div>Fetching live metrics from Zendesk...</div></div>
         <div id="profContent" style="display:none;">
-          <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: #e2e8f0; margin-bottom: 15px; border: 3px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: #0f172a;">Name</h2>
-          <div id="pEmail" style="font-size: 12px; color: #64748b; margin-bottom: 20px;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c7a2aaa6aeab87a2bfa6aab7aba2e9a4a8aa">[email&#160;protected]</a></div>
+          <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-tertiary); margin-bottom: 15px; border: 3px solid var(--card-bg); box-shadow: 0 4px 6px var(--shadow-md);">
+          <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: var(--text-primary);">Name</h2>
+          <div id="pEmail" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c7a2aaa6aeab87a2bfa6aab7aba2e9a4a8aa">[email&#160;protected]</a></div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left;">
-            <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-              <div style="font-size: 10px; font-weight: 700; color: #0369a1;">OPEN TICKETS</div>
-              <div id="pTickets" style="font-size: 20px; font-weight: 800; color: #0284c7;">--</div>
+            <div class="profile-stat-card blue">
+              <div class="profile-stat-label">OPEN TICKETS</div>
+              <div id="pTickets" class="profile-stat-value">--</div>
             </div>
-            <div style="background:#fdf2f8; padding:10px; border-radius:8px; border:1px solid #fbcfe8;">
-              <div style="font-size:10px; font-weight:700; color:#be185d;">ROLE</div>
-              <div id="pRole" style="font-size:14px; font-weight:800; color:#db2777;">--</div>
+            <div class="profile-stat-card pink">
+              <div class="profile-stat-label">ROLE</div>
+              <div id="pRole" class="profile-stat-value" style="font-size:14px;">--</div>
             </div>
           </div>
           <div style="margin-top: 10px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; font-size: 11px; color: var(--text-secondary); text-align: center;">
             💡 For CSAT &amp; Solved metrics, view <a href="https://musely.zendesk.com/explore" target="_blank" style="color: var(--accent-primary);">Zendesk Explore</a>
           </div>
-          <div style="margin-top: 12px; font-size: 11px; color: #94a3b8;">Last Login: <span id="pLogin">--</span></div>
+          <div style="margin-top: 12px; font-size: 11px; color: var(--text-tertiary);">Last Login: <span id="pLogin">--</span></div>
           
           <!-- ✅ Logout Button -->
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
-            <button onclick="handleLogout()" style="
-              background: transparent;
+            <button onclick="handleLogout()" class="modal-btn-secondary" style="
               color: #dc2626;
-              border: 1px solid #fecaca;
-              padding: 10px 20px;
-              border-radius: 8px;
-              font-size: 13px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: all 0.2s;
+              border-color: #fecaca;
               display: inline-flex;
               align-items: center;
               gap: 8px;
-            " onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#dc2626';" 
-               onmouseout="this.style.background='transparent'; this.style.borderColor='#fecaca';">
+            ">
               🚪 Sign Out
             </button>
           </div>
@@ -1395,14 +1360,14 @@
       </div>
     </div>
   </div>
-  <div id="masterOverlay" class="overlay" onclick="if(event.target===this) closeMasterModal()">
+  <div id="masterOverlay" class="overlay" onclick="if(event.target===this) closeMasterModal()" role="dialog" aria-modal="true" aria-labelledby="masterModalTitle">
     <div class="modal">
       <div class="mHead">
-        <span class="mTitle">Edit Master Template</span>
-        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeMasterModal()">✕</button>
+        <span id="masterModalTitle" class="mTitle">Edit Master Template</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeMasterModal()" aria-label="Close modal">✕</button>
       </div>
       <div class="mBody">
-        <div style="margin-bottom:16px; font-size:13px; color:#64748b;" id="mstSub"></div>
+        <div style="margin-bottom:16px; font-size:13px; color:var(--text-secondary);" id="mstSub"></div>
         <input type="hidden" id="mstPerson">
         <input type="hidden" id="mstDay">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
@@ -1413,14 +1378,14 @@
           <div><label>Team</label><select id="mstTeam"></select></div>
           <div><label>Role</label><select id="mstRole"></select></div>
         </div>
-        <div style="background:#f0f9ff; padding:12px; border-radius:8px; border:1px solid #bae6fd; font-size:12px; color:#0369a1; display:flex; gap:10px; align-items:start;">
+        <div class="modal-info-banner info">
           <input type="checkbox" id="mstSync" style="width:auto; margin-top:2px;">
           <span><b>Sync to LIVE Schedule?</b><br>Check this to update all future shifts starting <b>tomorrow</b>. Leave unchecked to only update the template for new generations.</span>
         </div>
       </div>
       <div class="mFoot">
         <button class="btn ghost" onclick="closeMasterModal()">Cancel</button>
-        <button class="btn primary" onclick="saveMasterEdit()">Save Changes</button>
+        <button class="btn primary" onclick="saveMasterEdit()">Save Template Changes</button>
       </div>
     </div>
   </div>
@@ -1724,17 +1689,17 @@
   
 
   <!-- ✅ Audit Overlay (sibling, not nested) -->
-  <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()">
+  <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()" role="dialog" aria-modal="true" aria-labelledby="auditModalTitle">
     <div class="modal" style="width: 700px; max-width: 90vw; height: 80vh; display:flex; flex-direction:column;">
       <div class="mHead">
-        <span class="mTitle">Audit History</span>
+        <span id="auditModalTitle" class="mTitle">Audit History</span>
         <div style="display:flex; gap:8px; align-items:center;">
           <button type="button" class="btn ghost" style="padding:6px 12px; font-size:11px; color:#ef4444;" onclick="clearAuditHistory()" title="Clear audit history">🗑️ Clear</button>
-          <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAuditModal()">✕</button>
+          <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAuditModal()" aria-label="Close modal">✕</button>
         </div>
       </div>
       <div class="mBody" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
-        <div style="background:#fff; border-bottom:1px solid #e2e8f0; padding:10px 16px; font-size:12px; color:#64748b;">
+        <div style="background:var(--card-bg); border-bottom:1px solid var(--border-color); padding:10px 16px; font-size:12px; color:var(--text-secondary);">
           Showing last 50 actions. Newest first.
         </div>
         <div style="flex:1; overflow-y:auto;">
@@ -1749,7 +1714,7 @@
               </tr>
             </thead>
             <tbody id="auditList">
-              <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Loading history...</td></tr>
+              <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-tertiary);">Loading history...</td></tr>
             </tbody>
           </table>
         </div>
