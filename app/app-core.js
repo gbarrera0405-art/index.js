@@ -351,7 +351,7 @@ function showSessionExpiredNotification() {
     left: 50%;
     transform: translate(-50%, -50%);
     padding: 24px 32px;
-    background: white;
+    background: var(--card-bg);
     border-radius: 16px;
     font-size: 14px;
     z-index: 10000;
@@ -361,8 +361,8 @@ function showSessionExpiredNotification() {
   `;
   notification.innerHTML = `
     <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
-    <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1a1a;">Session Expired</div>
-    <div style="color: #666; margin-bottom: 20px;">Your session has expired due to inactivity. Please sign in again to continue.</div>
+    <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Session Expired</div>
+    <div style="color: var(--text-secondary); margin-bottom: 20px;">Your session has expired due to inactivity. Please sign in again to continue.</div>
     <button onclick="this.parentElement.remove(); location.reload();" 
       style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); 
              color: white; border: none; padding: 12px 24px; border-radius: 10px; 
@@ -583,21 +583,50 @@ function setUserTimezone(tz) {
   }
 }
 
-// Convert PST time to user's timezone
-function convertTimeToUserTz(pstHour) {
+// IANA timezone map for DST-aware conversions
+const TZ_MAP = {
+  'PST': 'America/Los_Angeles',
+  'MST': 'America/Denver',
+  'CST': 'America/Chicago',
+  'EST': 'America/New_York'
+};
+
+/**
+ * Convert PST time to user's timezone with DST awareness
+ * @param {number} pstHour - Hour in PST as decimal (e.g., 9.5 for 9:30)
+ * @param {string} [dateISO] - Date in YYYY-MM-DD format for DST calculation. If omitted, uses today.
+ * @returns {number} Hour in user's timezone as decimal
+ */
+function convertTimeToUserTz(pstHour, dateISO) {
   const prefs = getUserPrefs();
   if (prefs.timezone === 'PST') return pstHour;
   
-  // Timezone offsets from PST (positive = ahead)
-  const offsets = { 'PST': 0, 'MST': 1, 'CST': 2, 'EST': 3 };
-  const offset = offsets[prefs.timezone] || 0;
-  return pstHour + offset;
+  // Build a real Date object in PST for the given date and hour
+  const hour = Math.floor(pstHour);
+  const minutes = Math.round((pstHour - hour) * 60);
+  const dateStr = dateISO || pstISODate();
+  
+  // Create date string that we can parse in LA timezone
+  const pstDate = new Date(`${dateStr}T${String(hour).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`);
+  
+  // Format in user's timezone
+  const targetTz = TZ_MAP[prefs.timezone] || 'America/Los_Angeles';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: targetTz,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(pstDate);
+  
+  const h = parseInt(parts.find(p => p.type === 'hour')?.value || hour);
+  const m = parseInt(parts.find(p => p.type === 'minute')?.value || minutes);
+  return h + (m / 60);
 }
 
 // Format time with both user TZ and PST reference
-function formatTimeWithTz(pstHour) {
+function formatTimeWithTz(pstHour, dateISO) {
   const prefs = getUserPrefs();
-  const userHour = convertTimeToUserTz(pstHour);
+  const userHour = convertTimeToUserTz(pstHour, dateISO);
   
   // Format as 12-hour time
   const formatHour = (h) => {
@@ -644,13 +673,13 @@ function exportToGoogleCalendar() {
     title: '📅 Export to Google Calendar',
     html: `
       <div style="text-align: left; font-size: 14px; line-height: 1.6;">
-        <p>Export <strong>${shifts.length} shift(s)</strong> to your Google Calendar?</p>
-        <p style="font-size: 12px; color: #64748b; margin-top: 8px;">Each shift will open in a new tab for you to add.</p>
+        <p>Download .ics file with <strong>${shifts.length} shift(s)</strong>?</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">You can import this file into Google Calendar, Outlook, or Apple Calendar.</p>
       </div>
     `,
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'Export All',
+    confirmButtonText: 'Download',
     cancelButtonText: 'Cancel',
     confirmButtonColor: '#4285f4'
   }).then(result => {
@@ -662,32 +691,51 @@ function exportToGoogleCalendar() {
 
 function exportShiftsToGCal(shifts) {
   const sorted = [...shifts].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  let exported = 0;
   
-  sorted.forEach((shift, idx) => {
-    setTimeout(() => {
-      const title = encodeURIComponent(`${shift.team || 'Work'} Shift`);
-      const date = (shift.date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-      
-      // Parse shift times
-      let startHour = 9, endHour = 17;
-      if (shift.start) startHour = Math.floor(parseFloat(shift.start));
-      if (shift.end) endHour = Math.floor(parseFloat(shift.end));
-      
-      const startDT = `${date}T${String(startHour).padStart(2, '0')}0000`;
-      const endDT = `${date}T${String(endHour).padStart(2, '0')}0000`;
-      const details = encodeURIComponent(shift.notes || 'Scheduled shift');
-      
-      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDT}/${endDT}&details=${details}&ctz=America/Los_Angeles`;
-      
-      window.open(gcalUrl, '_blank');
-      exported++;
-      
-      if (exported === sorted.length) {
-        toast(`✅ Opened ${exported} shift(s) for calendar export`, 'success');
-      }
-    }, idx * 600); // Stagger to avoid popup blocker
+  // Build iCalendar string
+  let icsContent = 'BEGIN:VCALENDAR\r\n';
+  icsContent += 'VERSION:2.0\r\n';
+  icsContent += 'PRODID:-//Musely Scheduler//EN\r\n';
+  icsContent += 'CALSCALE:GREGORIAN\r\n';
+  icsContent += 'METHOD:PUBLISH\r\n';
+  
+  sorted.forEach(shift => {
+    const date = (shift.date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+    
+    // Parse shift times
+    let startHour = 9, endHour = 17;
+    if (shift.start) startHour = Math.floor(parseFloat(shift.start));
+    if (shift.end) endHour = Math.floor(parseFloat(shift.end));
+    
+    const startDT = `${date}T${String(startHour).padStart(2, '0')}0000`;
+    const endDT = `${date}T${String(endHour).padStart(2, '0')}0000`;
+    const summary = `${shift.team || 'Work'} Shift`;
+    const description = shift.notes || 'Scheduled shift';
+    
+    icsContent += 'BEGIN:VEVENT\r\n';
+    icsContent += `DTSTART;TZID=America/Los_Angeles:${startDT}\r\n`;
+    icsContent += `DTEND;TZID=America/Los_Angeles:${endDT}\r\n`;
+    icsContent += `SUMMARY:${summary}\r\n`;
+    icsContent += `DESCRIPTION:${description}\r\n`;
+    icsContent += `UID:${Date.now()}-${Math.random().toString(36).substr(2, 9)}@musely-scheduler\r\n`;
+    icsContent += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z\r\n`;
+    icsContent += 'END:VEVENT\r\n';
   });
+  
+  icsContent += 'END:VCALENDAR\r\n';
+  
+  // Create blob and download
+  const blob = new Blob([icsContent], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'my-schedule.ics';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  toast(`✅ Downloaded ${sorted.length} shift(s) to calendar file`, 'success');
 }
 
 // ============================================
@@ -801,6 +849,24 @@ if (typeof window !== 'undefined') {
     return pstISODate(d);
   }
   
+  // Utility to prevent double-click on buttons during async operations
+  function withLoadingButton(buttonElement, asyncFn) {
+    if (!buttonElement || buttonElement.disabled) return Promise.resolve();
+    const originalText = buttonElement.textContent;
+    const originalHtml = buttonElement.innerHTML;
+    buttonElement.disabled = true;
+    buttonElement.style.opacity = '0.7';
+    buttonElement.style.pointerEvents = 'none';
+    buttonElement.innerHTML = '⏳ ' + originalText;
+    
+    return asyncFn().finally(() => {
+      buttonElement.disabled = false;
+      buttonElement.style.opacity = '';
+      buttonElement.style.pointerEvents = '';
+      buttonElement.innerHTML = originalHtml;
+    });
+  }
+  
   // --- CLOUD RUN BRIDGE START ---
   // This object "fakes" the Google Apps Script environment so your UI works in Cloud Run.
   
@@ -884,9 +950,9 @@ if (typeof window !== 'undefined') {
                  console.log(`Bridge: Loaded ${peopleList.length} people.`);
                  if(this._success) this._success({ people: peopleList, teams: teams, timeOff: [] });
                } catch(e) {
-                 console.error("Bridge Error (System Data):", e);
-                 const fallback = ["Adam", "Baylie", "Brandi", "Elizabeth", "Gisenia", "Kelsey"];
-                 if(this._success) this._success({ people: fallback, teams: [], timeOff: [] });
+                 console.error("Failed to load people/teams:", e);
+                 if(this._success) this._success({ people: [], teams: [], timeOff: [] });
+                 toast("Could not load team data. Please refresh the page.", "error");
                }
             },
             // --- 6. ZENDESK ---
@@ -2435,7 +2501,7 @@ function updateCacheIndicator(fromCache) {
           <input type="radio" name="wipeScope" value="future" checked style="width:18px; height:18px;">
           <div>
             <div style="font-weight:600; color:#dc2626;">Future Only</div>
-            <div style="font-size:12px; color:#64748b;">Delete from today onwards</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Delete from today onwards</div>
           </div>
         </label>
         
@@ -2443,7 +2509,7 @@ function updateCacheIndicator(fromCache) {
           <input type="radio" name="wipeScope" value="all" style="width:18px; height:18px;">
           <div>
             <div style="font-weight:600; color:#c2410c;">Everything</div>
-            <div style="font-size:12px; color:#64748b;">Delete ALL schedule data (past + future)</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Delete ALL schedule data (past + future)</div>
           </div>
         </label>
         
@@ -2491,7 +2557,7 @@ function updateCacheIndicator(fromCache) {
         icon: 'success',
         title: 'Schedule Wiped!',
         html: `<div>Deleted <strong>${data.deleted}</strong> schedule days.</div>
-               <div style="margin-top:10px; font-size:13px; color:#64748b;">
+               <div style="margin-top:10px; font-size:13px; color:var(--text-secondary);">
                  Use "Regenerate" to create the new schedule.
                </div>`,
         confirmButtonColor: '#16a34a'
@@ -2714,8 +2780,8 @@ async function openAddAgentModal() {
       title:"Agent Added!", 
       html:`<div style="text-align:left;">
         <p><strong>${formValues.name}</strong> has been added to the system.</p>
-        <p style="font-size:12px; color:#64748b; margin-top:8px;">Document ID: <code>${data.docId}</code></p>
-        <p style="font-size:12px; color:#64748b;">Role: ${formValues.role}</p>
+        <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">Document ID: <code>${data.docId}</code></p>
+        <p style="font-size:12px; color:var(--text-secondary);">Role: ${formValues.role}</p>
         <p style="font-size:12px; color:#16a34a; margin-top:8px;">✓ Agent will appear in Master Schedule</p>
       </div>`,
       confirmButtonColor:"#16a34a" 
@@ -2818,7 +2884,7 @@ async function removeAgentConfirm(docId, agentName) {
     const confirm = await Swal.fire({
       title: 'Restore Agent?',
       html: `<p>Reactivate <strong>${agentName}</strong>?</p>
-             <p style="font-size:12px; color:#64748b; margin-top:8px;">They will appear in the Master Schedule again.</p>`,
+             <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">They will appear in the Master Schedule again.</p>`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Restore',
@@ -2928,8 +2994,8 @@ async function removeAgentConfirm(docId, agentName) {
       title: "Agent Removed",
       html: `<div style="text-align:left;">
         <p><strong>${agentName}</strong> has been deactivated.</p>
-        ${cleanedCount > 0 ? `<p style="font-size:12px; color:#64748b; margin-top:8px;">${cleanedCount} future shift(s) cleared.</p>` : ''}
-        <p style="font-size:12px; color:#64748b; margin-top:8px;">You can restore them anytime from Manage Agents.</p>
+        ${cleanedCount > 0 ? `<p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">${cleanedCount} future shift(s) cleared.</p>` : ''}
+        <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">You can restore them anytime from Manage Agents.</p>
       </div>`,
       confirmButtonColor: "#b37e78",
       didClose: () => openManageAgentsModal()
@@ -2977,7 +3043,7 @@ async function editAgentModal(docId) {
             <option value="false" ${agent.active === false ? 'selected' : ''}>Inactive</option>
           </select>
           
-          <div style="margin-top:12px; padding:8px; background:#f8fafc; border-radius:6px; font-size:11px; color:#64748b;">
+          <div style="margin-top:12px; padding:8px; background:var(--bg-tertiary); border-radius:6px; font-size:11px; color:var(--text-secondary);">
             Document ID: <code>${docId}</code>
           </div>
         </div>
