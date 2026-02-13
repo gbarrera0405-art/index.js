@@ -112,6 +112,14 @@ body.dark-mode .bulkModal .mBody {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
 }
+@keyframes notif-slide-in {
+  0% { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes notif-panel-flash {
+  0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+  50% { box-shadow: 0 4px 30px rgba(251, 191, 36, 0.5), 0 0 0 3px rgba(251, 191, 36, 0.3); }
+}
 /* Open Shift Card Styles */
 .open-shift {
   position: relative;
