@@ -6616,7 +6616,7 @@ function closeFillShiftModal() {
 
 // Submit fill shift
 async function submitFillShift(event) {
-  const button = event?.target;
+  const button = event?.currentTarget || event?.target;
   if (!_currentFillShiftData) {
     toast("No shift selected", "error");
     return;
@@ -6902,7 +6902,7 @@ function closeBatchFillModal() {
 }
 
 async function submitBatchFill(event) {
-  const button = event?.target;
+  const button = event?.currentTarget || event?.target;
   const assignments = [];
   
   _batchFillShifts.forEach((gap, idx) => {

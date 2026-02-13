@@ -591,7 +591,12 @@ const TZ_MAP = {
   'EST': 'America/New_York'
 };
 
-// Convert PST time to user's timezone (DST-aware)
+/**
+ * Convert PST time to user's timezone with DST awareness
+ * @param {number} pstHour - Hour in PST as decimal (e.g., 9.5 for 9:30)
+ * @param {string} [dateISO] - Date in YYYY-MM-DD format for DST calculation. If omitted, uses today.
+ * @returns {number} Hour in user's timezone as decimal
+ */
 function convertTimeToUserTz(pstHour, dateISO) {
   const prefs = getUserPrefs();
   if (prefs.timezone === 'PST') return pstHour;
@@ -846,7 +851,7 @@ if (typeof window !== 'undefined') {
   
   // Utility to prevent double-click on buttons during async operations
   function withLoadingButton(buttonElement, asyncFn) {
-    if (!buttonElement || buttonElement.disabled) return;
+    if (!buttonElement || buttonElement.disabled) return Promise.resolve();
     const originalText = buttonElement.textContent;
     const originalHtml = buttonElement.innerHTML;
     buttonElement.disabled = true;

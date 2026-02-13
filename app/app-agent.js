@@ -334,7 +334,7 @@ function closeFutureTimeOffModal() {
 }
 
 async function submitFutureTimeOff(event) {
-  const button = event?.target;
+  const button = event?.currentTarget || event?.target;
   const startDate = $("futureToDateStart")?.value;
   const endDate = $("futureToDateEnd")?.value;
   const typeRadio = document.querySelector('input[name="futureToType"]:checked');
@@ -3842,7 +3842,7 @@ function addTaskRow() { openTaskEditor(); }
 // ══════════════════════════════════════════════
 
 async function saveAgentGoals(event) {
-  const button = event?.target;
+  const button = event?.currentTarget || event?.target;
   if (!_currentGoalsAgent) {
     toast('No agent selected', 'error');
     return;
