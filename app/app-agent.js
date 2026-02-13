@@ -141,6 +141,9 @@ function openFutureTimeOffModal() {
   // Clear reason
   if ($("futureToReason")) $("futureToReason").value = "";
   
+  // Reset duration to Full Day
+  selectFutureTimeOffDuration('full');
+  
   // Reset type selection to Make Up
   selectFutureTimeOffType('makeup');
   
@@ -151,18 +154,127 @@ function openFutureTimeOffModal() {
     ptoEl.textContent = balance.pto || 0;
   }
   
+  // Reset partial time selects
+  if ($("futurePartialStart")) $("futurePartialStart").value = "";
+  if ($("futurePartialEnd")) $("futurePartialEnd").value = "";
+  if ($("futurePartialHoursCalc")) $("futurePartialHoursCalc").textContent = "";
+  
   // Update days count
   updateFutureTimeOffDaysCount();
   
   modal.style.display = "flex";
 }
 
+// Toggle between Full Day and Partial Day duration
+function selectFutureTimeOffDuration(mode) {
+  const fullLabel = $("futureDurationFull");
+  const partialLabel = $("futureDurationPartial");
+  const partialWrap = $("futurePartialWrap");
+  const dateEndWrap = $("futureDateEndWrap");
+  const dateArrow = $("futureDateArrow");
+  const dateGrid = $("futureDateRangeGrid");
+  
+  if (mode === 'partial') {
+    // Partial day selected
+    if (partialLabel) {
+      partialLabel.style.borderColor = '#7c3aed';
+      partialLabel.style.background = '#f5f3ff';
+      partialLabel.querySelector('input').checked = true;
+    }
+    if (fullLabel) {
+      fullLabel.style.borderColor = '#e2e8f0';
+      fullLabel.style.background = 'white';
+    }
+    if (partialWrap) partialWrap.style.display = 'block';
+    // Partial day = single date only
+    if (dateEndWrap) dateEndWrap.style.display = 'none';
+    if (dateArrow) dateArrow.style.display = 'none';
+    if (dateGrid) dateGrid.style.gridTemplateColumns = '1fr';
+  } else {
+    // Full day selected
+    if (fullLabel) {
+      fullLabel.style.borderColor = '#b37e78';
+      fullLabel.style.background = '#fbf6f5';
+      fullLabel.querySelector('input').checked = true;
+    }
+    if (partialLabel) {
+      partialLabel.style.borderColor = '#e2e8f0';
+      partialLabel.style.background = 'white';
+    }
+    if (partialWrap) partialWrap.style.display = 'none';
+    // Full day = date range
+    if (dateEndWrap) dateEndWrap.style.display = '';
+    if (dateArrow) dateArrow.style.display = '';
+    if (dateGrid) dateGrid.style.gridTemplateColumns = '1fr auto 1fr';
+  }
+  
+  updateFutureTimeOffDaysCount();
+}
+
+// Calculate partial hours when time selects change
+function updatePartialHoursCalc() {
+  const startSel = $("futurePartialStart");
+  const endSel = $("futurePartialEnd");
+  const calcEl = $("futurePartialHoursCalc");
+  if (!startSel || !endSel || !calcEl) return;
+  
+  const startVal = startSel.value;
+  const endVal = endSel.value;
+  
+  if (!startVal || !endVal || endVal === 'end') {
+    calcEl.textContent = startVal && endVal === 'end' ? '⏰ Off from ' + formatTimeAmPm(startVal) + ' until end of shift' : '';
+    return;
+  }
+  
+  const startH = parseInt(startVal.split(':')[0]);
+  const endH = parseInt(endVal.split(':')[0]);
+  const hours = endH - startH;
+  
+  if (hours > 0) {
+    calcEl.textContent = `⏰ ${hours} hour${hours > 1 ? 's' : ''} off (${formatTimeAmPm(startVal)} – ${formatTimeAmPm(endVal)})`;
+  } else if (hours === 0) {
+    calcEl.textContent = '⚠️ Start and end times are the same';
+  } else {
+    calcEl.textContent = '⚠️ End time must be after start time';
+  }
+}
+
+function formatTimeAmPm(timeStr) {
+  if (!timeStr) return '';
+  const h = parseInt(timeStr.split(':')[0]);
+  if (h === 0) return '12:00 AM';
+  if (h < 12) return h + ':00 AM';
+  if (h === 12) return '12:00 PM';
+  return (h - 12) + ':00 PM';
+}
+
+// Attach change listeners for partial time selects
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const ps = document.getElementById('futurePartialStart');
+    const pe = document.getElementById('futurePartialEnd');
+    if (ps) ps.addEventListener('change', updatePartialHoursCalc);
+    if (pe) pe.addEventListener('change', updatePartialHoursCalc);
+  });
+})();
+
 function updateFutureTimeOffDaysCount() {
   const startInput = $("futureToDateStart");
   const endInput = $("futureToDateEnd");
   const countEl = $("futureTimeOffDaysCount");
   
-  if (!startInput || !endInput || !countEl) return;
+  if (!startInput || !countEl) return;
+  
+  // Check if we're in partial mode (end date hidden)
+  const durationRadio = document.querySelector('input[name="futureToDuration"]:checked');
+  const isPartial = durationRadio && durationRadio.value === 'partial';
+  
+  if (isPartial) {
+    countEl.innerHTML = '<span style="color:#7c3aed; font-weight:600;">⏰ Partial day off</span>';
+    return;
+  }
+  
+  if (!endInput) return;
   
   const start = new Date(startInput.value);
   const end = new Date(endInput.value);
@@ -226,7 +338,13 @@ async function submitFutureTimeOff() {
   const endDate = $("futureToDateEnd")?.value;
   const typeRadio = document.querySelector('input[name="futureToType"]:checked');
   const type = typeRadio ? typeRadio.value : "Make Up";
+  const durationRadio = document.querySelector('input[name="futureToDuration"]:checked');
+  const duration = durationRadio ? durationRadio.value : "full_day";
   const reason = $("futureToReason")?.value || "";
+  
+  // Partial day fields
+  const partialStart = $("futurePartialStart")?.value || "";
+  const partialEnd = $("futurePartialEnd")?.value || "";
   
   if (!startDate) {
     toast("Please select a start date", "error");
@@ -236,6 +354,26 @@ async function submitFutureTimeOff() {
   if (!reason.trim()) {
     toast("Please provide a reason", "error");
     return;
+  }
+  
+  // Validate partial day times
+  if (duration === "partial") {
+    if (!partialStart) {
+      toast("Please select when you'll be off from", "error");
+      return;
+    }
+    if (!partialEnd) {
+      toast("Please select when you'll be off until", "error");
+      return;
+    }
+    if (partialEnd !== 'end') {
+      const startH = parseInt(partialStart.split(':')[0]);
+      const endH = parseInt(partialEnd.split(':')[0]);
+      if (endH <= startH) {
+        toast("End time must be after start time", "error");
+        return;
+      }
+    }
   }
   
   // If Make Up type, require at least one make up date
@@ -249,9 +387,9 @@ async function submitFutureTimeOff() {
     _futureMakeUpDates.push(singleDate);
   }
   
-  // Calculate dates in range
+  // Calculate dates in range (for partial, only one date)
   const start = new Date(startDate);
-  const end = new Date(endDate || startDate);
+  const end = duration === "partial" ? new Date(startDate) : new Date(endDate || startDate);
   const dates = [];
   
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -261,10 +399,17 @@ async function submitFutureTimeOff() {
   // Format make up dates string
   const makeUpDatesStr = _futureMakeUpDates.join(', ');
   
+  // Build description for partial
+  const isPartial = duration === "partial";
+  const partialDesc = isPartial ? 
+    ` (Partial: ${formatTimeAmPm(partialStart)} – ${partialEnd === 'end' ? 'end of shift' : formatTimeAmPm(partialEnd)})` : '';
+  const makeUpTimeStartVal = type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "";
+  const makeUpTimeEndVal = type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "";
+  
   try {
     Swal.fire({
       title: 'Submitting...',
-      text: `Requesting ${dates.length} day${dates.length > 1 ? 's' : ''} off`,
+      text: `Requesting ${dates.length} day${dates.length > 1 ? 's' : ''} off${partialDesc}`,
       allowOutsideClick: false,
       showConfirmButton: false,
       didOpen: () => Swal.showLoading()
@@ -282,14 +427,19 @@ async function submitFutureTimeOff() {
           body: JSON.stringify({
             person: window._myName,
             date: date,
+            type: type,
             typeKey: type.toLowerCase().replace(" ", "_"),
-            duration: "full_day",
-            reason: reason,
+            duration: duration,
+            reason: reason + partialDesc,
             makeUpDate: type === "Make Up" ? makeUpDatesStr : null,
             makeUpDates: type === "Make Up" ? _futureMakeUpDates : [],
+            makeUpTimeStart: type === "Make Up" ? ($("futureToMakeUpTimeStart")?.value || "") : "",
+            makeUpTimeEnd: type === "Make Up" ? ($("futureToMakeUpTimeEnd")?.value || "") : "",
             shiftStart: null,
             shiftEnd: null,
-            team: null
+            team: null,
+            partialStart: duration === "partial" ? partialStart : "",
+            partialEnd: duration === "partial" ? partialEnd : ""
           })
         });
         
@@ -307,15 +457,28 @@ async function submitFutureTimeOff() {
     closeFutureTimeOffModal();
     
     if (successCount === dates.length) {
+      const _fd = (d) => { try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); } catch(e){return d;} };
+      const _dateDisp = dates.length === 1 ? _fd(dates[0]) : _fd(dates[0]) + ' – ' + _fd(dates[dates.length-1]);
+      const _muDisp = _futureMakeUpDates.map(d => _fd(d)).join(', ');
       Swal.fire({
         icon: 'success',
         title: 'Request Submitted!',
-        html: `<div style="text-align:center;">
-          <p>✅ ${successCount} day${successCount > 1 ? 's' : ''} requested</p>
-          ${type === "Make Up" ? `<p style="font-size:12px; color:#64748b; margin-top:4px;">Make up dates: ${makeUpDatesStr}</p>` : ''}
-          <p style="font-size:12px; color:#64748b; margin-top:8px;">Your manager will review your request.</p>
+        html: `<div style="text-align:left; font-size:14px; line-height:1.7;">
+          <div style="padding:14px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac; margin-bottom:12px;">
+            <div style="font-weight:700; color:#15803d; margin-bottom:4px;">📅 Time Off</div>
+            <div style="color:#166534;">${_dateDisp}</div>
+            ${isPartial ? `<div style="color:#7c3aed; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(partialStart)} – ${partialEnd === 'end' ? 'End of shift' : formatTimeAmPm(partialEnd)}</div>` : ''}
+          </div>
+          ${type === "Make Up" ? `
+          <div style="padding:14px; background:#eff6ff; border-radius:10px; border:1px solid #93c5fd; margin-bottom:12px;">
+            <div style="font-weight:700; color:#1d4ed8; margin-bottom:4px;">🔄 Make Up Schedule</div>
+            <div style="color:#1e40af;">${_muDisp}</div>
+            ${makeUpTimeStartVal && makeUpTimeEndVal ? `<div style="color:#2563eb; font-size:12px; margin-top:2px;">⏰ ${formatTimeAmPm(makeUpTimeStartVal)} – ${formatTimeAmPm(makeUpTimeEndVal)}</div>` : ''}
+          </div>` : ''}
+          <div style="text-align:center; font-size:13px; color:#64748b;">Your manager will review your request</div>
         </div>`,
-        confirmButtonColor: '#16a34a'
+        confirmButtonColor: '#b37e78',
+        confirmButtonText: 'Got it'
       });
     } else if (successCount > 0) {
       Swal.fire({
@@ -4135,9 +4298,10 @@ async function loadAgentAttendanceForAgentView() {
     if (!myName) return;
     
     const allData = window._filteredData || window._data || [];
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentHour = now.getHours() + now.getMinutes() / 60;
+    // Use PST for shift matching — schedule data is stored in PST
+    const nowPST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const today = nowPST.getFullYear() + '-' + String(nowPST.getMonth() + 1).padStart(2, '0') + '-' + String(nowPST.getDate()).padStart(2, '0');
+    const currentHour = nowPST.getHours() + nowPST.getMinutes() / 60;
     
     // Get my shifts sorted
     const myShifts = allData
@@ -4176,7 +4340,7 @@ async function loadAgentAttendanceForAgentView() {
     const nowTeam = document.getElementById('summaryNowTeam');
     if (nowValue) {
       if (currentShift) {
-        nowValue.textContent = `${toAmPm(currentShift.start)} - ${toAmPm(currentShift.end)}`;
+        nowValue.textContent = `${_convertPSTtoDisplay(currentShift.start)} - ${_convertPSTtoDisplay(currentShift.end)}`;
         if (nowTeam) nowTeam.textContent = currentShift.team || '';
       } else {
         nowValue.textContent = 'Off Shift';
@@ -4189,7 +4353,7 @@ async function loadAgentAttendanceForAgentView() {
     const nextDate = document.getElementById('summaryNextDate');
     if (nextValue) {
       if (nextShift) {
-        nextValue.textContent = `${toAmPm(nextShift.start)} - ${toAmPm(nextShift.end)}`;
+        nextValue.textContent = `${_convertPSTtoDisplay(nextShift.start)} - ${_convertPSTtoDisplay(nextShift.end)}`;
         if (nextDate) {
           const d = new Date(nextShift.date + 'T12:00:00');
           const dateStr = nextShift.date === today ? 'Today' : 
@@ -4305,6 +4469,24 @@ async function loadAgentAttendanceForAgentView() {
     if (!timeStr) return 0;
     const parts = String(timeStr).split(':');
     return parseInt(parts[0], 10) + (parseInt(parts[1], 10) || 0) / 60;
+  }
+
+  // Convert a PST HH:MM time string to the user's preferred display timezone
+  function _convertPSTtoDisplay(timeStr) {
+    if (!timeStr) return '';
+    const parts = String(timeStr).split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) || 0;
+    let tz = 'PST';
+    try { tz = getUserPrefs().timezone || 'PST'; } catch(e) {}
+    let off = 0;
+    if (tz === 'EST' || tz === 'ET') off = 3;
+    else if (tz === 'CST' || tz === 'CT') off = 2;
+    else if (tz === 'MST' || tz === 'MT') off = 1;
+    const dh = (h + off) % 24;
+    const ap = dh >= 12 ? 'PM' : 'AM';
+    const h12 = dh === 0 ? 12 : dh > 12 ? dh - 12 : dh;
+    return h12 + ':' + String(m).padStart(2, '0') + ' ' + ap;
   }
   
   // ══════════════════════════════════════════════
