@@ -1959,7 +1959,7 @@ function setEditingMode(isEditing) {
           'staffingModal': () => typeof closeStaffingModal === 'function' && closeStaffingModal(),
           'clearEventsModal': () => typeof closeClearEventsModal === 'function' && closeClearEventsModal(),
           'auditOverlay': () => typeof closeAuditModal === 'function' && closeAuditModal(),
-          'masterContextOverlay': () => {}, // No close function, but shouldn't close anyway
+          'masterContextOverlay': null, // Critical selector modal - don't allow Escape close
           'meetingRotationModal': () => typeof closeMeetingRotationModal === 'function' && closeMeetingRotationModal(),
           'weeklyAssignmentsModal': () => typeof closeWeeklyAssignmentsModal === 'function' && closeWeeklyAssignmentsModal(),
           'agentGoalsModal': () => typeof closeAgentGoalsModal === 'function' && closeAgentGoalsModal(),
