@@ -56,6 +56,15 @@
     --modal-btn-shadow: rgba(179, 126, 120, 0.3);
     --modal-btn-hover-shadow: rgba(179, 126, 120, 0.4);
     --accent-secondary: #d8636b;
+    /* CSAT follow-up card colors */
+    --csat-pending-bg-start: #fef2f2;
+    --csat-pending-bg-end: #fee2e2;
+    --csat-pending-border: #fca5a5;
+    --csat-pending-text: #dc2626;
+    --csat-done-bg-start: #f0fdf4;
+    --csat-done-bg-end: #dcfce7;
+    --csat-done-border: #bbf7d0;
+    --csat-done-text: #166534;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
@@ -106,6 +115,15 @@
     --modal-btn-hover-shadow: rgba(164, 89, 83, 0.5);
     --accent-primary: #a45953;
     --accent-secondary: #a45953;
+    /* CSAT follow-up card colors - dark mode */
+    --csat-pending-bg-start: #3b1c1c;
+    --csat-pending-bg-end: #4a2020;
+    --csat-pending-border: #7f2d2d;
+    --csat-pending-text: #fca5a5;
+    --csat-done-bg-start: #1a2e1a;
+    --csat-done-bg-end: #1e3a1e;
+    --csat-done-border: #2d5a2d;
+    --csat-done-text: #86efac;
   }
   
   body { 

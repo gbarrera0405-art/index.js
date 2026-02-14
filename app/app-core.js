@@ -49,34 +49,12 @@ const CHANNEL_CONFIG = {
   "Custom":          { abbrev: "CUST",  color: "#99f6e4", border: "#5eead4", text: "#8f5f5a", hours: [8, 17], minStaff: 0, statusInterval: 0 },
   "Other":           { abbrev: "Other", color: "#e2e8f0", border: "#cbd5e1", text: "#475569", hours: [8, 17], minStaff: 0, statusInterval: 0 }
 };
-const CHANNEL_ABBREV = {
-  "Live Chat": "LC",
-  "LiveChat": "LC",
-  "Phone": "Phone",
-  "Phone Support": "Phone",
-  "PhoneSupport": "Phone",
-  "Socials": "SS",
-  "MD Support": "MD",
-  "MDSupport": "MD",
-  "Disputes": "Dis",
-  "Floater": "Float",
-  "EmailFloater": "Float",
-  "Email/Floater": "Float",
-  "Lunch": "Lunch",
-  "Projects": "Proj",
-  "ReportingProjects": "Proj",
-  "1: 1 Meetings": "1:1",
-  "1:1s Meetings": "1:1",
-  "11Meetings": "1:1",
-  "Meeting": "MTG",
-  "Meetings": "MTG",
-  "Custom": "CUST",
-  "Other": "Other"
-};
-  const $ = (id) => document.getElementById(id);
-  // ============================================
-  // [SECTION 2] AUTHENTICATION
-  // ============================================
+
+const $ = (id) => document.getElementById(id);
+  
+// ============================================
+// [SECTION 2] AUTHENTICATION
+// ============================================
   async function handleSignIn(response) {
   console.log("Sign-in response received");
   
@@ -1103,7 +1081,6 @@ runGenerate: async function() {
   
   function fatal_(title, detail) {
     console.error("FATAL:", title, detail);
-    if ($("skeletonView")) $("skeletonView").style.display = "none";
     if ($("loader")) $("loader").classList.add("hidden");
     const host = $("listView") || document.body;
     host.innerHTML = `<div style="padding:20px; color:red; font-weight:bold;">${title}<br><span style="font-weight:normal; font-size:12px; color:#333;">${detail}</span></div>`;
@@ -1142,14 +1119,6 @@ runGenerate: async function() {
   let _masterSelected=new Set(), _masterRawData=[]; // Moved here for safety
   let _lastSelectedPerson = null;
   // --- 3. HELPERS (FORMATTING) ---
-  function formatCsatDisplay(val) {
-    if (val === null || val === undefined || val === "" || val === "--") return "--";
-    if (String(val).includes("%")) return val;
-    const n = Number(val);
-    if (isNaN(n)) return "--";
-    if (n <= 1 && n !== 0) return Math.round(n * 100) + "%";
-    return Math.round(n) + "%";
-  }
   function getTeamClass(t) { 
     const l = (t || "").toLowerCase().replace(/[\s\/]+/g, ''); 
     
@@ -1375,7 +1344,8 @@ async function acquireEditLock(resourceType, resourceId) {
         resourceId,
         lockedByEmail: window._myEmail || '',
         lockedByName: window._myName || '',
-        lockSessionId
+        lockSessionId,
+        isManager: window._isManager || false
       })
     });
     const data = await response.json();
@@ -1405,7 +1375,7 @@ async function renewEditLock(resourceType, resourceId) {
     const response = await fetch('./?action=locks/renew', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resourceType, resourceId, lockSessionId })
+      body: JSON.stringify({ resourceType, resourceId, lockSessionId, isManager: window._isManager || false })
     });
     const data = await response.json();
     if (data.ok && data.renewed) {
@@ -1440,7 +1410,7 @@ async function releaseEditLock(resourceType, resourceId) {
     const response = await fetch('./?action=locks/release', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resourceType, resourceId, lockSessionId })
+      body: JSON.stringify({ resourceType, resourceId, lockSessionId, isManager: window._isManager || false })
     });
     const data = await response.json();
     console.log(`[Lock] 🔓 Released ${resourceType} lock for ${resourceId}`);
@@ -1462,7 +1432,23 @@ async function checkLockStatus(resourceType, resourceId) {
 }
 
 function formatLockExpiry(expiresAt) {
-  const remaining = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+  if (!expiresAt) return 'soon';
+  
+  // Handle Firestore Timestamp objects
+  let expiryMs;
+  if (typeof expiresAt === 'object' && expiresAt._seconds) {
+    expiryMs = expiresAt._seconds * 1000;
+  } else if (typeof expiresAt === 'number') {
+    // Could be seconds or milliseconds — if it's too small to be ms, treat as seconds
+    expiryMs = expiresAt < 1e12 ? expiresAt * 1000 : expiresAt;
+  } else {
+    expiryMs = new Date(expiresAt).getTime();
+  }
+  
+  if (isNaN(expiryMs)) return 'soon';
+  
+  const remaining = Math.max(0, Math.floor((expiryMs - Date.now()) / 1000));
+  if (remaining <= 0) return 'any moment';
   return `${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`;
 }
 
@@ -1476,7 +1462,16 @@ function showLockBanner(container, lockData) {
   const expiresEl = banner.querySelector('.lock-expires');
   const updateInterval = setInterval(() => {
     expiresEl.textContent = `expires in ${formatLockExpiry(lockData.expiresAt)}`;
-    if (new Date(lockData.expiresAt).getTime() <= Date.now()) {
+    // Check if lock has expired using the same logic as formatLockExpiry
+    let expiryMs;
+    if (lockData.expiresAt && typeof lockData.expiresAt === 'object' && lockData.expiresAt._seconds) {
+      expiryMs = lockData.expiresAt._seconds * 1000;
+    } else if (lockData.expiresAt && typeof lockData.expiresAt === 'number') {
+      expiryMs = lockData.expiresAt < 1e12 ? lockData.expiresAt * 1000 : lockData.expiresAt;
+    } else if (lockData.expiresAt) {
+      expiryMs = new Date(lockData.expiresAt).getTime();
+    }
+    if (expiryMs && !isNaN(expiryMs) && expiryMs <= Date.now()) {
       clearInterval(updateInterval);
       banner.remove();
     }
@@ -1514,7 +1509,8 @@ function releaseAllLocks() {
     const data = JSON.stringify({
       resourceType,
       resourceId: resourceIdParts.join('_'),
-      lockSessionId: getLockSessionId()
+      lockSessionId: getLockSessionId(),
+      isManager: window._isManager || false
     });
     // sendBeacon requires Blob for JSON content
     const blob = new Blob([data], { type: 'application/json' });
@@ -1822,11 +1818,7 @@ async function softRefreshNotifications() {
   try {
     // For managers: check for new pending notifications
     if (window._isManager) {
-      const res = await fetch('/?action=pendingNotifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      const res = await fetch('./?action=notifications/pending');
       const data = await res.json();
       
       if (data.ok) {
@@ -1875,16 +1867,81 @@ function showNewNotificationIndicator(count) {
 }
 
 // ✅ Mark editing mode on/off to prevent disruption
+// ✅ Idle timeout for edit mode — auto-cancels after 10 minutes of inactivity
+let _editIdleTimer = null;
+let _editIdleWarningTimer = null;
+const EDIT_IDLE_TIMEOUT = 10 * 60 * 1000;    // 10 minutes total
+const EDIT_IDLE_WARNING = 8 * 60 * 1000;     // Warn at 8 minutes
+
+function _resetEditIdleTimer() {
+  if (!_isEditingSchedule) return;
+  
+  // Clear existing timers
+  if (_editIdleWarningTimer) clearTimeout(_editIdleWarningTimer);
+  if (_editIdleTimer) clearTimeout(_editIdleTimer);
+  
+  // Warning at 8 minutes
+  _editIdleWarningTimer = setTimeout(() => {
+    if (!_isEditingSchedule) return;
+    Swal.fire({
+      icon: 'info',
+      title: 'Still editing?',
+      html: `<p>You've been idle for a while. Edit mode will <strong>auto-cancel in 2 minutes</strong> to free the lock for other managers.</p>`,
+      confirmButtonText: 'Keep Editing',
+      confirmButtonColor: '#b37e78',
+      showCancelButton: true,
+      cancelButtonText: 'Cancel Editing',
+      cancelButtonColor: '#64748b',
+      timer: 120000,
+      timerProgressBar: true
+    }).then(result => {
+      if (result.isConfirmed) {
+        _resetEditIdleTimer(); // User is active, restart timer
+      } else {
+        // Timer expired or user chose cancel — release lock
+        if (typeof masterCancelDraft === 'function') {
+          masterCancelDraft();
+          toast('Edit mode auto-cancelled due to inactivity.', 'info');
+        }
+      }
+    });
+  }, EDIT_IDLE_WARNING);
+  
+  // Hard cancel at 10 minutes
+  _editIdleTimer = setTimeout(() => {
+    if (!_isEditingSchedule) return;
+    Swal.close(); // Close any open SweetAlert (the warning)
+    if (typeof masterCancelDraft === 'function') {
+      masterCancelDraft();
+      toast('Edit mode auto-cancelled due to inactivity.', 'info');
+    }
+  }, EDIT_IDLE_TIMEOUT);
+}
+
+function _clearEditIdleTimer() {
+  if (_editIdleWarningTimer) { clearTimeout(_editIdleWarningTimer); _editIdleWarningTimer = null; }
+  if (_editIdleTimer) { clearTimeout(_editIdleTimer); _editIdleTimer = null; }
+  // Remove activity listeners
+  ['click', 'keydown', 'input', 'scroll'].forEach(evt =>
+    document.removeEventListener(evt, _resetEditIdleTimer)
+  );
+}
+
 function setEditingMode(isEditing) {
   _isEditingSchedule = isEditing;
   window.__editModeActive = isEditing;
   
   if (isEditing) {
-    console.log("[Edit Mode] Enabled - auto-refresh paused");
+    console.log("[Edit Mode] Enabled - auto-refresh paused, idle timer started");
+    // Listen for user activity to reset idle timer
+    ['click', 'keydown', 'input', 'scroll'].forEach(evt =>
+      document.addEventListener(evt, _resetEditIdleTimer)
+    );
+    _resetEditIdleTimer();
   } else {
     console.log("[Edit Mode] Disabled - auto-refresh resumed");
+    _clearEditIdleTimer();
     
-    // Check for pending refresh when editing ends
     if (window.__pendingRefresh) {
       showPendingUpdatesBanner();
     }
@@ -1950,6 +2007,64 @@ function setEditingMode(isEditing) {
     
     try { load(); } catch (e) { fatal_("Boot Crash", e.message); }
   };
+  
+  // ============================================
+  // GLOBAL ACCESSIBILITY: ESCAPE KEY HANDLER
+  // Closes the topmost visible modal when Escape is pressed
+  // ============================================
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+      // Find all visible modals/overlays
+      const overlays = document.querySelectorAll('.overlay, .modal-overlay, #authOverlay, #editShiftModal');
+      let topmostOverlay = null;
+      let topmostZIndex = -1;
+      
+      overlays.forEach(overlay => {
+        const display = window.getComputedStyle(overlay).display;
+        if (display !== 'none') {
+          const zIndex = parseInt(window.getComputedStyle(overlay).zIndex) || 0;
+          if (zIndex > topmostZIndex) {
+            topmostZIndex = zIndex;
+            topmostOverlay = overlay;
+          }
+        }
+      });
+      
+      // Close the topmost modal by triggering its close function
+      if (topmostOverlay) {
+        const modalId = topmostOverlay.id;
+        
+        // Map of modal IDs to their close functions
+        const closeHandlers = {
+          'authOverlay': null, // Don't allow closing auth overlay with Escape
+          'modalOverlay': () => typeof closeModal === 'function' && closeModal(),
+          'editShiftModal': () => typeof closeModal === 'function' && closeModal(),
+          'holidayModal': () => typeof closeHolidayModal === 'function' && closeHolidayModal(),
+          'profileOverlay': () => typeof closeProfile === 'function' && closeProfile(),
+          'masterOverlay': () => typeof closeMasterModal === 'function' && closeMasterModal(),
+          'pickerOverlay': () => typeof closePicker === 'function' && closePicker(),
+          'adminOverlay': () => typeof closeAdminModal === 'function' && closeAdminModal(),
+          'staffingModal': () => typeof closeStaffingModal === 'function' && closeStaffingModal(),
+          'clearEventsModal': () => typeof closeClearEventsModal === 'function' && closeClearEventsModal(),
+          'auditOverlay': () => typeof closeAuditModal === 'function' && closeAuditModal(),
+          'masterContextOverlay': null, // Critical selector modal - don't allow Escape close
+          'meetingRotationModal': () => typeof closeMeetingRotationModal === 'function' && closeMeetingRotationModal(),
+          'weeklyAssignmentsModal': () => typeof closeWeeklyAssignmentsModal === 'function' && closeWeeklyAssignmentsModal(),
+          'agentGoalsModal': () => typeof closeAgentGoalsModal === 'function' && closeAgentGoalsModal(),
+          'openShiftsModal': () => typeof closeOpenShiftsModal === 'function' && closeOpenShiftsModal(),
+          'fillShiftModal': () => typeof closeFillShiftModal === 'function' && closeFillShiftModal(),
+          'futureTimeOffModal': () => typeof closeFutureTimeOffModal === 'function' && closeFutureTimeOffModal(),
+          'meetingRotationAckModal': () => typeof closeMeetingRotationAckModal === 'function' && closeMeetingRotationAckModal(),
+          'batchFillModal': () => typeof closeBatchFillModal === 'function' && closeBatchFillModal()
+        };
+        
+        if (closeHandlers[modalId] && closeHandlers[modalId] !== null) {
+          closeHandlers[modalId]();
+          e.preventDefault();
+        }
+      }
+    }
+  });
   
   // ✅ NEW: Track user activity to keep session alive
   function setupSessionActivityTracking() {
@@ -2073,11 +2188,7 @@ function setEditingMode(isEditing) {
         const toCount = (countData.ok && countData.count) ? countData.count : 0;
         
         // Also check shift notifications
-        const notifRes = await fetch('/?action=pendingNotifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
+        const notifRes = await fetch('./?action=notifications/pending');
         const notifData = await notifRes.json();
         const shiftCount = notifData.ok ? (notifData.shiftNotifications?.length || 0) : 0;
         const mgrCount = notifData.ok ? (notifData.managerNotifications?.length || 0) : 0;

@@ -19,38 +19,11 @@
 <body>
   
   <!-- AUTH OVERLAY - Blocks all interaction until signed in -->
-  <div id="authOverlay" style="
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(160deg, #faf5f4 0%, #f0e6e4 40%, #e8dbd8 100%);
-    z-index: 99999;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-  ">
-    <div style="
-      background: rgba(255,255,255,0.7);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.8);
-      border-radius: 24px;
-      padding: 48px 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      box-shadow: 0 24px 80px -16px rgba(179,126,120,0.2), 0 0 0 1px rgba(0,0,0,0.03);
-      max-width: 380px;
-      width: 90%;
-    ">
-      <img src="https://i.imgur.com/ndsvLxn.png" alt="Company Logo" style="
-        width: 56px; height: 56px; border-radius: 14px; object-fit: contain;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      "/>
-      <div style="font-size: 22px; font-weight: 800; color: #1a0e0d; letter-spacing: -0.5px;">Scheduling Manager</div>
-      <div style="font-size: 13px; color: #6f5a57;">Sign in with your work account to continue</div>
+  <div id="authOverlay" role="dialog" aria-modal="true" aria-label="Sign in to Musely Scheduler">
+    <div class="auth-card">
+      <img src="https://i.imgur.com/ndsvLxn.png" alt="Company Logo" class="auth-logo" />
+      <div class="auth-title">Scheduling Manager</div>
+      <div class="auth-subtitle">Sign in with your work account to continue</div>
       <div id="authLoginContainer" style="margin-top: 4px;">
         <div id="g_id_onload"
              data-client_id="63798769550-6hfbo9bodtej1i6k00ch0i4n523v02v0.apps.googleusercontent.com"
@@ -59,7 +32,7 @@
         <div class="g_id_signin" data-type="standard" data-size="large"></div>
       </div>
     </div>
-    <div style="font-size: 11px; color: #a38b87; margin-top: 12px;">Musely Support Team</div>
+    <div class="auth-footer">Musely Support Team</div>
   </div>
   <!-- HEADER -->
   <div class="header">
@@ -1008,11 +981,11 @@
 
 
 <!-- Agent Goals Modal (read-only view for agents) -->
-<div id="agentGoalsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentGoalsModal()">
+<div id="agentGoalsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeAgentGoalsModal()" role="dialog" aria-modal="true" aria-labelledby="agentGoalsModalTitle">
   <div class="modal" style="width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
-    <div class="mHead" style="background: linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%); border-bottom: none; flex-shrink: 0;">
-      <span class="mTitle" style="color: white;">📋 My Goals & Progress</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeAgentGoalsModal()">✕</button>
+    <div class="mHead" style="background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom: none; flex-shrink: 0;">
+      <span id="agentGoalsModalTitle" class="mTitle" style="color: white;">📋 My Goals & Progress</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeAgentGoalsModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody" style="flex: 1; overflow-y: auto; max-height: calc(90vh - 60px); padding: 20px;">
       <div class="agent-goals-meta" id="agentGoalsMeta" style="font-size: 12px; color: var(--text-tertiary); margin-bottom: 16px;">Last updated: Never</div>
@@ -1089,13 +1062,8 @@
           </div>
         </div>
       </div>
-      <!-- Old skeleton view - replaced with inline loading spinner -->
-      <div id="skeletonView" class="skel-wrapper" style="display:none !important;">
-        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
-        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
-        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
-        <div class="skel-col"><div class="skel-anim skel-head"></div><div class="skel-anim skel-card"></div><div class="skel-anim skel-card"></div></div>
-      </div>
+      <!-- Inline loading spinner (instead of skeleton view) -->
+      <!-- Loading indication is now handled by the inline spinner in schedule-tools -->
     </div>
     <!-- RIGHT DRAWER -->
     <div id="rightDrawer" class="drawer">
@@ -1155,52 +1123,57 @@
     </div>
   </div>
   <!-- EDIT SHIFT MODAL -->
-  <div id="editShiftModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-    <div class="edit-shift-modal-content" style="background:var(--card-bg, white); padding:24px; border-radius:12px; width:320px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); border:1px solid var(--border-color, #e2e8f0);">
-      <h3 style="margin:0 0 20px 0; color:var(--text-primary, #0f172a); font-size:18px; font-weight:700;">Edit Shift</h3>
-      <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Employee</label>
-        <input type="text" id="modalEmployee" disabled style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); background:var(--bg-tertiary, #f8fafc); border-radius:8px; color:var(--text-secondary, #64748b); font-size:14px; box-sizing:border-box;">
+  <div id="editShiftModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="editShiftModalTitle">
+    <div class="modal-container" style="width:400px; max-width:95%;">
+      <div class="modal-header">
+        <span id="editShiftModalTitle" class="modal-header-title">✏️ Edit Shift</span>
+        <button type="button" class="modal-header-close" onclick="closeModal()" aria-label="Close modal">✕</button>
       </div>
-      <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Day</label>
-        <input type="text" id="modalDay" disabled style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); background:var(--bg-tertiary, #f8fafc); border-radius:8px; color:var(--text-secondary, #64748b); font-size:14px; box-sizing:border-box;">
-      </div>
-      <div style="display:flex; gap:12px; margin-bottom:16px;">
-        <div style="flex:1;">
-          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Start</label>
-          <input type="time" id="modalStart" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;">
+      <div class="modal-body">
+        <div style="margin-bottom:16px;">
+          <label class="modal-label">Employee</label>
+          <input type="text" id="modalEmployee" disabled class="modal-input" style="background:var(--bg-tertiary); cursor:not-allowed;">
         </div>
-        <div style="flex:1;">
-          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">End</label>
-          <input type="time" id="modalEnd" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;">
+        <div style="margin-bottom:16px;">
+          <label class="modal-label">Day</label>
+          <input type="text" id="modalDay" disabled class="modal-input" style="background:var(--bg-tertiary); cursor:not-allowed;">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div>
+            <label class="modal-label">Start</label>
+            <input type="time" id="modalStart" class="modal-input">
+          </div>
+          <div>
+            <label class="modal-label">End</label>
+            <input type="time" id="modalEnd" class="modal-input">
+          </div>
+        </div>
+        <input type="hidden" id="modalOrigStart">
+        <input type="hidden" id="modalOrigEnd">
+        <input type="hidden" id="modalOrigTeam">
+        <input type="hidden" id="modalOrigRole">
+        <input type="hidden" id="modalDocId">
+        <input type="hidden" id="modalAssignmentId">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div>
+            <label class="modal-label">Channel</label>
+            <select id="modalTeam" onchange="toggleCustomChannel(this)" class="modal-select"></select>
+          </div>
+          <div>
+            <label class="modal-label">Role</label>
+            <select id="modalRole" class="modal-select"></select>
+          </div>
+        </div>
+        <div id="customChannelWrapper" style="margin-bottom:20px; display:none;">
+          <label class="modal-label">Custom Channel Name</label>
+          <input type="text" id="modalCustomChannel" placeholder="Enter custom channel name..." class="modal-input">
         </div>
       </div>
-      <input type="hidden" id="modalOrigStart">
-      <input type="hidden" id="modalOrigEnd">
-      <input type="hidden" id="modalOrigTeam">
-      <input type="hidden" id="modalOrigRole">
-      <input type="hidden" id="modalDocId">
-      <input type="hidden" id="modalAssignmentId">
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
-        <div>
-          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Channel</label>
-          <select id="modalTeam" onchange="toggleCustomChannel(this)" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
-        </div>
-        <div>
-          <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Role</label>
-          <select id="modalRole" style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;"></select>
-        </div>
-      </div>
-      <div id="customChannelWrapper" style="margin-bottom:20px; display:none;">
-        <label style="display:block; font-size:11px; font-weight:600; color:var(--text-secondary, #64748b); margin-bottom:6px; text-transform:uppercase;">Custom Channel Name</label>
-        <input type="text" id="modalCustomChannel" placeholder="Enter custom channel name..." style="width:100%; padding:10px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:8px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); font-size:14px; box-sizing:border-box;">
-      </div>
-      <div style="display:flex; justify-content:space-between; padding-top:16px; border-top:1px solid var(--border-color, #e2e8f0);">
-        <button type="button" id="modalDeleteBtn" onclick="deleteShift()" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Delete</button>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" id="modalDeleteBtn" onclick="deleteShift()" class="modal-btn-danger">Delete Shift</button>
         <div style="display:flex; gap:10px;">
-          <button type="button" onclick="closeModal()" style="background:var(--bg-tertiary, #f1f5f9); color:var(--text-secondary, #64748b); border:1px solid var(--border-color, #e2e8f0); padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancel</button>
-          <button type="button" onclick="saveShift()" style="background:#b37e78; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Save</button>
+          <button type="button" onclick="closeModal()" class="modal-btn-secondary">Cancel</button>
+          <button type="button" onclick="saveShift()" class="modal-btn-primary">Save Changes</button>
         </div>
       </div>
     </div>
@@ -1285,27 +1258,27 @@
     </div>
   </div>
 <!-- Holiday Management Modal -->
-<div id="holidayModal" class="overlay overlay-sub" style="display:none;" onclick="if(event.target===this) closeHolidayModal()">
+<div id="holidayModal" class="overlay overlay-sub" style="display:none;" onclick="if(event.target===this) closeHolidayModal()" role="dialog" aria-modal="true" aria-labelledby="holidayModalTitle">
   <div class="modal" style="width: 500px;">
     <div class="mHead">
-      <span class="mTitle">🎄 Manage Holidays</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeHolidayModal()">✕</button>
+      <span id="holidayModalTitle" class="mTitle">🎄 Manage Holidays</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeHolidayModal()" aria-label="Close modal">✕</button>
     </div>
     
     <div class="mBody">
       <!-- Add Holiday Form -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; background:#f8fafc; border-radius:10px; margin-bottom:20px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px; margin-bottom:20px;">
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:4px;">DATE</label>
-          <input type="date" id="holidayDate" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:14px;" />
+          <label class="modal-label">Date</label>
+          <input type="date" id="holidayDate" class="modal-input" />
         </div>
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:4px;">HOLIDAY NAME</label>
-          <input type="text" id="holidayName" placeholder="e.g., Christmas Day" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius: 6px; font-size:14px;" />
+          <label class="modal-label">Holiday Name</label>
+          <input type="text" id="holidayName" placeholder="e.g., Christmas Day" class="modal-input" />
         </div>
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display: block; margin-bottom:4px;">THEME</label>
-          <select id="holidayTheme" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:14px;">
+          <label class="modal-label">Theme</label>
+          <select id="holidayTheme" class="modal-select">
             <option value="christmas">🎄 Christmas</option>
             <option value="newyear">🎆 New Year</option>
             <option value="july4th">🇺🇸 July 4th</option>
@@ -1318,8 +1291,8 @@
           </select>
         </div>
         <div>
-          <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:4px;">EMOJI</label>
-          <select id="holidayEmoji" style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:14px;">
+          <label class="modal-label">Emoji</label>
+          <select id="holidayEmoji" class="modal-select">
             <option value="🎄">🎄</option>
             <option value="🎆">🎆</option>
             <option value="🇺🇸">🇺🇸</option>
@@ -1331,63 +1304,55 @@
             <option value="⭐">⭐</option>
           </select>
         </div>
-        <button onclick="addHoliday()" style="grid-column: 1 / -1; background:#b37e78; color: white; border:none; border-radius:8px; padding:12px; font-weight:600; cursor: pointer; font-size:14px;">
+        <button onclick="addHoliday()" class="modal-btn-primary" style="grid-column: 1 / -1;">
           + Add Holiday
         </button>
       </div>
       
       <!-- Holiday List -->
-      <label style="font-size:11px; font-weight:600; color:#64748b; display:block; margin-bottom:12px;">SCHEDULED HOLIDAYS</label>
+      <label class="modal-label">Scheduled Holidays</label>
       <div id="holidayList" style="max-height:250px; overflow-y:auto;">
-        <div style="text-align:center; color:#94a3b8; padding:20px;">Loading... </div>
+        <div style="text-align:center; color:var(--text-tertiary); padding:20px;">Loading...</div>
       </div>
     </div>
   </div>
 </div>
-  <div id="profileOverlay" class="overlay" onclick="if(event.target===this) closeProfile()">
+  <div id="profileOverlay" class="overlay" onclick="if(event.target===this) closeProfile()" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
     <div class="modal" style="width: 400px;">
-      <div class="mHead" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-        <span class="mTitle">Agent Profile</span>
-        <button type="button" class="btn ghost" style="padding:4px 8px;" onclick="closeProfile()">✕</button>
+      <div class="mHead" style="background: linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom: none;">
+        <span id="profileModalTitle" class="mTitle" style="color: white;">Agent Profile</span>
+        <button type="button" class="btn ghost" style="padding:4px 8px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeProfile()" aria-label="Close modal">✕</button>
       </div>
       <div class="mBody" style="text-align: center; padding: 30px;">
-        <div id="profLoader" style="color: #64748b; font-size: 13px;"><div>Fetching live metrics from Zendesk...</div></div>
+        <div id="profLoader" style="color: var(--text-secondary); font-size: 13px;"><div>Fetching live metrics from Zendesk...</div></div>
         <div id="profContent" style="display:none;">
-          <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: #e2e8f0; margin-bottom: 15px; border: 3px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: #0f172a;">Name</h2>
-          <div id="pEmail" style="font-size: 12px; color: #64748b; margin-bottom: 20px;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c7a2aaa6aeab87a2bfa6aab7aba2e9a4a8aa">[email&#160;protected]</a></div>
+          <img id="pAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-tertiary); margin-bottom: 15px; border: 3px solid var(--card-bg); box-shadow: 0 4px 6px var(--shadow-md);">
+          <h2 id="pName" style="margin: 0 0 5px 0; font-size: 20px; color: var(--text-primary);">Name</h2>
+          <div id="pEmail" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c7a2aaa6aeab87a2bfa6aab7aba2e9a4a8aa">[email&#160;protected]</a></div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left;">
-            <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-              <div style="font-size: 10px; font-weight: 700; color: #0369a1;">OPEN TICKETS</div>
-              <div id="pTickets" style="font-size: 20px; font-weight: 800; color: #0284c7;">--</div>
+            <div class="profile-stat-card blue">
+              <div class="profile-stat-label">OPEN TICKETS</div>
+              <div id="pTickets" class="profile-stat-value">--</div>
             </div>
-            <div style="background:#fdf2f8; padding:10px; border-radius:8px; border:1px solid #fbcfe8;">
-              <div style="font-size:10px; font-weight:700; color:#be185d;">ROLE</div>
-              <div id="pRole" style="font-size:14px; font-weight:800; color:#db2777;">--</div>
+            <div class="profile-stat-card pink">
+              <div class="profile-stat-label">ROLE</div>
+              <div id="pRole" class="profile-stat-value" style="font-size:14px;">--</div>
             </div>
           </div>
           <div style="margin-top: 10px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; font-size: 11px; color: var(--text-secondary); text-align: center;">
             💡 For CSAT &amp; Solved metrics, view <a href="https://musely.zendesk.com/explore" target="_blank" style="color: var(--accent-primary);">Zendesk Explore</a>
           </div>
-          <div style="margin-top: 12px; font-size: 11px; color: #94a3b8;">Last Login: <span id="pLogin">--</span></div>
+          <div style="margin-top: 12px; font-size: 11px; color: var(--text-tertiary);">Last Login: <span id="pLogin">--</span></div>
           
           <!-- ✅ Logout Button -->
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
-            <button onclick="handleLogout()" style="
-              background: transparent;
+            <button onclick="handleLogout()" class="modal-btn-secondary" style="
               color: #dc2626;
-              border: 1px solid #fecaca;
-              padding: 10px 20px;
-              border-radius: 8px;
-              font-size: 13px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: all 0.2s;
+              border-color: #fecaca;
               display: inline-flex;
               align-items: center;
               gap: 8px;
-            " onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#dc2626';" 
-               onmouseout="this.style.background='transparent'; this.style.borderColor='#fecaca';">
+            ">
               🚪 Sign Out
             </button>
           </div>
@@ -1395,14 +1360,14 @@
       </div>
     </div>
   </div>
-  <div id="masterOverlay" class="overlay" onclick="if(event.target===this) closeMasterModal()">
+  <div id="masterOverlay" class="overlay" onclick="if(event.target===this) closeMasterModal()" role="dialog" aria-modal="true" aria-labelledby="masterModalTitle">
     <div class="modal">
       <div class="mHead">
-        <span class="mTitle">Edit Master Template</span>
-        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeMasterModal()">✕</button>
+        <span id="masterModalTitle" class="mTitle">Edit Master Template</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeMasterModal()" aria-label="Close modal">✕</button>
       </div>
       <div class="mBody">
-        <div style="margin-bottom:16px; font-size:13px; color:#64748b;" id="mstSub"></div>
+        <div style="margin-bottom:16px; font-size:13px; color:var(--text-secondary);" id="mstSub"></div>
         <input type="hidden" id="mstPerson">
         <input type="hidden" id="mstDay">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
@@ -1413,24 +1378,24 @@
           <div><label>Team</label><select id="mstTeam"></select></div>
           <div><label>Role</label><select id="mstRole"></select></div>
         </div>
-        <div style="background:#f0f9ff; padding:12px; border-radius:8px; border:1px solid #bae6fd; font-size:12px; color:#0369a1; display:flex; gap:10px; align-items:start;">
+        <div class="modal-info-banner info">
           <input type="checkbox" id="mstSync" style="width:auto; margin-top:2px;">
           <span><b>Sync to LIVE Schedule?</b><br>Check this to update all future shifts starting <b>tomorrow</b>. Leave unchecked to only update the template for new generations.</span>
         </div>
       </div>
       <div class="mFoot">
         <button class="btn ghost" onclick="closeMasterModal()">Cancel</button>
-        <button class="btn primary" onclick="saveMasterEdit()">Save Changes</button>
+        <button class="btn primary" onclick="saveMasterEdit()">Save Template Changes</button>
       </div>
     </div>
   </div>
-  <div id="pickerOverlay" class="overlay" onclick="if(event.target===this) closePicker()">
+  <div id="pickerOverlay" class="overlay" onclick="if(event.target===this) closePicker()" role="dialog" aria-modal="true" aria-labelledby="pickerModalTitle">
     <div class="modal" style="width: 500px; height: 600px; display:flex; flex-direction:column;">
       <div class="mHead">
-        <span class="mTitle">Filter People</span>
-        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closePicker()">✕</button>
+        <span id="pickerModalTitle" class="mTitle">Filter People</span>
+        <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closePicker()" aria-label="Close modal">✕</button>
       </div>
-      <div style="padding:16px; border-bottom:1px solid #e2e8f0; display:flex; gap:12px;">
+      <div style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; gap:12px;">
         <input id="pickerSearch" placeholder="Search..." oninput="renderPickerList()" style="flex:1;">
         <button class="btn ghost" onclick="pickerToggleAll(true)">All</button>
         <button class="btn ghost" onclick="pickerToggleAll(false)">None</button>
@@ -1571,50 +1536,52 @@
   </div>
 
       </div>
-      <div id="staffingModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeStaffingModal()">
+      <div id="staffingModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeStaffingModal()" role="dialog" aria-modal="true" aria-labelledby="staffingModalTitle">
   <div class="modal" style="width: 500px;">
     <div class="mHead">
-      <span class="mTitle">🛡️ Staffing Requirements</span>
-      <button type="button" class="btn ghost" onclick="closeStaffingModal()">✕</button>
+      <span id="staffingModalTitle" class="mTitle">🛡️ Staffing Requirements</span>
+      <button type="button" class="btn ghost" onclick="closeStaffingModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody">
-      <div style="background:#f8fafc; padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid #e2e8f0;">
-        <label>Add New Rule</label>
+      <div style="background:var(--bg-tertiary); padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border-color);">
+        <label class="modal-label">Add New Rule</label>
         <div style="display:flex; gap:8px; margin-bottom:8px;">
-          <select id="ruleTeam" style="flex:2;"><option value="">Select Team...</option></select>
-          <select id="ruleDay" style="flex:1;">
+          <select id="ruleTeam" class="modal-select" style="flex:2;"><option value="">Select Team...</option></select>
+          <select id="ruleDay" class="modal-select" style="flex:1;">
             <option value="All">Every Day</option>
             <option value="Weekday">Mon-Fri</option>
             <option value="Weekend">Sat-Sun</option>
             <option value="Mon">Mon</option><option value="Tue">Tue</option><option value="Wed">Wed</option>
             <option value="Thu">Thu</option><option value="Fri">Fri</option><option value="Sat">Sat</option><option value="Sun">Sun</option>
           </select>
-          <input id="ruleMin" type="number" placeholder="Min" style="flex:1; width:60px;">
+          <input id="ruleMin" type="number" placeholder="Min" class="modal-input" style="flex:1; width:60px;">
         </div>
         <div style="display:flex; gap:8px; margin-bottom:8px;">
-          <select id="ruleTimeBlock" style="flex:1;">
+          <select id="ruleTimeBlock" class="modal-select" style="flex:1;">
             <option value="all">All Hours</option>
             <option value="morning">Morning (6a-12p)</option>
             <option value="afternoon">Afternoon (12p-6p)</option>
             <option value="evening">Evening (6p-10p)</option>
             <option value="custom">Custom Hours</option>
           </select>
-          <input id="ruleStartHour" type="number" min="0" max="23" placeholder="Start" style="flex:1; display:none;">
-          <input id="ruleEndHour" type="number" min="0" max="23" placeholder="End" style="flex:1; display:none;">
+          <input id="ruleStartHour" type="number" min="0" max="23" placeholder="Start" class="modal-input" style="flex:1; display:none;">
+          <input id="ruleEndHour" type="number" min="0" max="23" placeholder="End" class="modal-input" style="flex:1; display:none;">
         </div>
-        <button class="btn primary" style="width:100%;" onclick="addRule()">+ Save Requirement</button>
+        <button class="modal-btn-primary" style="width:100%;" onclick="addRule()">+ Save Requirement</button>
       </div>
       
-      <div style="background:#fbf6f5; padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid #bfdbfe;">
-        <div style="font-size:11px; font-weight:700; color:#b37e78; margin-bottom:6px;">💡 Recommended Rules</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">
-          <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('Live Chat', 3, 'morning')">LC 3+ (AM)</button>
-          <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('Phone', 2, 'all')">Phone 2+</button>
-          <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('MD Support', 1, 'all')">MD 1+</button>
+      <div class="modal-info-banner info" style="margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px; font-weight:700; margin-bottom:6px;">💡 Recommended Rules</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('Live Chat', 3, 'morning')">LC 3+ (AM)</button>
+            <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('Phone', 2, 'all')">Phone 2+</button>
+            <button class="btn ghost" style="font-size:10px; padding:4px 8px;" onclick="addQuickRule('MD Support', 1, 'all')">MD 1+</button>
+          </div>
         </div>
       </div>
       
-      <label>Current Rules</label>
+      <label class="modal-label">Current Rules</label>
       <div id="ruleList" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </div>
   </div>
@@ -1724,17 +1691,17 @@
   
 
   <!-- ✅ Audit Overlay (sibling, not nested) -->
-  <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()">
+  <div id="auditOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAuditModal()" role="dialog" aria-modal="true" aria-labelledby="auditModalTitle">
     <div class="modal" style="width: 700px; max-width: 90vw; height: 80vh; display:flex; flex-direction:column;">
       <div class="mHead">
-        <span class="mTitle">Audit History</span>
+        <span id="auditModalTitle" class="mTitle">Audit History</span>
         <div style="display:flex; gap:8px; align-items:center;">
           <button type="button" class="btn ghost" style="padding:6px 12px; font-size:11px; color:#ef4444;" onclick="clearAuditHistory()" title="Clear audit history">🗑️ Clear</button>
-          <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAuditModal()">✕</button>
+          <button type="button" class="btn ghost" style="padding:6px 12px;" onclick="closeAuditModal()" aria-label="Close modal">✕</button>
         </div>
       </div>
       <div class="mBody" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
-        <div style="background:#fff; border-bottom:1px solid #e2e8f0; padding:10px 16px; font-size:12px; color:#64748b;">
+        <div style="background:var(--card-bg); border-bottom:1px solid var(--border-color); padding:10px 16px; font-size:12px; color:var(--text-secondary);">
           Showing last 50 actions. Newest first.
         </div>
         <div style="flex:1; overflow-y:auto;">
@@ -1749,7 +1716,7 @@
               </tr>
             </thead>
             <tbody id="auditList">
-              <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Loading history...</td></tr>
+              <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-tertiary);">Loading history...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1757,16 +1724,16 @@
     </div>
   </div>
   <!-- Master Context -->
-  <div id="masterContextOverlay" class="overlay" style="display:none; z-index:200;">
+  <div id="masterContextOverlay" class="overlay" style="display:none; z-index:200;" role="dialog" aria-modal="true" aria-labelledby="masterContextModalTitle">
     <div class="modal" style="width: 400px;">
-      <div class="mHead"><span class="mTitle">Select Manager Context</span></div>
+      <div class="mHead"><span id="masterContextModalTitle" class="mTitle">Select Manager Context</span></div>
       <div class="mBody">
-        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
           You are logged in as <b>Master Admin</b>.<br>
           Please select which Manager's schedule you wish to view/manage.
         </p>
         <label>Available Managers</label>
-        <select id="masterManagerDropdown" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+        <select id="masterManagerDropdown" style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:6px; background:var(--input-bg); color:var(--text-primary);">
           <option value="" disabled selected>Loading...</option>
         </select>
       </div>
@@ -2489,7 +2456,7 @@
   align-items: center;
 ">
   <div style="
-    background: white;
+    background: var(--bg-secondary, white);
     border-radius: 20px;
     width: 480px;
     max-width: 95%;
@@ -2517,36 +2484,36 @@
         justify-content:center; 
         margin-bottom:20px;
         padding:16px;
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        background: var(--csat-done-bg-start, #f0fdf4);
         border-radius:12px;
-        border:2px solid #86efac;
+        border:2px solid var(--csat-done-border, #86efac);
       ">
         <div style="text-align:center;">
-          <div style="font-size:11px; font-weight:700; color:#15803d; text-transform:uppercase; letter-spacing:0.5px;">Your PTO Balance</div>
-          <div id="futureTimeOffPtoAmount" style="font-size:32px; font-weight:900; color:#16a34a;">--</div>
-          <div style="font-size:11px; color:#22c55e;">hours available</div>
+          <div style="font-size:11px; font-weight:700; color:var(--csat-done-text, #15803d); text-transform:uppercase; letter-spacing:0.5px;">Your PTO Balance</div>
+          <div id="futureTimeOffPtoAmount" style="font-size:32px; font-weight:900; color:var(--csat-done-text, #16a34a);">--</div>
+          <div style="font-size:11px; color:var(--csat-done-text, #22c55e);">hours available</div>
         </div>
       </div>
       
       <!-- Duration Toggle: Full Day vs Partial Day -->
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Duration</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Duration</label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <label id="futureDurationFull" onclick="selectFutureTimeOffDuration('full')" style="
             display:flex; 
             align-items:center; 
             gap:10px; 
             padding:12px; 
-            border:2px solid #b37e78; 
+            border:2px solid var(--accent-primary, #b37e78); 
             border-radius:12px; 
             cursor:pointer;
-            background:#fbf6f5;
+            background:var(--bg-tertiary, #fbf6f5);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToDuration" value="full_day" checked style="width:16px; height:16px; accent-color:#b37e78;">
+            <input type="radio" name="futureToDuration" value="full_day" checked style="width:16px; height:16px; accent-color:var(--accent-primary, #b37e78);">
             <div>
-              <div style="font-size:13px; font-weight:700; color:#8f5f5a;">📅 Full Day</div>
-              <div style="font-size:10px; color:#b37e78;">Entire shift off</div>
+              <div style="font-size:13px; font-weight:700; color:var(--text-primary);">📅 Full Day</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Entire shift off</div>
             </div>
           </label>
           <label id="futureDurationPartial" onclick="selectFutureTimeOffDuration('partial')" style="
@@ -2554,16 +2521,16 @@
             align-items:center; 
             gap:10px; 
             padding:12px; 
-            border:2px solid #e2e8f0; 
+            border:2px solid var(--border-color); 
             border-radius:12px; 
             cursor:pointer;
-            background:white;
+            background:var(--bg-tertiary);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToDuration" value="partial" style="width:16px; height:16px; accent-color:#7c3aed;">
+            <input type="radio" name="futureToDuration" value="partial" style="width:16px; height:16px; accent-color:var(--accent-primary, #b37e78);">
             <div>
-              <div style="font-size:13px; font-weight:700; color:#1e293b;">⏰ Partial Day</div>
-              <div style="font-size:10px; color:#64748b;">Leave early / come late</div>
+              <div style="font-size:13px; font-weight:700; color:var(--text-primary);">⏰ Partial Day</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Leave early / come late</div>
             </div>
           </label>
         </div>
@@ -2571,23 +2538,24 @@
       
       <!-- Partial Day Time Selection (hidden by default) -->
       <div id="futurePartialWrap" style="display:none; margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#7c3aed; margin-bottom:8px; text-transform:uppercase;">Hours Off</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Hours Off</label>
         <div style="
           padding:16px;
-          background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+          background: var(--bg-tertiary);
           border-radius:12px;
-          border:2px solid #c4b5fd;
+          border:2px solid var(--border-color);
         ">
           <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
             <div>
-              <label style="font-size:10px; color:#7c3aed; display:block; margin-bottom:4px; font-weight:600;">Off From</label>
+              <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px; font-weight:600;">Off From</label>
               <select id="futurePartialStart" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #c4b5fd; 
+                border:2px solid var(--border-color); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2610,16 +2578,17 @@
                 <option value="22:00">10:00 PM</option>
               </select>
             </div>
-            <div style="color:#7c3aed; font-weight:600; padding-top:20px;">→</div>
+            <div style="color:var(--text-secondary); font-weight:600; padding-top:20px;">→</div>
             <div>
-              <label style="font-size:10px; color:#7c3aed; display:block; margin-bottom:4px; font-weight:600;">Off Until</label>
+              <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px; font-weight:600;">Off Until</label>
               <select id="futurePartialEnd" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #c4b5fd; 
+                border:2px solid var(--border-color); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2643,60 +2612,64 @@
               </select>
             </div>
           </div>
-          <div id="futurePartialHoursCalc" style="text-align:center; margin-top:10px; font-size:12px; color:#7c3aed; font-weight:600;"></div>
+          <div id="futurePartialHoursCalc" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-secondary); font-weight:600;"></div>
         </div>
       </div>
       
       <!-- Date Range Selection -->
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Date Range</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Date Range</label>
         <div id="futureDateRangeGrid" style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
           <div>
-            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:4px;">Start Date</label>
+            <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px;">Start Date</label>
             <input type="date" id="futureToDateStart" style="
               width:100%; 
               padding:12px; 
-              border:2px solid #e2e8f0; 
+              border:2px solid var(--border-color); 
               border-radius:10px; 
               font-size:14px;
+              background:var(--input-bg, white);
+              color:var(--text-primary);
               box-sizing:border-box;
             ">
           </div>
-          <div id="futureDateArrow" style="color:#94a3b8; font-weight:600; padding-top:20px;">→</div>
+          <div id="futureDateArrow" style="color:var(--text-secondary); font-weight:600; padding-top:20px;">→</div>
           <div id="futureDateEndWrap">
-            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:4px;">End Date</label>
+            <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px;">End Date</label>
             <input type="date" id="futureToDateEnd" style="
               width:100%; 
               padding:12px; 
-              border:2px solid #e2e8f0; 
+              border:2px solid var(--border-color); 
               border-radius:10px; 
               font-size:14px;
+              background:var(--input-bg, white);
+              color:var(--text-primary);
               box-sizing:border-box;
             ">
           </div>
         </div>
-        <div id="futureTimeOffDaysCount" style="text-align:center; margin-top:8px; font-size:12px; color:#64748b;"></div>
+        <div id="futureTimeOffDaysCount" style="text-align:center; margin-top:8px; font-size:12px; color:var(--text-secondary);"></div>
       </div>
       
       <!-- Type Selection -->
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Type</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Type</label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <label id="futureTypeMakeUp" onclick="selectFutureTimeOffType('makeup')" style="
             display:flex; 
             align-items:center; 
             gap:10px; 
             padding:14px; 
-            border:2px solid #b37e78; 
+            border:2px solid var(--accent-primary, #b37e78); 
             border-radius:12px; 
             cursor:pointer;
-            background:#fbf6f5;
+            background:var(--bg-tertiary);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToType" value="Make Up" checked style="width:16px; height:16px; accent-color:#b37e78;">
+            <input type="radio" name="futureToType" value="Make Up" checked style="width:16px; height:16px; accent-color:var(--accent-primary, #b37e78);">
             <div>
-              <div style="font-size:14px; font-weight:700; color:#8f5f5a;">🔄 MAKE UP</div>
-              <div style="font-size:10px; color:#b37e78;">Work another time</div>
+              <div style="font-size:14px; font-weight:700; color:var(--text-primary);">🔄 MAKE UP</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Work another time</div>
             </div>
           </label>
           <label id="futureTypePTO" onclick="selectFutureTimeOffType('pto')" style="
@@ -2704,16 +2677,16 @@
             align-items:center; 
             gap:10px; 
             padding:14px; 
-            border:2px solid #e2e8f0; 
+            border:2px solid var(--border-color); 
             border-radius:12px; 
             cursor:pointer;
-            background:white;
+            background:var(--bg-tertiary);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToType" value="PTO" style="width:16px; height:16px; accent-color:#16a34a;">
+            <input type="radio" name="futureToType" value="PTO" style="width:16px; height:16px; accent-color:var(--accent-primary);">
             <div>
-              <div style="font-size:14px; font-weight:700; color:#1e293b;">🔥 USE PTO</div>
-              <div style="font-size:10px; color:#64748b;">Deduct hours</div>
+              <div style="font-size:14px; font-weight:700; color:var(--text-primary);">🔥 USE PTO</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Deduct hours</div>
             </div>
           </label>
         </div>
@@ -2721,19 +2694,21 @@
       
       <!-- Make Up Date(s) (conditional) - supports multiple dates -->
       <div id="futureToMakeUpWrap" style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Make Up Date(s)</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Make Up Date(s)</label>
         <div style="display:flex; gap:8px; margin-bottom:8px;">
           <input type="date" id="futureToMakeUpDate" style="
             flex:1; 
             padding:12px; 
-            border:2px solid #e2e8f0; 
+            border:2px solid var(--border-color); 
             border-radius:10px; 
             font-size:14px;
+            background:var(--input-bg, white);
+            color:var(--text-primary);
             box-sizing:border-box;
           ">
           <button type="button" onclick="addFutureMakeUpDate()" style="
             padding:12px 16px;
-            background:linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%);
+            background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
             color:white;
             border:none;
             border-radius:10px;
@@ -2745,19 +2720,20 @@
         </div>
         <div id="futureMakeUpDatesList" style="display:flex; flex-wrap:wrap; gap:6px; min-height:24px;"></div>
         
-        <!-- Make Up Time Selection -->
-        <div style="margin-top:12px; padding:14px; background:linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius:12px; border:2px solid #86efac;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#15803d; margin-bottom:8px; text-transform:uppercase;">Make Up Time</label>
+        <!-- Make Up Time Selection (hidden by default) -->
+        <div id="futureToMakeUpTimeWrap" style="display:none; margin-top:12px; padding:14px; background:var(--csat-done-bg-start); border-radius:12px; border:2px solid var(--csat-done-border);">
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--csat-done-text); margin-bottom:8px; text-transform:uppercase;">Make Up Time</label>
           <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
             <div>
-              <label style="font-size:10px; color:#15803d; display:block; margin-bottom:4px; font-weight:600;">From</label>
+              <label style="font-size:10px; color:var(--csat-done-text); display:block; margin-bottom:4px; font-weight:600;">From</label>
               <select id="futureToMakeUpTimeStart" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #86efac; 
+                border:2px solid var(--csat-done-border); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2780,16 +2756,17 @@
                 <option value="22:00">10:00 PM</option>
               </select>
             </div>
-            <div style="color:#15803d; font-weight:600; padding-top:20px;">→</div>
+            <div style="color:var(--csat-done-text); font-weight:600; padding-top:20px;">→</div>
             <div>
-              <label style="font-size:10px; color:#15803d; display:block; margin-bottom:4px; font-weight:600;">Until</label>
+              <label style="font-size:10px; color:var(--csat-done-text); display:block; margin-bottom:4px; font-weight:600;">Until</label>
               <select id="futureToMakeUpTimeEnd" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #86efac; 
+                border:2px solid var(--csat-done-border); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2812,21 +2789,23 @@
               </select>
             </div>
           </div>
-          <div id="futureToMakeUpHoursCalc" style="text-align:center; margin-top:8px; font-size:12px; color:#15803d; font-weight:600;"></div>
+          <div id="futureToMakeUpHoursCalc" style="text-align:center; margin-top:8px; font-size:12px; color:var(--csat-done-text); font-weight:600;"></div>
         </div>
         
-        <div style="font-size:11px; color:#64748b; margin-top:6px;">📝 Add one or more dates when you'll make up these hours</div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">📝 Add one or more dates when you'll make up these hours</div>
       </div>
       
       <!-- Reason -->
       <div style="margin-bottom:24px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Reason</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Reason</label>
         <input type="text" id="futureToReason" placeholder="e.g., Vacation, Doctor's appointment, Family event..." style="
           width:100%; 
-          padding:14px; 
-          border:2px solid #e2e8f0; 
+          padding:12px; 
+          border:2px solid var(--border-color); 
           border-radius:10px; 
           font-size:14px;
+          background:var(--input-bg, white);
+          color:var(--text-primary);
           box-sizing:border-box;
         ">
       </div>
@@ -2835,7 +2814,7 @@
       <button onclick="submitFutureTimeOff(event)" style="
         width:100%;
         padding:16px;
-        background:linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%);
+        background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
         color:white;
         border:none;
         border-radius:12px;
@@ -2843,9 +2822,8 @@
         font-weight:700;
         cursor:pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(179,126,120,0.3);
-      " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(179,126,120,0.4)';"
-         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(179,126,120,0.3)';">
+        box-shadow: 0 4px 12px var(--modal-btn-shadow);
+      ">
         Submit Request →
       </button>
     </div>
@@ -2888,6 +2866,7 @@
       <button class="agent-goals-tab" data-tab="goals" onclick="switchAgentGoalsTab('goals')">🎯 My Goals</button>
       <button class="agent-goals-tab" data-tab="metrics" onclick="switchAgentGoalsTab('metrics')">📊 My Metrics</button>
       <button class="agent-goals-tab" data-tab="tasks" onclick="switchAgentGoalsTab('tasks')">📝 My Tasks</button>
+      <button class="agent-goals-tab" data-tab="topics" onclick="switchAgentGoalsTab('topics')">💬 1:1 Topics</button>
     </div>
     
     <!-- Overview Section -->
@@ -2976,13 +2955,6 @@
           </div>
         </div>
       </div>
-      
-      <div style="padding: 16px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; border: 1px solid #93c5fd;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1e40af;">
-          <span>💡</span>
-          <span>For detailed CSAT analytics, visit <a href="https://musely.zendesk.com/explore" target="_blank" style="color: #2563eb; font-weight: 600;">Zendesk Explore</a></span>
-        </div>
-      </div>
     </div>
     
     <!-- Tasks Section -->
@@ -2995,69 +2967,55 @@
         </div>
       </div>
     </div>
+    
+    <!-- 1:1 Topics Section -->
+    <div id="agentGoalsTopics" class="agent-goals-section">
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">💬 Topics Discussed in 1:1s</div>
+          <span id="agentTopicsCount" style="font-size: 12px; color: var(--text-tertiary);">0 topics</span>
+        </div>
+        <div id="agentTopicsList">
+          <div style="padding: 30px; text-align: center; color: var(--text-tertiary);">
+            <div style="font-size: 40px; margin-bottom: 8px;">💬</div>
+            <div style="font-size: 13px;">No 1:1 topics recorded yet.</div>
+            <div style="font-size: 12px; margin-top: 4px;">Topics from your 1:1 meetings will appear here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- Meeting Rotation Acknowledgment Modal -->
-<div id="meetingRotationAckModal" style="
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 20000;
-  justify-content: center;
-  align-items: center;
-  backdrop-filter: blur(4px);
-">
-  <div style="
-    background: white;
-    border-radius: 20px;
-    width: 440px;
-    max-width: 95%;
-    box-shadow: 0 25px 80px rgba(0,0,0,0.4);
-    overflow: hidden;
-    animation: slideIn 0.3s ease;
-  ">
+<div id="meetingRotationAckModal" class="modal-overlay" style="display: none; z-index: 20000;" role="dialog" aria-modal="true" aria-labelledby="meetingAckTitle">
+  <div class="modal-container" style="width: 440px;">
     <div style="
       padding: 24px;
       background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       text-align: center;
+      border-radius: 16px 16px 0 0;
     ">
       <div style="font-size: 48px; margin-bottom: 8px;">📅</div>
-      <div style="font-size: 20px; font-weight: 800; color: white;">Meeting Rotation Alert!</div>
+      <div id="meetingAckTitle" style="font-size: 20px; font-weight: 800; color: white;">Meeting Rotation Alert!</div>
     </div>
-    <div style="padding: 24px;">
+    <div class="modal-body">
       <div style="text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 15px; color: #334155; line-height: 1.6;" id="meetingAckMessage">
+        <div style="font-size: 15px; color: var(--text-primary); line-height: 1.6;" id="meetingAckMessage">
           You are assigned to an upcoming Thursday meeting rotation.
         </div>
       </div>
-      <div id="meetingAckDetails" style="
-        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      <div id="meetingAckDetails" class="modal-info-banner amber" style="
         border: 2px solid #f59e0b;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 20px;
       ">
         <!-- Details populated by JS -->
       </div>
-      <div style="font-size: 12px; color: #64748b; text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 12px; color: var(--text-secondary); text-align: center; margin-bottom: 20px;">
         ⚠️ Please acknowledge this notification. It will appear each time you open the schedule until acknowledged.
       </div>
-      <button onclick="acknowledgeMeetingRotation()" style="
+      <button onclick="acknowledgeMeetingRotation()" class="modal-btn-primary" style="
         width: 100%;
-        padding: 16px;
         background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        font-size: 15px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
         box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
       ">
         ✓ I Acknowledge
@@ -3070,11 +3028,11 @@
 
 
 <!-- Open Shifts Modal -->
-<div id="openShiftsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeOpenShiftsModal()">
+<div id="openShiftsModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeOpenShiftsModal()" role="dialog" aria-modal="true" aria-labelledby="openShiftsModalTitle">
   <div class="modal" style="width:520px; max-width:95%; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
     <div class="mHead" style="background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom:none; flex-shrink:0;">
-      <span class="mTitle" style="color:white;">📋 Open Shifts</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeOpenShiftsModal()">✕</button>
+      <span id="openShiftsModalTitle" class="mTitle" style="color:white;">📋 Open Shifts</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeOpenShiftsModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody" style="flex:1; overflow-y:auto; padding:20px;">
       <div id="openShiftsList" style="min-height:100px;">
@@ -3085,11 +3043,11 @@
 </div>
 
 <!-- Fill Open Shift Modal -->
-<div id="fillShiftModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeFillShiftModal()">
+<div id="fillShiftModal" class="overlay" style="display:none;" onclick="if(event.target===this) closeFillShiftModal()" role="dialog" aria-modal="true" aria-labelledby="fillShiftModalTitle">
   <div class="modal" style="width:400px; max-width:95%;">
     <div class="mHead" style="background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%); border-bottom:none;">
-      <span class="mTitle" style="color:white;">👤 Assign Agent</span>
-      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeFillShiftModal()">✕</button>
+      <span id="fillShiftModalTitle" class="mTitle" style="color:white;">👤 Assign Agent</span>
+      <button type="button" class="btn ghost" style="padding:6px 12px; color:white; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);" onclick="closeFillShiftModal()" aria-label="Close modal">✕</button>
     </div>
     <div class="mBody" style="padding:20px;">
       <div id="fillShiftInfo" style="background:var(--bg-tertiary); border-radius:10px; padding:14px; margin-bottom:16px;">
@@ -3097,8 +3055,8 @@
       </div>
       
       <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Select Agent</label>
-        <select id="fillShiftAgent" style="width:100%; padding:12px; border:2px solid var(--border-color); border-radius:10px; font-size:14px; background:var(--input-bg); color:var(--text-primary);">
+        <label class="modal-label">Select Agent</label>
+        <select id="fillShiftAgent" class="modal-select">
           <option value="">-- Select an agent --</option>
         </select>
       </div>
@@ -3110,21 +3068,8 @@
         </label>
       </div>
       
-      <button onclick="submitFillShift(event)" style="
-        width:100%;
-        padding:14px;
-        background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
-        color:white;
-        border:none;
-        border-radius:10px;
-        font-size:14px;
-        font-weight:700;
-        cursor:pointer;
-        box-shadow:0 4px 12px var(--modal-btn-shadow);
-        transition:all 0.2s;
-      " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px var(--modal-btn-hover-shadow)';"
-         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px var(--modal-btn-shadow)';">
-        Assign Agent →
+      <button onclick="submitFillShift(event)" class="modal-btn-primary" style="width:100%;">
+        Confirm Assignment
       </button>
     </div>
   </div>
@@ -3135,50 +3080,27 @@
 
 
 <!-- Batch Fill Coverage Modal -->
-<div id="batchFillModal" style="
-  display:none;
-  position:fixed;
-  top:0; left:0; right:0; bottom:0;
-  background:rgba(0,0,0,0.5);
-  z-index:15000;
-  justify-content:center;
-  align-items:center;
-" onclick="if(event.target===this) closeBatchFillModal()">
-  <div style="
-    background:var(--card-bg);
-    border-radius:20px;
-    width:600px;
-    max-width:95%;
-    max-height:85vh;
-    overflow-y:auto;
-    box-shadow:0 25px 80px rgba(0,0,0,0.35);
-  ">
+<div id="batchFillModal" class="modal-overlay" style="display:none; z-index:15000;" onclick="if(event.target===this) closeBatchFillModal()" role="dialog" aria-modal="true" aria-labelledby="batchFillModalTitle">
+  <div class="modal-container" style="width:600px;">
     <!-- Header -->
-    <div style="
-      padding:20px 24px;
-      background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-      border-radius:20px 20px 0 0;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    ">
-      <div style="font-weight:700; font-size:18px; color:white;">⚡ Quick Fill Coverage</div>
-      <button onclick="closeBatchFillModal()" style="background:rgba(255,255,255,0.2); border:none; font-size:18px; cursor:pointer; color:white; width:32px; height:32px; border-radius:8px;">&times;</button>
+    <div class="modal-header" style="background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%);">
+      <span id="batchFillModalTitle" class="modal-header-title">⚡ Quick Fill Coverage</span>
+      <button onclick="closeBatchFillModal()" class="modal-header-close" aria-label="Close modal">&times;</button>
     </div>
     
-    <div style="padding:24px;">
+    <div class="modal-body">
       <p style="font-size:13px; color:var(--text-secondary); margin:0 0 16px 0;">Assign replacements for all gaps at once. Select who should cover each open slot.</p>
       <div id="batchFillContent">
         <!-- Populated by JS -->
       </div>
-      
-      <!-- Actions -->
-      <div style="display:flex; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid var(--border-color);">
-        <button onclick="closeBatchFillModal()" style="flex:1; padding:12px; background:var(--bg-tertiary); color:var(--text-secondary); border:1px solid var(--border-color); border-radius:10px; font-weight:600; cursor:pointer;">Cancel</button>
-        <button id="batchFillSubmitBtn" onclick="submitBatchFill(event)" style="flex:2; padding:12px; background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color:white; border:none; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(220,38,38,0.3);">
-          ⚡ Assign All →
-        </button>
-      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button onclick="closeBatchFillModal()" class="modal-btn-secondary" style="flex:1;">Cancel</button>
+      <button id="batchFillSubmitBtn" onclick="submitBatchFill(event)" class="modal-btn-danger" style="flex:2;">
+        Assign All Replacements
+      </button>
     </div>
   </div>
 </div>

@@ -2013,6 +2013,15 @@ body.dark-mode #loadMoreControls button:hover{
   border-color: color-mix(in srgb, var(--seg-btn-active-bg) 65%, #000 35%) !important;
 }
 
+/* Fix: apply --seg-btn-color to inactive segmented buttons */
+.segBtn {
+  color: var(--seg-btn-color, #6f5a57) !important;
+}
+.segBtn:hover {
+  color: color-mix(in srgb, var(--seg-btn-color) 100%, #000 20%) !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
 /* Calendar/day tabs (broad net; covers different tab implementations) */
 .dayTab, .dayBtn, .dayPill, #dayTabs button, .calTab, .calendarTab{
   background: var(--day-tab-bg) !important;
@@ -2562,4 +2571,12 @@ body.dark-mode .header .iconBtn{
 body.dark-mode .header .iconBtn:hover{
   border-color: var(--accent-primary) !important;
   color: var(--accent-primary) !important;
+}
+
+/* Hide Google Calendar export for managers — only agents should see it */
+#btnExportCal {
+  display: none !important;
+}
+body.agent-mode #btnExportCal {
+  display: flex !important;
 }
