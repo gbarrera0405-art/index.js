@@ -4511,7 +4511,8 @@ async function loadAgentAttendanceForAgentView() {
       'overview': 'agentGoalsOverview',
       'goals': 'agentGoalsGoals',
       'metrics': 'agentGoalsMetrics',
-      'tasks': 'agentGoalsTasks'
+      'tasks': 'agentGoalsTasks',
+      'topics': 'agentGoalsTopics'
     };
     
     const activeSection = document.getElementById(sectionMap[tab]);
@@ -4582,6 +4583,9 @@ async function loadAgentAttendanceForAgentView() {
         
         // Render Tasks List
         renderAgentTasksList(tasks);
+        
+        // Render 1:1 Topics
+        renderAgentTopicsList(goals.topicsDiscussed || []);
         
         // Build action items
         buildAgentActionItems(goals, overdueTasks, dueSoon);
@@ -4717,8 +4721,10 @@ async function loadAgentAttendanceForAgentView() {
       return `
         <div style="
           padding: 14px;
-          background: ${isPending ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'};
-          border: 1px solid ${isPending ? '#fca5a5' : '#bbf7d0'};
+          background: ${isPending
+            ? 'linear-gradient(135deg, var(--csat-pending-bg-start, #fef2f2) 0%, var(--csat-pending-bg-end, #fee2e2) 100%)'
+            : 'linear-gradient(135deg, var(--csat-done-bg-start, #f0fdf4) 0%, var(--csat-done-bg-end, #dcfce7) 100%)'};
+          border: 1px solid ${isPending ? 'var(--csat-pending-border, #fca5a5)' : 'var(--csat-done-border, #bbf7d0)'};
           border-radius: 10px;
           margin-bottom: 10px;
         ">
@@ -4726,18 +4732,23 @@ async function loadAgentAttendanceForAgentView() {
             <div style="flex: 1;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
                 <span style="font-size: 16px;">${isPending ? '⚠️' : '✅'}</span>
-                <span style="font-weight: 700; font-size: 13px; color: ${isPending ? '#dc2626' : '#166534'};">
-                  Ticket #${csat.ticketId || csat.ticketNumber || 'Unknown'}
+                <span style="font-weight: 700; font-size: 13px; color: ${isPending ? 'var(--csat-pending-text, #dc2626)' : 'var(--csat-done-text, #166534)'};">
+                  ${(() => {
+                    const num = (csat.ticketId || csat.ticketNumber || '').toString().replace(/[^0-9]/g, '');
+                    return num
+                      ? `<a href="${ZENDESK_BASE_URL}${num}" target="_blank" rel="noopener" class="ticket-link" onclick="event.stopPropagation();" style="color: inherit; text-decoration: underline;">Ticket #${num}</a>`
+                      : 'Ticket Unknown';
+                  })()}
                 </span>
                 ${ratingBadge}
               </div>
               <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
                 📅 ${ticketDate} · ${escapeHtml(csat.channel || '')}
               </div>
-              ${csat.coachingTips ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px 10px; background: rgba(255,255,255,0.7); border-radius: 6px; border-left: 3px solid #f59e0b;">💡 <strong>Coaching:</strong> ${escapeHtml(csat.coachingTips)}</div>` : ''}
-              ${csat.notes ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 6px;">📝 ${escapeHtml(csat.notes)}</div>` : ''}
+              ${csat.coachingTips ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px; border-left: 3px solid #f59e0b;">💡 <strong>Coaching:</strong> ${escapeHtml(csat.coachingTips)}</div>` : ''}
+              ${csat.notes ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">📝 ${escapeHtml(csat.notes)}</div>` : ''}
               ${csat.reason ? `<div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">💬 ${escapeHtml(csat.reason)}</div>` : ''}
-              ${csat.followUpNotes ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 6px;">📝 ${escapeHtml(csat.followUpNotes)}</div>` : ''}
+              ${csat.followUpNotes ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">📝 ${escapeHtml(csat.followUpNotes)}</div>` : ''}
             </div>
           </div>
           <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
@@ -4795,6 +4806,124 @@ async function loadAgentAttendanceForAgentView() {
       `;
     }).join('');
   }
+  
+  function renderAgentTopicsList(topics) {
+    const container = document.getElementById('agentTopicsList');
+    const countEl = document.getElementById('agentTopicsCount');
+    if (!container) return;
+
+    if (countEl) countEl.textContent = `${topics.length} topic${topics.length !== 1 ? 's' : ''}`;
+
+    if (!topics || topics.length === 0) {
+      container.innerHTML = `
+        <div style="padding: 30px; text-align: center; color: var(--text-tertiary);">
+          <div style="font-size: 40px; margin-bottom: 8px;">💬</div>
+          <div style="font-size: 13px;">No 1:1 topics recorded yet.</div>
+          <div style="font-size: 12px; margin-top: 4px;">Topics from your 1:1 meetings will appear here.</div>
+        </div>`;
+      return;
+    }
+
+    // Sort by date, newest first
+    const sorted = [...topics].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    container.innerHTML = sorted.map((topic, idx) => {
+      const topicDate = topic.date
+        ? new Date(topic.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+        : 'No date';
+      const needsFollowUp = topic.followUpNeeded === 'yes';
+
+      return `
+        <div style="
+          padding: 16px;
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          margin-bottom: 10px;
+          ${needsFollowUp ? 'border-left: 3px solid #f59e0b;' : ''}
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 14px;">${needsFollowUp ? '🔔' : '💬'}</span>
+              <span style="font-weight: 700; font-size: 14px; color: var(--text-primary);">${escapeHtml(topic.topic || 'Untitled Topic')}</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-tertiary); white-space: nowrap;">${topicDate}</span>
+          </div>
+          ${topic.theirThoughts ? `
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">
+              <strong style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.3px;">Discussion Notes:</strong><br>
+              ${escapeHtml(topic.theirThoughts)}
+            </div>
+          ` : ''}
+          ${topic.notes ? `
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px; border-left: 3px solid var(--accent-primary, #b37e78);">
+              <strong style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.3px;">Manager Notes:</strong><br>
+              ${escapeHtml(topic.notes)}
+            </div>
+          ` : ''}
+          ${needsFollowUp ? `
+            <div style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(245,158,11,0.15); border-radius: 6px; font-size: 11px; font-weight: 600; color: #d97706; margin-bottom: 8px;">
+              ⚡ Follow-up needed
+            </div>
+          ` : ''}
+          <div style="margin-top: 8px;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.3px; display: block; margin-bottom: 4px;">My Notes</label>
+            <textarea
+              data-topic-index="${idx}"
+              placeholder="Add your own notes about this topic..."
+              style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg, var(--bg-primary)); color: var(--text-primary); font-size: 13px; resize: vertical; min-height: 50px; font-family: inherit; box-sizing: border-box;"
+              onchange="saveAgentTopicNote(${idx}, this.value)"
+            >${escapeHtml(topic.agentNotes || '')}</textarea>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  async function saveAgentTopicNote(topicIndex, noteText) {
+    const myName = window._myName;
+    if (!myName) return;
+
+    try {
+      // First get current data
+      const res = await fetch('./?action=goals/get', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentName: myName })
+      });
+      const data = await res.json();
+      if (!data.ok || !data.goals) return;
+
+      const topics = data.goals.topicsDiscussed || [];
+      // Sort same way as render (newest first) to match index
+      const sorted = [...topics].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      
+      if (topicIndex < 0 || topicIndex >= sorted.length) return;
+
+      // Find this topic in the ORIGINAL (unsorted) array by matching date+topic
+      const target = sorted[topicIndex];
+      const origIdx = topics.findIndex(t => t.date === target.date && t.topic === target.topic);
+      if (origIdx === -1) return;
+
+      topics[origIdx].agentNotes = noteText;
+
+      // Save back (only updating topicsDiscussed)
+      await fetch('./?action=goals/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: myName,
+          goals: { topicsDiscussed: topics },
+          updatedBy: myName
+        })
+      });
+    } catch (err) {
+      console.error('Error saving agent topic note:', err);
+    }
+  }
+
+  // Expose globally
+  window.saveAgentTopicNote = saveAgentTopicNote;
   
   function buildAgentActionItems(goals, overdueTasks, dueSoonGoals) {
     const container = document.getElementById('agentActionItems');
