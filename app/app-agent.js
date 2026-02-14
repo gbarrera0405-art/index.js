@@ -78,6 +78,10 @@ function addFutureMakeUpDate() {
   _futureMakeUpDates.push(date);
   dateInput.value = "";
   renderFutureMakeUpDates();
+  
+  // Show the Make Up Time section after first date added
+  const timeWrap = document.getElementById('futureToMakeUpTimeWrap');
+  if (timeWrap) timeWrap.style.display = 'block';
 }
 
 function removeFutureMakeUpDate(date) {

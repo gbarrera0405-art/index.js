@@ -2456,7 +2456,7 @@
   align-items: center;
 ">
   <div style="
-    background: white;
+    background: var(--bg-secondary, white);
     border-radius: 20px;
     width: 480px;
     max-width: 95%;
@@ -2484,36 +2484,36 @@
         justify-content:center; 
         margin-bottom:20px;
         padding:16px;
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        background: var(--csat-done-bg-start, #f0fdf4);
         border-radius:12px;
-        border:2px solid #86efac;
+        border:2px solid var(--csat-done-border, #86efac);
       ">
         <div style="text-align:center;">
-          <div style="font-size:11px; font-weight:700; color:#15803d; text-transform:uppercase; letter-spacing:0.5px;">Your PTO Balance</div>
-          <div id="futureTimeOffPtoAmount" style="font-size:32px; font-weight:900; color:#16a34a;">--</div>
-          <div style="font-size:11px; color:#22c55e;">hours available</div>
+          <div style="font-size:11px; font-weight:700; color:var(--csat-done-text, #15803d); text-transform:uppercase; letter-spacing:0.5px;">Your PTO Balance</div>
+          <div id="futureTimeOffPtoAmount" style="font-size:32px; font-weight:900; color:var(--csat-done-text, #16a34a);">--</div>
+          <div style="font-size:11px; color:var(--csat-done-text, #22c55e);">hours available</div>
         </div>
       </div>
       
       <!-- Duration Toggle: Full Day vs Partial Day -->
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Duration</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Duration</label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <label id="futureDurationFull" onclick="selectFutureTimeOffDuration('full')" style="
             display:flex; 
             align-items:center; 
             gap:10px; 
             padding:12px; 
-            border:2px solid #b37e78; 
+            border:2px solid var(--accent-primary, #b37e78); 
             border-radius:12px; 
             cursor:pointer;
-            background:#fbf6f5;
+            background:var(--bg-tertiary, #fbf6f5);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToDuration" value="full_day" checked style="width:16px; height:16px; accent-color:#b37e78;">
+            <input type="radio" name="futureToDuration" value="full_day" checked style="width:16px; height:16px; accent-color:var(--accent-primary, #b37e78);">
             <div>
-              <div style="font-size:13px; font-weight:700; color:#8f5f5a;">📅 Full Day</div>
-              <div style="font-size:10px; color:#b37e78;">Entire shift off</div>
+              <div style="font-size:13px; font-weight:700; color:var(--text-primary);">📅 Full Day</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Entire shift off</div>
             </div>
           </label>
           <label id="futureDurationPartial" onclick="selectFutureTimeOffDuration('partial')" style="
@@ -2521,16 +2521,16 @@
             align-items:center; 
             gap:10px; 
             padding:12px; 
-            border:2px solid #e2e8f0; 
+            border:2px solid var(--border-color); 
             border-radius:12px; 
             cursor:pointer;
-            background:white;
+            background:var(--bg-tertiary);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToDuration" value="partial" style="width:16px; height:16px; accent-color:#7c3aed;">
+            <input type="radio" name="futureToDuration" value="partial" style="width:16px; height:16px; accent-color:var(--accent-primary, #b37e78);">
             <div>
-              <div style="font-size:13px; font-weight:700; color:#1e293b;">⏰ Partial Day</div>
-              <div style="font-size:10px; color:#64748b;">Leave early / come late</div>
+              <div style="font-size:13px; font-weight:700; color:var(--text-primary);">⏰ Partial Day</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Leave early / come late</div>
             </div>
           </label>
         </div>
@@ -2538,23 +2538,24 @@
       
       <!-- Partial Day Time Selection (hidden by default) -->
       <div id="futurePartialWrap" style="display:none; margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#7c3aed; margin-bottom:8px; text-transform:uppercase;">Hours Off</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Hours Off</label>
         <div style="
           padding:16px;
-          background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+          background: var(--bg-tertiary);
           border-radius:12px;
-          border:2px solid #c4b5fd;
+          border:2px solid var(--border-color);
         ">
           <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
             <div>
-              <label style="font-size:10px; color:#7c3aed; display:block; margin-bottom:4px; font-weight:600;">Off From</label>
+              <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px; font-weight:600;">Off From</label>
               <select id="futurePartialStart" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #c4b5fd; 
+                border:2px solid var(--border-color); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2577,16 +2578,17 @@
                 <option value="22:00">10:00 PM</option>
               </select>
             </div>
-            <div style="color:#7c3aed; font-weight:600; padding-top:20px;">→</div>
+            <div style="color:var(--text-secondary); font-weight:600; padding-top:20px;">→</div>
             <div>
-              <label style="font-size:10px; color:#7c3aed; display:block; margin-bottom:4px; font-weight:600;">Off Until</label>
+              <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px; font-weight:600;">Off Until</label>
               <select id="futurePartialEnd" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #c4b5fd; 
+                border:2px solid var(--border-color); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2610,60 +2612,64 @@
               </select>
             </div>
           </div>
-          <div id="futurePartialHoursCalc" style="text-align:center; margin-top:10px; font-size:12px; color:#7c3aed; font-weight:600;"></div>
+          <div id="futurePartialHoursCalc" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-secondary); font-weight:600;"></div>
         </div>
       </div>
       
       <!-- Date Range Selection -->
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Date Range</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Date Range</label>
         <div id="futureDateRangeGrid" style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
           <div>
-            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:4px;">Start Date</label>
+            <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px;">Start Date</label>
             <input type="date" id="futureToDateStart" style="
               width:100%; 
               padding:12px; 
-              border:2px solid #e2e8f0; 
+              border:2px solid var(--border-color); 
               border-radius:10px; 
               font-size:14px;
+              background:var(--input-bg, white);
+              color:var(--text-primary);
               box-sizing:border-box;
             ">
           </div>
-          <div id="futureDateArrow" style="color:#94a3b8; font-weight:600; padding-top:20px;">→</div>
+          <div id="futureDateArrow" style="color:var(--text-secondary); font-weight:600; padding-top:20px;">→</div>
           <div id="futureDateEndWrap">
-            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:4px;">End Date</label>
+            <label style="font-size:10px; color:var(--text-secondary); display:block; margin-bottom:4px;">End Date</label>
             <input type="date" id="futureToDateEnd" style="
               width:100%; 
               padding:12px; 
-              border:2px solid #e2e8f0; 
+              border:2px solid var(--border-color); 
               border-radius:10px; 
               font-size:14px;
+              background:var(--input-bg, white);
+              color:var(--text-primary);
               box-sizing:border-box;
             ">
           </div>
         </div>
-        <div id="futureTimeOffDaysCount" style="text-align:center; margin-top:8px; font-size:12px; color:#64748b;"></div>
+        <div id="futureTimeOffDaysCount" style="text-align:center; margin-top:8px; font-size:12px; color:var(--text-secondary);"></div>
       </div>
       
       <!-- Type Selection -->
       <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Type</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Type</label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <label id="futureTypeMakeUp" onclick="selectFutureTimeOffType('makeup')" style="
             display:flex; 
             align-items:center; 
             gap:10px; 
             padding:14px; 
-            border:2px solid #b37e78; 
+            border:2px solid var(--accent-primary, #b37e78); 
             border-radius:12px; 
             cursor:pointer;
-            background:#fbf6f5;
+            background:var(--bg-tertiary);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToType" value="Make Up" checked style="width:16px; height:16px; accent-color:#b37e78;">
+            <input type="radio" name="futureToType" value="Make Up" checked style="width:16px; height:16px; accent-color:var(--accent-primary, #b37e78);">
             <div>
-              <div style="font-size:14px; font-weight:700; color:#8f5f5a;">🔄 MAKE UP</div>
-              <div style="font-size:10px; color:#b37e78;">Work another time</div>
+              <div style="font-size:14px; font-weight:700; color:var(--text-primary);">🔄 MAKE UP</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Work another time</div>
             </div>
           </label>
           <label id="futureTypePTO" onclick="selectFutureTimeOffType('pto')" style="
@@ -2671,16 +2677,16 @@
             align-items:center; 
             gap:10px; 
             padding:14px; 
-            border:2px solid #e2e8f0; 
+            border:2px solid var(--border-color); 
             border-radius:12px; 
             cursor:pointer;
-            background:white;
+            background:var(--bg-tertiary);
             transition: all 0.2s;
           ">
-            <input type="radio" name="futureToType" value="PTO" style="width:16px; height:16px; accent-color:#16a34a;">
+            <input type="radio" name="futureToType" value="PTO" style="width:16px; height:16px; accent-color:var(--accent-primary);">
             <div>
-              <div style="font-size:14px; font-weight:700; color:#1e293b;">🔥 USE PTO</div>
-              <div style="font-size:10px; color:#64748b;">Deduct hours</div>
+              <div style="font-size:14px; font-weight:700; color:var(--text-primary);">🔥 USE PTO</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Deduct hours</div>
             </div>
           </label>
         </div>
@@ -2688,19 +2694,21 @@
       
       <!-- Make Up Date(s) (conditional) - supports multiple dates -->
       <div id="futureToMakeUpWrap" style="margin-bottom:20px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Make Up Date(s)</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Make Up Date(s)</label>
         <div style="display:flex; gap:8px; margin-bottom:8px;">
           <input type="date" id="futureToMakeUpDate" style="
             flex:1; 
             padding:12px; 
-            border:2px solid #e2e8f0; 
+            border:2px solid var(--border-color); 
             border-radius:10px; 
             font-size:14px;
+            background:var(--input-bg, white);
+            color:var(--text-primary);
             box-sizing:border-box;
           ">
           <button type="button" onclick="addFutureMakeUpDate()" style="
             padding:12px 16px;
-            background:linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%);
+            background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
             color:white;
             border:none;
             border-radius:10px;
@@ -2712,19 +2720,20 @@
         </div>
         <div id="futureMakeUpDatesList" style="display:flex; flex-wrap:wrap; gap:6px; min-height:24px;"></div>
         
-        <!-- Make Up Time Selection -->
-        <div style="margin-top:12px; padding:14px; background:linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius:12px; border:2px solid #86efac;">
-          <label style="display:block; font-size:11px; font-weight:700; color:#15803d; margin-bottom:8px; text-transform:uppercase;">Make Up Time</label>
+        <!-- Make Up Time Selection (hidden by default) -->
+        <div id="futureToMakeUpTimeWrap" style="display:none; margin-top:12px; padding:14px; background:var(--csat-done-bg-start); border-radius:12px; border:2px solid var(--csat-done-border);">
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--csat-done-text); margin-bottom:8px; text-transform:uppercase;">Make Up Time</label>
           <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center;">
             <div>
-              <label style="font-size:10px; color:#15803d; display:block; margin-bottom:4px; font-weight:600;">From</label>
+              <label style="font-size:10px; color:var(--csat-done-text); display:block; margin-bottom:4px; font-weight:600;">From</label>
               <select id="futureToMakeUpTimeStart" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #86efac; 
+                border:2px solid var(--csat-done-border); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2747,16 +2756,17 @@
                 <option value="22:00">10:00 PM</option>
               </select>
             </div>
-            <div style="color:#15803d; font-weight:600; padding-top:20px;">→</div>
+            <div style="color:var(--csat-done-text); font-weight:600; padding-top:20px;">→</div>
             <div>
-              <label style="font-size:10px; color:#15803d; display:block; margin-bottom:4px; font-weight:600;">Until</label>
+              <label style="font-size:10px; color:var(--csat-done-text); display:block; margin-bottom:4px; font-weight:600;">Until</label>
               <select id="futureToMakeUpTimeEnd" style="
                 width:100%; 
                 padding:10px; 
-                border:2px solid #86efac; 
+                border:2px solid var(--csat-done-border); 
                 border-radius:10px; 
                 font-size:13px;
-                background:white;
+                background:var(--input-bg, white);
+                color:var(--text-primary);
                 box-sizing:border-box;
               ">
                 <option value="">Select time</option>
@@ -2779,21 +2789,23 @@
               </select>
             </div>
           </div>
-          <div id="futureToMakeUpHoursCalc" style="text-align:center; margin-top:8px; font-size:12px; color:#15803d; font-weight:600;"></div>
+          <div id="futureToMakeUpHoursCalc" style="text-align:center; margin-top:8px; font-size:12px; color:var(--csat-done-text); font-weight:600;"></div>
         </div>
         
-        <div style="font-size:11px; color:#64748b; margin-top:6px;">📝 Add one or more dates when you'll make up these hours</div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">📝 Add one or more dates when you'll make up these hours</div>
       </div>
       
       <!-- Reason -->
       <div style="margin-bottom:24px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Reason</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Reason</label>
         <input type="text" id="futureToReason" placeholder="e.g., Vacation, Doctor's appointment, Family event..." style="
           width:100%; 
-          padding:14px; 
-          border:2px solid #e2e8f0; 
+          padding:12px; 
+          border:2px solid var(--border-color); 
           border-radius:10px; 
           font-size:14px;
+          background:var(--input-bg, white);
+          color:var(--text-primary);
           box-sizing:border-box;
         ">
       </div>
@@ -2802,7 +2814,7 @@
       <button onclick="submitFutureTimeOff(event)" style="
         width:100%;
         padding:16px;
-        background:linear-gradient(135deg, #b37e78 0%, #8f5f5a 100%);
+        background:linear-gradient(135deg, var(--modal-gradient-start) 0%, var(--modal-gradient-end) 100%);
         color:white;
         border:none;
         border-radius:12px;
@@ -2810,9 +2822,8 @@
         font-weight:700;
         cursor:pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(179,126,120,0.3);
-      " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(179,126,120,0.4)';"
-         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(179,126,120,0.3)';">
+        box-shadow: 0 4px 12px var(--modal-btn-shadow);
+      ">
         Submit Request →
       </button>
     </div>
