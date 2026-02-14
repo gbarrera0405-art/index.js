@@ -7256,7 +7256,8 @@ async function masterStartEdit() {
             resourceType: 'master',
             resourceId: 'template',
             forcedByEmail: window._myEmail || '',
-            forcedByName: window._myName || ''
+            forcedByName: window._myName || '',
+            isManager: window._isManager || false
           })
         });
         // Now try to acquire again

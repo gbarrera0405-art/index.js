@@ -1410,6 +1410,7 @@ if (action) path = "/" + action;
       "/locks/renew",
       "/locks/release",
       "/locks/status",
+      "/locks/force-release",
       "/manager/notifications/read",
       "/timeoff/approve",
       "/timeoff/deny",

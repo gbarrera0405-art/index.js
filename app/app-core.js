@@ -1344,7 +1344,8 @@ async function acquireEditLock(resourceType, resourceId) {
         resourceId,
         lockedByEmail: window._myEmail || '',
         lockedByName: window._myName || '',
-        lockSessionId
+        lockSessionId,
+        isManager: window._isManager || false
       })
     });
     const data = await response.json();
@@ -1374,7 +1375,7 @@ async function renewEditLock(resourceType, resourceId) {
     const response = await fetch('./?action=locks/renew', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resourceType, resourceId, lockSessionId })
+      body: JSON.stringify({ resourceType, resourceId, lockSessionId, isManager: window._isManager || false })
     });
     const data = await response.json();
     if (data.ok && data.renewed) {
@@ -1409,7 +1410,7 @@ async function releaseEditLock(resourceType, resourceId) {
     const response = await fetch('./?action=locks/release', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resourceType, resourceId, lockSessionId })
+      body: JSON.stringify({ resourceType, resourceId, lockSessionId, isManager: window._isManager || false })
     });
     const data = await response.json();
     console.log(`[Lock] 🔓 Released ${resourceType} lock for ${resourceId}`);
@@ -1508,7 +1509,8 @@ function releaseAllLocks() {
     const data = JSON.stringify({
       resourceType,
       resourceId: resourceIdParts.join('_'),
-      lockSessionId: getLockSessionId()
+      lockSessionId: getLockSessionId(),
+      isManager: window._isManager || false
     });
     // sendBeacon requires Blob for JSON content
     const blob = new Blob([data], { type: 'application/json' });
@@ -1816,11 +1818,7 @@ async function softRefreshNotifications() {
   try {
     // For managers: check for new pending notifications
     if (window._isManager) {
-      const res = await fetch('/?action=pendingNotifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      const res = await fetch('./?action=notifications/pending');
       const data = await res.json();
       
       if (data.ok) {
@@ -2190,11 +2188,7 @@ function setEditingMode(isEditing) {
         const toCount = (countData.ok && countData.count) ? countData.count : 0;
         
         // Also check shift notifications
-        const notifRes = await fetch('/?action=pendingNotifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
+        const notifRes = await fetch('./?action=notifications/pending');
         const notifData = await notifRes.json();
         const shiftCount = notifData.ok ? (notifData.shiftNotifications?.length || 0) : 0;
         const mgrCount = notifData.ok ? (notifData.managerNotifications?.length || 0) : 0;
